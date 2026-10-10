@@ -501,3 +501,5 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .doc-g h3 { font: 600 12px var(--cond); text-transform: uppercase; letter-spacing: .08em; margin: 12px 0 6px; }
 .doc-r { display: flex; gap: 10px; align-items: center; padding: 6px 8px; border-left: 3px solid; background: #181817; margin-bottom: 4px; font-size: 12px; }
 .frames .frame.pick { outline: 2px solid #e3b04b; outline-offset: -2px; }
+.dx-menu .dx-grp b { color: rgba(232,165,54,.8); font-weight: 400; } .dx-menu .dx-grp.open { background: rgba(232,165,54,.18); }
+.dx-menu button small { color: rgba(233,217,184,.45); font-size: 10px; } .dx-sub { max-height: 80vh; overflow: auto; }

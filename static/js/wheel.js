@@ -14,7 +14,8 @@ export function registerWheel(area, fn) { providers[area] = fn; }
 export const wheelActions = area => { const P = providers[area]?.() || {}; return [...(P.tools || []), ...(P.guides || [])]; };
 export const areaList = () => areas();
 export const currentArea = () => current();
-export function registerMenu(selector, fn) { menus.push([selector, fn]); }
+// name: show its items as a section (a row that opens beside the menu) instead of inline at the top
+export function registerMenu(selector, fn, name) { menus.push([selector, fn, name]); }
 export function initWheel(getAreas, getCurrent) {
   areas = getAreas; current = getCurrent;
   window.addEventListener('keydown', e => {
@@ -115,19 +116,35 @@ function close() {
 
 /* -------------------------------------------------------------- menu ---- */
 let M = null;
+// the menu: what you right-clicked on first, then one row per section (Tools ›, Guides ›, Go to ›, Help ›) that
+// opens its items in a second panel beside it, so the menu itself stays short
 function showMenu(e) {
   closeMenu();
-  const items = [];
-  for (const [sel, fn] of menus) { const t = e.target.closest(sel); if (t) { const got = fn(t, e) || []; if (got.length) items.push(...got, null); } }
+  const top = [];
+  const named = [];
+  for (const [sel, fn, name] of menus) { const t = e.target.closest(sel); if (t) { const got = fn(t, e) || []; if (got.length) name ? named.push([name, got]) : top.push(...got, null); } }
   const P = providers[current()]?.() || {};
-  if (P.tools?.length) items.push({ head: 'Tools' }, ...P.tools.slice(0, 8), null);
-  if (P.guides?.length) items.push({ head: 'Guides' }, ...P.guides.slice(0, 6), null);
-  items.push({ label: 'Controls and shortcuts', key: '?', run: showKeys }, { label: 'Find anything', key: 'Ctrl+K', run: () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true })) }, null, { head: 'Go to' }, ...areas().filter(a => a.id !== current()).map(a => ({ label: a.label, key: a.key, run: () => emit('tab', a.id) })), null,
-    { label: 'Command wheel', key: 'Shift+A', run: () => open(e.clientX, e.clientY, false) }, { head: 'Shift + right-click: browser menu' });
-  while (items.length && items[items.length - 1] === null) items.pop();
-  const box = h('div', { class: 'dx-menu' }, ...items.map(it => it === null ? h('i', { class: 'dx-sep' })
-    : it.head ? h('div', { class: 'dx-head' }, it.head)
-      : h('button', { class: it.on ? 'on' : '', disabled: it.disabled || false, onclick: () => { closeMenu(); it.run(); } }, h('span', {}, it.label), it.key ? h('kbd', {}, it.key) : '')));
+  const sections = [...named,
+    P.tools?.length && ['Tools', P.tools.slice(0, 12)],
+    P.guides?.length && ['Guides', P.guides.slice(0, 10)],
+    ['Go to', areas().filter(a => a.id !== current()).map(a => ({ label: a.label, key: a.key, run: () => emit('tab', a.id) }))],
+    ['Help', [{ label: 'Controls and shortcuts', key: '?', run: showKeys }, { label: 'Find anything', key: 'Ctrl+K', run: () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true })) },
+      { label: 'Command wheel', key: 'Shift+A', run: () => open(e.clientX, e.clientY, false) }, { label: 'Guide', key: 'F1', run: () => window.open('/help', '_blank') }]],
+  ].filter(Boolean);
+  const item = it => it === null ? h('i', { class: 'dx-sep' }) : it.head ? h('div', { class: 'dx-head' }, it.head)
+    : h('button', { class: it.on ? 'on' : '', disabled: it.disabled || false, onclick: () => { closeMenu(); it.run(); } }, h('span', {}, it.label), it.hint ? h('small', {}, it.hint) : '', it.key ? h('kbd', {}, it.key) : '');
+  let sub = null;
+  const openSub = (row, items) => {
+    sub?.remove(); for (const r of box.querySelectorAll('.dx-grp')) r.classList.toggle('open', r === row);
+    sub = h('div', { class: 'dx-menu dx-sub' }, ...items.map(item)); document.body.append(sub);
+    const rr = row.getBoundingClientRect(), b = box.getBoundingClientRect(), sr = sub.getBoundingClientRect();
+    sub.style.left = (b.right + sr.width + 4 < innerWidth ? b.right + 2 : b.left - sr.width - 2) + 'px';
+    sub.style.top = Math.max(6, Math.min(rr.top - 5, innerHeight - sr.height - 6)) + 'px';
+    M.sub = sub;
+  };
+  const box = h('div', { class: 'dx-menu' }, ...top.map(item),
+    ...sections.map(([name, items]) => { const row = h('button', { class: 'dx-grp', onclick: () => openSub(row, items) }, h('span', {}, name), h('b', {}, '›')); row.onmouseenter = () => openSub(row, items); return row; }),
+    h('div', { class: 'dx-head' }, 'Shift + right-click: browser menu'));
   document.body.append(box);
   const r = box.getBoundingClientRect();
   box.style.left = Math.min(e.clientX, innerWidth - r.width - 6) + 'px';
@@ -135,11 +152,11 @@ function showMenu(e) {
   M = box;
   setTimeout(() => { window.addEventListener('pointerdown', outside, true); window.addEventListener('keydown', escMenu, true); });
 }
-const outside = e => { if (M && !M.contains(e.target)) closeMenu(); };
+const outside = e => { if (M && !M.contains(e.target) && !M.sub?.contains(e.target)) closeMenu(); };
 const escMenu = e => { if (e.key === 'Escape') { e.stopPropagation(); closeMenu(); } };
 function closeMenu() {
   if (!M) return;
-  M.remove(); M = null;
+  M.sub?.remove(); M.remove(); M = null;
   window.removeEventListener('pointerdown', outside, true); window.removeEventListener('keydown', escMenu, true);
 }
 

@@ -34,4 +34,4 @@ registerMenu(PLACES.join(', '), el => {
   const url = img ? img.getAttribute('src') : cv.toDataURL('image/png');
   const name = el.dataset.name || img?.title || el.querySelector('.nm, input[type=text]')?.textContent || img?.alt || 'image';
   return sendItems(url, name);
-});
+}, 'Send to');
