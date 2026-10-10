@@ -6,6 +6,13 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 
 ## Rules for a run
 
+0. **Every 45 minutes** (user, 2026-10-10: keep usage down). **Each run starts with a bug hunt (about 10 min):**
+   run `tools/smoke.py`; then take the next area in the rotation below and exercise its main flows with Playwright
+   on throwaway `zz_` items (clicks, drags, saves, reloads), watching for script errors, failed requests, wrong
+   results, layout glitches. Fix what you find (smallest safe fix), log it under **Bugs**. Then use what's left of
+   the run for the top backlog item. Keep runs lean: few screenshots, short replies.
+   Rotation (advance one per run, note where you are in the Log): Files → Forge → Animate (+ sheet cutter) →
+   Scenes → Levels → HUD → Stage → Concepts → Desk/Help → back to Files.
 1. **One backlog item per run**: whatever fits in about 25 minutes. Take the top unchecked item unless it's
    blocked. If an item is big, do one clear slice of it and leave the rest as a new line.
 2. **Don't break what works.** Syntax-check modules (`cp x.js $TMP/x.mjs && node --check`), restart with
@@ -127,6 +134,10 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - [ ] Turnaround sheet: one cloud call for front/side/back, sliced into views.
 - [ ] Scenes: per-layer "draw again" history.
 
+## Bugs (found by the hunt)
+
+- (none logged yet)
+
 ## Log
 
 - 2026-10-10: loop set up. This session already shipped the native-grid pixelize, the Cloudflare free engine
@@ -162,3 +173,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: run 20. "Send to…" on every image. User then asked: better controls to clear out a space and work section by section (next).
 - 2026-10-10: menu bar, /help guide (searchable, illustrated, Into Godot), DEVELOPING.md, smoke test, Godot chip, quick fixes
   (missing file 404, Levels Background row, new_actor default, Stage preselects). Redesign pass queued.
+- 2026-10-10: timer changed to every 45 min; each run now opens with a bug hunt (rotation starts at Files).
