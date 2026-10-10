@@ -19,13 +19,14 @@ export function budgetTag(long = false) {
   tags.add(s); fillTag(s); return s;
 }
 function fillTags() { for (const s of tags) { if (!s.isConnected && s.seen) tags.delete(s); else { s.seen = s.isConnected; fillTag(s); } } }
-const ENGINE_LABEL = { sprite: 'Sprite model', scene: 'Scene model', painted: 'Painted model', cloud: 'Cloud' };
+const ENGINE_LABEL = { fast: 'Fast local', sprite: 'Sprite model', scene: 'Scene model', painted: 'Painted model', cloud: 'Cloud' };
 
 // Seconds per diffusion step at 512×512 on this machine, learnt from finished jobs.
 function perStep() { return pref.get('perStep', 30); }
 function overhead() { return pref.get('overhead', 30); }
 export function estimate(req) {
   if (req.engine === 'cloud') return 12 * (req.batch || 1);
+  if (req.engine === 'fast') return ((req.steps || 4) * 8 * (req.w || 384) * (req.h || 384) / (384 * 384) + 4) * (req.batch || 1) + (Q.health?.fast?.loaded ? 0 : 20);
   const px = (req.w || 512) * (req.h || 512) / (512 * 512);
   const steps = req.steps || (req.fast === false ? 22 : 4);
   const batch = req.batch || 1;

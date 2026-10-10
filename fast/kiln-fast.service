@@ -1,0 +1,11 @@
+[Unit]
+Description=Kiln Fast engine (pixel model kept loaded, OpenVINO) on 127.0.0.1:8511
+
+[Service]
+WorkingDirectory=%h/.jcodes/kiln/fast
+ExecStart=%h/.jcodes/kiln/fast/.venv/bin/python serve.py
+Restart=on-failure
+Nice=5
+
+[Install]
+WantedBy=default.target

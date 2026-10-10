@@ -29,7 +29,8 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
   (`fast/models/aiop-lcm`, 4 GB) plus an OpenVINO UNet (`fast/models/unet-ov`, fp16). `fast/bench.py` measures,
   4 steps: torch diffusers 384² = 43 s; OpenVINO 384² = 36 s, 512² = 70 s; output is identical. OpenVINO alone is
   only 1.2×. The real cost today is ComfyUI `--cache-none` reloading the model every job (1.5–2.5 min).
-- [ ] **"Fast" local engine (slice 2).** A small resident server in `fast/` (venv `fast/.venv`, reuses miniconda torch)
+- [x] **"Fast" local engine (slice 2).** DONE: `fast/serve.py`, unit `kiln-fast.service` (copy in fast/), Kiln engine `fast`, Forge "Fast" button. Measured 50 s for the first image (includes the load), ~35 s after. Still open: nncf int8, and a Scenes "This PC" option.
+  Original plan: A small resident server in `fast/` (venv `fast/.venv`, reuses miniconda torch)
   holding the OpenVINO pipeline warm (~2.5 GB RAM), with HTTP `/gen {prompt, neg, w, h, steps, seed, init?, denoise?}` →
   PNG. A systemd user unit; Kiln `server.py` engine `fast` routed to it, with progress = step count. Expect ~35 s at
   384 instead of ~2 min. Only run it while ComfyUI is idle (11 GB RAM). Then try nncf int8 weight compression
@@ -63,3 +64,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
   boxes, animation sets, box templates, and the Shift+A wheel with the right-click menu.
 - 2026-10-10 06:4x: run 1. Local generation benchmark: OpenVINO 1.2× over torch; a model kept loaded beats ComfyUI's
   per-job reload by 2.5–4×. Next run: a resident "Fast" engine.
+- 2026-10-10: run 2. Fast engine live (127.0.0.1:8511, loads on first use, unloads after 15 min idle). Forge → Model → Fast: ~35 s at 384 vs ~2 min.

@@ -375,9 +375,61 @@ def submit_cloud(req):
     return pid, 0
 
 
+FAST = os.environ.get('KILN_FAST', '127.0.0.1:8511')
+
+
+def submit_fast(req):
+    """The "Fast" engine (fast/serve.py): the pixel model kept loaded, so no per-job model load."""
+    pid = 'fast-' + uuid.uuid4().hex[:12]
+    n = max(1, min(4, int(req.get('batch', 1))))
+    steps = int(req.get('steps') or 4)
+    with LOCK:
+        JOBS[pid] = {'state': 'queued', 'step': 0, 'steps': steps * n, 'images': [], 'err': None, 't0': time.time(), 'seed': 0}
+    prefix = '16bitscene, ' if req.get('engine_hint') == 'scene' else 'pixelsprite, '
+    body = {'prompt': prefix + req.get('prompt', ''), 'neg': ((req.get('neg') or '') + ', ' + NEG).strip(', '), 'w': req.get('w', 384), 'h': req.get('h', 384),
+            'steps': steps, 'seed': int(req.get('seed', -1)), 'batch': n, 'init': req.get('init'), 'denoise': req.get('denoise', 0.5)}
+
+    def poll():
+        while JOBS.get(pid, {}).get('state') in ('queued', 'running'):
+            try:
+                p = json.loads(urllib.request.urlopen(f'http://{FAST}/progress', timeout=3).read())
+                with LOCK:
+                    if JOBS[pid]['state'] in ('queued', 'running') and p['busy']:
+                        JOBS[pid].update(state='running', step=min(p['step'], steps * n))
+            except Exception:
+                pass
+            time.sleep(1)
+
+    def work():
+        CLOUD_DIR.mkdir(parents=True, exist_ok=True)
+        try:
+            d = post_json(f'http://{FAST}/gen', body, {}, timeout=1800)
+            urls = []
+            for i, b in enumerate(d['images']):
+                fn = f'{pid}-{i}.png'
+                (CLOUD_DIR / fn).write_bytes(base64.b64decode(b))
+                urls.append('/api/cloudimg?f=' + fn)
+            with LOCK:
+                JOBS[pid].update(state='done', images=urls, seed=d.get('seed', 0), step=steps * n)
+        except Exception as ex:
+            msg = str(ex)
+            if 'Connection refused' in msg:
+                msg = 'the Fast engine is not running (systemctl --user start kiln-fast)'
+            elif hasattr(ex, 'read'):
+                try: msg = json.loads(ex.read()).get('err', msg)
+                except Exception: pass
+            with LOCK:
+                JOBS[pid].update(state='error', err=msg[:300])
+    threading.Thread(target=work, daemon=True).start()
+    threading.Thread(target=poll, daemon=True).start()
+    return pid, -1
+
+
 def submit(req):
     if req.get('engine') == 'cloud':
         return submit_cloud(req)
+    if req.get('engine') == 'fast':
+        return submit_fast(req)
     g, seed, steps = build(req)
     r = json.loads(http('POST', '/prompt', json.dumps({'prompt': g, 'client_id': CLIENT}).encode(),
                         {'Content-Type': 'application/json'}))
@@ -393,7 +445,7 @@ def job(pid):
         j = dict(JOBS.get(pid) or {})
     if not j:
         return None
-    if j['state'] not in ('done', 'error') and not pid.startswith('cloud-'):
+    if j['state'] not in ('done', 'error') and not pid.startswith(('cloud-', 'fast-')):
         try:
             h = comfy_json(f'/history/{pid}').get(pid)
         except Exception:
@@ -440,6 +492,11 @@ def status():
         s['queue'] = len(q.get('queue_pending', [])) + len(q.get('queue_running', []))
     except Exception as ex:
         s['err'] = str(ex)
+    try:
+        f = json.loads(urllib.request.urlopen(f'http://{FAST}/health', timeout=2).read())
+        s['fast'] = {'ok': bool(f.get('ok')), 'loaded': bool(f.get('loaded'))}
+    except Exception:
+        s['fast'] = {'ok': False}
     k = keys()
     cap_left = max(0, CLOUD_CAP - cloud_spent()); acct = openrouter_left()
     used = cf_used() if CF_ENV.exists() else None

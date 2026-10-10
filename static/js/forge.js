@@ -130,6 +130,7 @@ function drawLeft() {
   };
   V.est = h('div', { class: 'note' });
   const engineSeg = seg([['cloud', h('span', {}, 'Cloud', budgetTag()), 'Detailed and best at keeping a character on-model. Free daily quota first, then a few cents from the capped budget'],
+    ['fast', 'Fast', 'Local pixel model kept loaded on this PC: free, about 35 s at 384 (the first one after a while also loads it, ~20 s more)'],
     ['sprite', 'Sprite', 'Local pixel model tuned for game sprites (free, a minute or two)'], ['painted', 'Painted', 'Local DreamShaper + pixel-art LoRA: richer shading'], ['scene', 'Scene', 'Local pixel model for 16-bit scenes']],
     st.engine, v => { st.engine = v; save(); drawLeft(); });
   const seedIn = h('input', { type: 'number', value: st.seed, style: { width: '84px' }, onchange: () => { st.seed = +seedIn.value; save(); } });
@@ -475,7 +476,7 @@ registerWheel('forge', () => ({
     { label: 'Use as guide', hint: 'source to guide', run: () => { if (!src) return toast('Nothing in the Source pane yet'); guide = flatSmall(src); drawLeft(); } },
     { label: 'New actor', hint: 'to Animate', run: () => sendToAnimate('new') },
     { label: 'Cloud', on: st.engine === 'cloud', run: () => { st.engine = 'cloud'; save(); drawLeft(); } },
-    { label: 'This PC', on: st.engine === 'sprite', hint: 'local model', run: () => { st.engine = 'sprite'; save(); drawLeft(); } },
+    { label: 'Fast local', on: st.engine === 'fast', hint: 'free, ~35 s', run: () => { st.engine = 'fast'; save(); drawLeft(); } },
   ],
   guides: [
     { label: 'Auto size', on: st.auto, hint: 'art pixels kept', run: () => { st.auto = !st.auto; save(); drawRight(); run(); } },

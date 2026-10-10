@@ -26,7 +26,10 @@ Last updated: 2026-10-10 (session 2: cloud engines, native pixel grid, sheet imp
   - `/api/status` -> `cloud: {free_left (fraction, from CF GraphQL analytics), left, cap, spent, account}`;
     shown next to every "Cloud" choice (`budgetTag()` in queue.js).
 
-## Fast engine (in progress, see LOOP.md)
+## Fast engine (live)
+
+`kiln-fast.service` (user unit, enabled) runs `fast/serve.py` on 127.0.0.1:8511 and loads the model on first use (~15 s), unloading after 15 min idle. Kiln engine `fast` (server.py `submit_fast`), Forge "Fast". img2img works for identity frames.
+
 
 `fast/` holds a converted AllInOnePixel+LCM (diffusers + OpenVINO UNet), the venv `fast/.venv` (system site-packages
 from miniconda: torch 2.14, diffusers, openvino 2026.4, peft), `convert.py` and `bench.py`. Models and the venv
