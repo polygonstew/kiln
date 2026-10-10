@@ -503,3 +503,11 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .frames .frame.pick { outline: 2px solid #e3b04b; outline-offset: -2px; }
 .dx-menu .dx-grp b { color: rgba(232,165,54,.8); font-weight: 400; } .dx-menu .dx-grp.open { background: rgba(232,165,54,.18); }
 .dx-menu button small { color: rgba(233,217,184,.45); font-size: 10px; } .dx-sub { max-height: 80vh; overflow: auto; }
+/* tours (tour.js) */
+.tour-veil { position: fixed; inset: 0; z-index: 950; }
+.tour-ring { position: fixed; z-index: 951; border: 2px solid var(--ember); border-radius: 4px; box-shadow: 0 0 0 9999px rgba(0,0,0,.55); pointer-events: none; transition: all .2s; }
+.tour-bub { position: fixed; z-index: 952; width: 300px; background: #1c1b19; border: 1px solid var(--ember); border-radius: 4px; padding: 12px 14px; box-shadow: 0 8px 30px #000c; }
+.tour-bub b { font: 600 15px var(--cond); color: var(--ember); letter-spacing: .04em; } .tour-bub p { margin: 6px 0 10px; font-size: 13px; line-height: 1.5; color: var(--ink); }
+.tour-n { float: right; font: 11px var(--mono); color: var(--faint); } .tour-b { display: flex; gap: 6px; align-items: center; }
+.tour-offer { position: fixed; z-index: 940; right: 16px; bottom: 16px; display: flex; gap: 8px; align-items: center; background: #1c1b19; border: 1px solid var(--ember); padding: 8px 12px; border-radius: 4px; box-shadow: 0 6px 24px #000a; font-size: 13px; }
+.tour-offer small { color: var(--faint); }

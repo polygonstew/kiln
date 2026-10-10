@@ -6,6 +6,7 @@ import { openHistory } from './history.js';
 import { openSfxDesigner } from './sfx.js';
 import { openVfxDesigner } from './vfx.js';
 import { openDoctor } from './doctor.js';
+import { tour } from './tour.js';
 
 const view = () => document.querySelector('.view.on');
 const visibleButton = (re, root = view()) => [...(root?.querySelectorAll('button') || [])].find(b => b.offsetParent && re.test(b.textContent.trim()));
@@ -50,6 +51,7 @@ const MENUS = () => [
     ['Godot plugin…', 'Install the Kiln dock into your Godot project (or download it)', godotPlugin],
   ]],
   ['Help', [
+    ['Tour this area', 'Bubbles that walk you through the area you are in, part by part', () => tour(currentArea()), 'Shift+F1'],
     ['Guide', 'How every area works, with pictures; searchable', () => window.open('/help', '_blank'), 'F1'],
     ['Into Godot', 'How what you make here reaches your Godot project', () => window.open('/help#godot', '_blank')],
     ['Shortcuts', 'Keys and mouse for the area you are in', () => window.dispatchEvent(new KeyboardEvent('keydown', { key: '?' })), '?'],
@@ -103,6 +105,7 @@ export function initMenus() {
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape' && open) { close(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); press(/^Save /, 'Save'); }     // Ctrl+S saves for the game, not the web page
-    if (e.key === 'F1') { e.preventDefault(); window.open('/help', '_blank'); }
+    if (e.key === 'F1' && e.shiftKey) { e.preventDefault(); tour(currentArea()); }
+    else if (e.key === 'F1') { e.preventDefault(); window.open('/help', '_blank'); }
   });
 }

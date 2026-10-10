@@ -8,6 +8,7 @@ import { initWheel, registerWheel } from './wheel.js';
 import './quick.js';
 import './sendto.js';
 import { initMenus } from './menubar.js';
+import { offerTour, endTour } from './tour.js';
 
 const mods = [files];
 const optional = ['forge', 'animate', 'scenes', 'levels', 'hud', 'stage', 'concepts', 'logic'];
@@ -31,7 +32,7 @@ function show(id) {
   }
   for (const [k, el] of Object.entries(views)) el.classList.toggle('on', k === m.id);
   for (const b of $('#tabs').children) b.classList.toggle('on', b.dataset.id === m.id);
-  if (cur !== m.id) { cur = m.id; m.show?.(); pref.set('tab', m.id); location.hash = m.id; }
+  if (cur !== m.id) { endTour(); cur = m.id; m.show?.(); pref.set('tab', m.id); location.hash = m.id; setTimeout(() => cur === m.id && offerTour(m.id), 1200); }
   views[m.id].focus({ preventScroll: true });
 }
 

@@ -603,7 +603,7 @@ function drawTimeline() {
     h('span', { class: 'lbl' }, 'Speed'), fps, h('span', { class: 'faint', style: { fontSize: '11px' } }, 'fps'),
     check('loop', n.loop !== false, v => { n.loop = v; changed(); }),
     h('i', { class: 'sep' }),
-    h('button', { class: 'btn sm', title: 'Duplicate frame (N)', onclick: dupFrame }, icon('dup'), 'Copy frame'),
+    h('button', { class: 'btn sm', title: 'Duplicate frame (N)', onclick: dupFrame }, icon('dup'), 'Duplicate'),
     h('button', { class: 'btn sm', onclick: () => { pushUndo(); n.frames.splice(A.fi + 1, 0, newImg(fw(n), a.h)); A.fi++; changed(true); } }, icon('plus'), 'Blank'),
     h('i', { class: 'sep' }),
     ...(A.boxes ? [seg([['hit', 'Hitbox (red)'], ['hurt', 'Hurtbox (blue)']], A.boxKind || 'hit', v => { A.boxKind = v; }),

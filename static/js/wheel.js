@@ -128,7 +128,7 @@ function showMenu(e) {
     P.tools?.length && ['Tools', P.tools.slice(0, 12)],
     P.guides?.length && ['Guides', P.guides.slice(0, 10)],
     ['Go to', areas().filter(a => a.id !== current()).map(a => ({ label: a.label, key: a.key, run: () => emit('tab', a.id) }))],
-    ['Help', [{ label: 'Controls and shortcuts', key: '?', run: showKeys }, { label: 'Find anything', key: 'Ctrl+K', run: () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true })) },
+    ['Help', [{ label: 'Tour this area', key: 'Shift+F1', run: () => import('./tour.js').then(t => t.tour(current())) }, { label: 'Controls and shortcuts', key: '?', run: showKeys }, { label: 'Find anything', key: 'Ctrl+K', run: () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true })) },
       { label: 'Command wheel', key: 'Shift+A', run: () => open(e.clientX, e.clientY, false) }, { label: 'Guide', key: 'F1', run: () => window.open('/help', '_blank') }]],
   ].filter(Boolean);
   const item = it => it === null ? h('i', { class: 'dx-sep' }) : it.head ? h('div', { class: 'dx-head' }, it.head)
@@ -163,7 +163,7 @@ function closeMenu() {
 /* --------------------------------------------------------- shortcuts (?) ---- */
 // Press ? anywhere for the keys and mouse moves that work in the area you're in, plus the global ones.
 const KEYS = {
-  '*': [['1 – 8', 'Switch area'], ['Ctrl+K', 'Find anything: areas, actions, actors, scenes, files'], ['Shift+A', 'Command wheel (area / tool / guide)'], ['Right-click', 'Kiln menu (Shift+right-click: browser menu)'], ['?', 'This list'], ['Esc', 'Close wheel, menu or this list']],
+  '*': [['1 – 8', 'Switch area'], ['Ctrl+K', 'Find anything: areas, actions, actors, scenes, files'], ['Shift+A', 'Command wheel (area / tool / guide)'], ['Right-click', 'Kiln menu (Shift+right-click: browser menu)'], ['?', 'This list'], ['Shift+F1', 'Tour the area you are in'], ['Esc', 'Close wheel, menu or this list']],
   files: [['Enter', 'Open'], ['F2', 'Rename'], ['Delete', 'Move to trash'], ['Backspace', 'Up a folder'], ['Drop files', 'Copy them into this folder']],
   forge: [['D', 'Roll the dice: a random enemy idea'], ['Ctrl+V', 'Paste an image as the source'], ['Click source', 'Pick the background colour to remove'], ['Drop on guide box', 'Set a guide image'], ['Right-click a result', 'Use as source / as guide']],
   animate: [['Left click', 'Add pixels'], ['Right click', 'Remove pixels'], ['Mouse wheel', 'Roll through the palette'], ['Middle click', 'Pick the colour under the cursor'], ['Ctrl/Alt+wheel', 'Zoom'],
