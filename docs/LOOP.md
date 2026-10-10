@@ -82,6 +82,9 @@ override everything; each gets a Help section and a Godot export):**
   inside the addon (server.py + static) with a "Start Kiln" button so others can use it without this machine. Needs the
   user's go-ahead (public release).
 
+- [ ] **Collapsible sections everywhere** (user, 2026-10-10): every panel section header gets a ▾ / ▸ toggle to fold it away;
+  folded state remembered per area (pref). One shared helper in core.js (`h('div', {class:'sec'})` headers become clickable),
+  applied to all areas at once. Do this as part of / right before the redesign pass.
 - [ ] **Redesign pass (user: "redesign sections that seem janky"):** from the 2026-10-10 review: Forge's right panel is long
   (split into Size / Colour / Clean-up tabs or collapsible groups); Animate's right panel stacks too much (preview,
   identity, motions, sheet, import, save: make collapsible with remembered state); Stage needs a "pick actor" hint inline;
@@ -211,3 +214,4 @@ override everything; each gets a Help section and a Godot export):**
   workshop, colliders, systems/logic, dialogue+lore, cutscenes, menus/music, asset library.
 - 2026-10-10: loop run 21 (bug hunt: Files). Next hunt: Forge. Backlog top: Actor workshop.
 - 2026-10-10: Actor workshop slice 1 shipped (tested: checklist, add all, local face, save writes faces.png/json). GDScript editor queued.
+- 2026-10-10: user asked for collapsible sections (logged above, GUI pass later); continuing with Actor workshop slice 2.
