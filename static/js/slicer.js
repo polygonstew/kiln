@@ -160,8 +160,13 @@ export async function openSlicer(src, opts = {}) {
   function compute() {
     keyed = st.key ? keyBackground(im, st.tol) : im;
     if (st.mode === 'grid') {
-      const fw = Math.floor(im.width / st.cols), fh = Math.floor(im.height / st.rows);
-      rows = Array.from({ length: st.rows }, (_, r) => Array.from({ length: st.cols }, (_, c) => ({ x: c * fw, y: r * fh, w: fw, h: fh })));
+      // the grid: offset (gX, gY), cell size (gW, gH) and gap; until you size it by hand it fills the sheet evenly
+      if (!st.gManual) { st.gX = 0; st.gY = 0; st.gapX = st.gapY = 0; st.gW = Math.floor(im.width / st.cols); st.gH = Math.floor(im.height / st.rows); }
+      rows = Array.from({ length: st.rows }, (_, r) => Array.from({ length: st.cols }, (_, c) => {
+        const x = Math.round(st.gX + c * (st.gW + st.gapX)), y = Math.round(st.gY + r * (st.gH + st.gapY));
+        const x0 = Math.max(0, x), y0 = Math.max(0, y), x1 = Math.min(im.width, x + st.gW), y1 = Math.min(im.height, y + st.gH);
+        return x1 - x0 > 1 && y1 - y0 > 1 ? { x: x0, y: y0, w: x1 - x0, h: y1 - y0 } : null;
+      }).filter(Boolean)).filter(r => r.length);
     } else if (st.mode === 'bands' && A.bands) {
       rows = A.bands.map(b => Array.from({ length: A.cols }, (_, c) => {
         const x = Math.round(A.x0 + c * A.pitch), x1 = Math.min(im.width, Math.round(A.x0 + (c + 1) * A.pitch));
@@ -178,21 +183,81 @@ export async function openSlicer(src, opts = {}) {
     x.putImageData(keyed, 0, 0);
     x.lineWidth = Math.max(1, Math.round(im.width / 500));
     const colors = ['#ff5b2e', '#9cc76b', '#e3b04b', '#6fb3d9', '#d97ab3'];
+    const hs = handle();
     rows.forEach((r, ri) => r.forEach((b, i) => {
       x.strokeStyle = colors[ri % colors.length]; x.strokeRect(b.x + .5, b.y + .5, b.w - 1, b.h - 1);
+      if (b === hot) { x.fillStyle = 'rgba(255,255,255,.12)'; x.fillRect(b.x, b.y, b.w, b.h); }
+      x.fillStyle = colors[ri % colors.length]; x.fillRect(b.x + b.w - hs, b.y + b.h - hs, hs, hs);     // resize handle
       x.fillStyle = colors[ri % colors.length]; x.font = `${Math.max(10, Math.round(im.width / 90))}px monospace`; x.fillText(`${ri + 1}.${i + 1}`, b.x + 3, b.y + 14);
     }));
     const n = rows.reduce((s, r) => s + r.length, 0);
     info.textContent = `${im.width}×${im.height} · ${n} frame${n === 1 ? '' : 's'} in ${rows.length} row${rows.length === 1 ? '' : 's'}`
       + (st.mode === A.mode ? ` · found ${A.why}` : '') + (pixelArt ? ` · already pixel art${st.unscale > 1 ? `, blown up ${st.unscale}×` : ''}` : '');
   }
+  /* ---- moving the grid / boxes by hand ---- */
+  let hot = null, act = null;
+  const handle = () => Math.max(6, Math.round(im.width / 120));
+  const at = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * im.width / r.width, (e.clientY - r.top) * im.height / r.height]; };
+  const hit = ([px, py]) => {
+    const all = rows.flat(); const hs = handle() * 1.6;
+    for (let i = all.length - 1; i >= 0; i--) { const b = all[i]; if (px >= b.x && py >= b.y && px < b.x + b.w && py < b.y + b.h) return { b, corner: px > b.x + b.w - hs && py > b.y + b.h - hs }; }
+    return null;
+  };
+  cv.style.cursor = 'crosshair'; cv.style.touchAction = 'none';
+  cv.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    if (st.mode === 'grid') return;
+    const hh = hit(at(e)); if (!hh) return;
+    rows = rows.map(r => r.filter(b => b !== hh.b)).filter(r => r.length); hot = null; draw();     // right click removes a box
+  });
+  cv.addEventListener('pointerdown', e => {
+    if (e.button !== 0) return;
+    cv.setPointerCapture(e.pointerId);
+    const p = at(e), hh = hit(p);
+    if (st.mode === 'grid') { st.gManual = true; act = { kind: hh?.corner ? 'cell' : 'grid', p0: p, g: { x: st.gX, y: st.gY, w: st.gW, h: st.gH } }; return; }
+    if (hh) act = { kind: hh.corner ? 'size' : 'move', b: hh.b, p0: p, o: { ...hh.b } };
+    else { const b = { x: Math.round(p[0]), y: Math.round(p[1]), w: 1, h: 1 }; addBox(b); act = { kind: 'size', b, p0: p, o: { ...b } }; }   // drag on empty space draws a new box
+  });
+  cv.addEventListener('pointermove', e => {
+    const p = at(e);
+    if (!act) { const hh = hit(p); cv.style.cursor = hh ? (hh.corner ? 'nwse-resize' : 'move') : st.mode === 'grid' ? 'move' : 'crosshair'; if (hh?.b !== hot) { hot = hh?.b || null; draw(); } return; }
+    const dx = Math.round(p[0] - act.p0[0]), dy = Math.round(p[1] - act.p0[1]);
+    if (act.kind === 'grid') { st.gX = act.g.x + dx; st.gY = act.g.y + dy; compute(); syncGrid(); }
+    else if (act.kind === 'cell') { st.gW = Math.max(4, act.g.w + dx); st.gH = Math.max(4, act.g.h + dy); compute(); syncGrid(); }
+    else if (act.kind === 'move') { act.b.x = act.o.x + dx; act.b.y = act.o.y + dy; draw(); }
+    else { act.b.w = Math.max(2, act.o.w + dx); act.b.h = Math.max(2, act.o.h + dy); draw(); }
+  });
+  const end = () => { if (act && act.kind === 'size' && act.b.w < 4 && act.b.h < 4) { rows = rows.map(r => r.filter(b => b !== act.b)).filter(r => r.length); draw(); } act = null; };
+  cv.addEventListener('pointerup', end); cv.addEventListener('pointercancel', end);
+  function addBox(b) {
+    const r = rows.find(r => r.some(o => b.y < o.y + o.h * .6 && o.y < b.y + 10));
+    if (r) r.push(b); else { rows.push([b]); rows.sort((p, q) => p[0].y - q[0].y); }
+    draw();
+  }
+  // arrow keys nudge the grid (or the box under the mouse); Shift moves 8
+  m.addEventListener('keydown', e => {
+    if (e.target.matches('input,textarea,select') || !e.key.startsWith('Arrow')) return;
+    e.preventDefault();
+    const d = e.shiftKey ? 8 : 1, dx = e.key === 'ArrowLeft' ? -d : e.key === 'ArrowRight' ? d : 0, dy = e.key === 'ArrowUp' ? -d : e.key === 'ArrowDown' ? d : 0;
+    if (st.mode === 'grid') { st.gManual = true; st.gX += dx; st.gY += dy; compute(); syncGrid(); }
+    else if (hot) { hot.x += dx; hot.y += dy; draw(); }
+  });
+  m.tabIndex = -1; setTimeout(() => m.focus(), 50);
+  const num = (k, lbl, title) => { const i = h('input', { type: 'number', value: Math.round(st[k] || 0), style: { width: '64px' }, title, oninput: () => { st.gManual = true; st[k] = +i.value || 0; compute(); } }); i.dataset.k = k; return field(lbl, i); };
+  function syncGrid() { ctl.querySelectorAll('input[data-k]').forEach(i => { if (document.activeElement !== i) i.value = Math.round(st[i.dataset.k]); }); }
   function drawCtl() {
     ctl.replaceChildren(
       h('div', { class: 'sec', style: { padding: '8px 0' } }, h('h3', {}, 'Find frames'),
         field('How', seg([...(A.bands ? [['bands', 'Rows found']] : []), ['auto', 'Find figures'], ['grid', 'Even grid']], st.mode, v => { st.mode = v; drawCtl(); compute(); })),
-        st.mode === 'grid' ? [field('Columns', range(st.cols, 1, 32, 1, v => { st.cols = v; compute(); })), field('Rows', range(st.rows, 1, 16, 1, v => { st.rows = v; compute(); }))]
+        st.mode === 'grid' ? [field('Columns', range(st.cols, 1, 32, 1, v => { st.cols = v; compute(); })), field('Rows', range(st.rows, 1, 16, 1, v => { st.rows = v; compute(); })),
+          h('div', { class: 'gridnums' }, num('gX', 'Left', 'Where the first cell starts (px). Or drag the grid'), num('gY', 'Top', 'Where the first row starts (px)'),
+            num('gW', 'Cell W', 'Cell width (px). Or drag a corner handle'), num('gH', 'Cell H', 'Cell height (px)'),
+            num('gapX', 'Gap X', 'Space between columns (px)'), num('gapY', 'Gap Y', 'Space between rows (px)')),
+          h('button', { class: 'btn sm ghost', title: 'Back to an even grid over the whole sheet', onclick: () => { st.gManual = false; compute(); drawCtl(); } }, 'Fit to sheet'),
+          h('p', { class: 'note' }, 'Drag the sheet to move the grid, drag a corner square to size the cells, arrows nudge (Shift: 8 px).')]
           : [field('Join gaps', range(st.gap, 0, 40, 1, v => { st.gap = v; compute(); }), 'Bigger joins loose capes and weapons to their body'),
-          field('Ignore specks', range(st.minFrac, 0, .5, .01, v => { st.minFrac = v; compute(); }, v => Math.round(v * 100) + '%'))],
+          field('Ignore specks', range(st.minFrac, 0, .5, .01, v => { st.minFrac = v; compute(); }, v => Math.round(v * 100) + '%')),
+          h('p', { class: 'note' }, 'Drag a box to move it, its corner square to size it, drag on empty space to draw a new one, right-click to remove. Changing a slider above finds the frames again.')],
         field('Background', check('remove', st.key, v => { st.key = v; compute(); })),
         st.key ? field('Tolerance', range(st.tol, 4, 120, 1, v => { st.tol = v; compute(); })) : null,
         field('Rows are', seg([[true, 'Separate anims'], [false, 'One anim']], st.rowsAsAnims, v => { st.rowsAsAnims = v; }))),

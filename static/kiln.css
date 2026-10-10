@@ -408,3 +408,5 @@ table.breakdown td.warn { color: var(--bad); } table.breakdown td.ok { color: va
 .cacts { display: flex; gap: 4px; padding: 6px; flex-wrap: wrap; align-items: center; } .cacts .ibtn { margin-left: auto; }
 .csites { display: flex; flex-wrap: wrap; gap: 6px; } .csites a { text-decoration: none; }
 @media (max-width: 800px) { #v-concepts.ws { grid-template-columns: 1fr; } #v-concepts aside.r { display: none; } }
+.gridnums { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; margin-top: 6px; }
+.gridnums .fld { grid-template-columns: 52px 1fr; }

@@ -31,6 +31,19 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 
 ## Backlog (top first)
 
+**User, 2026-10-10: "create tools that are not available that make things flow easier". These come first, top to bottom.**
+
+- [ ] **Flow 1: Concept → actor in one go.** On a Concepts/Forge image: "Make actor" = pixelize with the style settings, create
+  the actor (identity, palette, scale), add the hero (or enemy) animation set, open Animate with the box template ready. One click.
+- [ ] **Flow 2: Batch pixelize.** Pick a concept session or a folder: every image → sprite with ONE shared palette, size and
+  outline (consistency), saved to sprites/<name>/. Preview grid first, then save the ticked ones.
+- [ ] **Flow 3: "Send to…" everywhere.** Every image (Concepts, Forge results, Files, Animate frames, scene layers) gets the same
+  right-click "Send to": Forge source · Forge guide · Animate frame · new actor · Scene layer · Level tileset · Concept board.
+- [ ] **Flow 4: Save all + project health.** One button (top bar) exports every changed actor/scene/level/HUD for Godot, then
+  a health report: unsaved items, actors missing animations from their set, frames touching box edges, colours over the
+  hardware limit, levels whose background or actors aren't exported. Each line has a "fix / go there" link.
+- [ ] **Flow 5: Recent strip.** Top-bar dropdown of the last 12 things touched across tabs (thumbnails), one click back.
+
 **User, 2026-10-10: "tighten up the scenes section and double down the next few runs". Scenes slices come first.**
 
 - [x] **Scenes 1, layer control:** undo/redo (Ctrl+Z/Y), Delete with undo, Ctrl+D duplicate, drag to reorder, Alt+click eye = solo,
@@ -132,3 +145,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: run 16. Levels entities: place actors and the player start, exported as instanced scenes and a Marker2D.
 - 2026-10-10: run 17. The Desk: your home apps as icons and windows (Ubuntu or Windows look) at /desk and in Kiln Studio.
 - 2026-10-10: user is on SSH, so Kiln Studio (a desktop window) is no use remotely. Added the Concepts tab (meta.ai links + drop/paste/upload + notes).
+- 2026-10-10: slicer grids made movable (drag the grid, size cells by corner, gap/offset fields, arrows; boxes draggable, drawable, right-click delete). Flow tools queued first.
