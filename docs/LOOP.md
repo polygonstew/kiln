@@ -15,6 +15,8 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 3. **Respect the user's data.** INCIDENT 2026-10-10: Scenes tests overwrote the user's "night" scene (a preset renamed a new
    scene onto it) and every fresh test browser re-saved "pallid". Fixed: scenes never save over another scene's name
    (owner ids → `name_2`), a fresh browser opens the latest scene without saving, and opening is read-only.
+   Desk tests: open only Kiln itself in a window. Other apps (Cutroom, WIW…) keep their own state and a fresh browser
+   could trigger their autosave.
    Before any test, `stat` the user's files and check afterwards that they're unchanged. Create test items with New + a `zz_` name.
    (Original rule follows.) They use Kiln live. Name test actors/scenes `zz_test…` and delete them afterwards.
    Never overwrite their actors, scenes or `library/` files. Never delete anything you didn't create.
@@ -89,7 +91,11 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
   auto-tiling (grass top / dirt fill), several layers (background/foreground).
   Original: **Mold existing software: LDtk-style "Levels" tab.** Paint tiles cut from scenes, place entities (actors),
   draw collision, and export a Godot TileMap/TileSet plus a .tscn. Start small: grid painting + export.
-- [ ] **Desk in Kiln Studio (the OS idea).** A desktop shell with an Ubuntu or Windows look: wallpaper, dock or
+- [x] **Desk, slice 1** DONE: `/desk` (static/desk.html) + Kiln Studio "Desk" tab: Ubuntu/Windows looks, app icons + dock/taskbar,
+  draggable/resizable/min/max windows (iframes; HOMEBASE pops out, as it forbids framing), running status from `/api/apps`, layout remembered.
+- [ ] **Desk, slice 2:** real controls for one app through its API (start with ytgrab: paste URL → grab, progress, list), a launcher/search,
+  and the window title showing that app's status. Read the app's code in ~/.jcodes first; don't change other apps' data.
+  Was: **Desk in Kiln Studio (the OS idea).** A desktop shell with an Ubuntu or Windows look: wallpaper, dock or
   taskbar, and icons for the user's own apps opening as movable windows with min/max/close. Apps and ports:
   Cutroom :8500, ytgrab :8480, HOMEBASE :8490, Panel :8790, LegoFind :8440, ToyFinder :8450, WIW :8460,
   WorldWire, OStink :8470 (LAN only, never public). Research one (start with ytgrab or Cutroom: read its code
@@ -124,3 +130,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: run 14. Name guard everywhere (Animate, Levels, HUD use owners.js like Scenes).
 - 2026-10-10: run 15. Scenes review tools (overlays, time of day, snapshot, pan video). The Scenes push (1-5) is complete.
 - 2026-10-10: run 16. Levels entities: place actors and the player start, exported as instanced scenes and a Marker2D.
+- 2026-10-10: run 17. The Desk: your home apps as icons and windows (Ubuntu or Windows look) at /desk and in Kiln Studio.

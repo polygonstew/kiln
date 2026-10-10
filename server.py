@@ -507,6 +507,21 @@ def status():
     return s
 
 
+# ------------------------------------------------- desk: which home apps are running ---
+DESK_PORTS = (8440, 8450, 8460, 8461, 8470, 8480, 8490, 8500, 8510, 8790, 8430)
+
+
+def apps_up():
+    out = {}
+    for p in DESK_PORTS:
+        try:
+            with socket.create_connection(('127.0.0.1', p), timeout=.3):
+                out[p] = True
+        except OSError:
+            out[p] = False
+    return out
+
+
 # ------------------------------------------------- quick switcher index ---
 _idx = {'t': 0, 'root': None, 'v': []}
 
@@ -805,6 +820,8 @@ class H(BaseHTTPRequestHandler):
                 s['layout'] = LAYOUT
                 s['home'] = str(HOME)
                 return self.send(200, s)
+            if u.path == '/api/apps':
+                return self.send(200, {'up': apps_up()})
             if u.path == '/api/index':
                 return self.send(200, {'items': file_index()})
             if u.path == '/api/inbox':
@@ -817,7 +834,7 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/project':
                 f = proj_dir() / (re.sub(r'[^\w.-]', '_', q.get('id', '')) + '.json')
                 return self.send(200, f.read_bytes()) if f.exists() else self.send(404, {'err': 'not found'})
-            path = 'index.html' if u.path == '/' else u.path.lstrip('/')
+            path = 'index.html' if u.path == '/' else 'desk.html' if u.path in ('/desk', '/desk/') else u.path.lstrip('/')
             fp = (STATIC / path).resolve()
             if str(fp).startswith(str(STATIC)) and fp.is_file():
                 return self.send(200, fp.read_bytes(), TYPES.get(fp.suffix, 'application/octet-stream'))

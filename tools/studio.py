@@ -23,6 +23,7 @@ KILN = 'http://127.0.0.1:8510/'
 DATA = Path.home() / '.local/share/kiln-studio'
 SITES = [
     ('meta.ai', 'https://www.meta.ai/'),
+    ('Desk (your apps)', KILN + 'desk'),
     ('Gemini', 'https://gemini.google.com/'),
     ('ChatGPT', 'https://chatgpt.com/'),
     ('Bing Image Creator', 'https://www.bing.com/images/create'),

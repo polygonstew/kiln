@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Desk</title>
+<style>
+:root { --fg: #f2efe9; --dim: #b9b3a8; --ok: #8fd16a; --off: #8a8580; }
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; font: 13px/1.3 'Ubuntu', 'Segoe UI', system-ui, sans-serif; color: var(--fg); background: #1d1d1d; user-select: none; }
+#desk { position: fixed; inset: 0; }
+/* ---------- Ubuntu flavour: aubergine wallpaper, top bar, left dock ---------- */
+body.ubuntu #desk { background: radial-gradient(circle at 70% 30%, #e95420 0%, #a33d2a 18%, #5e2750 46%, #2c001e 80%); }
+body.ubuntu #top { position: fixed; left: 0; right: 0; top: 0; height: 28px; background: #111; display: flex; align-items: center; justify-content: center; font-weight: 600; z-index: 9000; }
+body.ubuntu #top .l { position: absolute; left: 12px; color: var(--dim); font-weight: 400; cursor: pointer; }
+body.ubuntu #top .r { position: absolute; right: 12px; display: flex; gap: 12px; color: var(--dim); font-weight: 400; }
+body.ubuntu #bar { position: fixed; left: 6px; top: 36px; bottom: 6px; width: 64px; background: rgba(20,20,20,.72); border-radius: 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 10px 0; z-index: 9000; backdrop-filter: blur(8px); }
+body.ubuntu #icons { left: 86px; top: 44px; }
+body.ubuntu #bar .tray { display: none; }
+body.ubuntu .win { border-radius: 10px 10px 4px 4px; }
+body.ubuntu .win .tb { background: #2b2b2b; justify-content: center; }
+body.ubuntu .win .ctl { position: absolute; right: 8px; }
+body.ubuntu .win .ctl b { width: 18px; height: 18px; border-radius: 50%; background: #444; }
+body.ubuntu .win .ctl b.x { background: #e95420; }
+/* ---------- Windows flavour: blue wallpaper, icons on the desktop, taskbar ---------- */
+body.windows #desk { background: radial-gradient(ellipse at 50% 120%, #4cc2ff 0%, #0f6cbd 30%, #0b2a5c 70%, #071530 100%); }
+body.windows #top { display: none; }
+body.windows #bar { position: fixed; left: 0; right: 0; bottom: 0; height: 46px; background: rgba(28,32,40,.85); backdrop-filter: blur(14px); display: flex; align-items: center; justify-content: center; gap: 6px; z-index: 9000; border-top: 1px solid rgba(255,255,255,.08); }
+body.windows #bar .tray { position: absolute; right: 12px; color: var(--dim); text-align: right; font-size: 12px; cursor: pointer; }
+body.windows #icons { left: 12px; top: 12px; }
+body.windows .win { border-radius: 8px; }
+body.windows .win .tb { background: #f3f3f3; color: #1b1b1b; }
+body.windows .win .ctl b { width: 44px; height: 30px; border-radius: 0; background: none; color: #1b1b1b; }
+body.windows .win .ctl b:hover { background: #e5e5e5; } body.windows .win .ctl b.x:hover { background: #c42b1c; color: #fff; }
+/* ---------- shared ---------- */
+#icons { position: fixed; display: grid; grid-auto-flow: column; grid-template-rows: repeat(auto-fill, 92px); gap: 6px 10px; bottom: 60px; }
+.ic { width: 82px; text-align: center; padding: 6px 2px; border-radius: 6px; cursor: default; }
+.ic:hover { background: rgba(255,255,255,.12); }
+.ic .g, .dock .g { width: 44px; height: 44px; border-radius: 11px; margin: 0 auto 5px; display: grid; place-items: center; font: 700 17px system-ui; color: #fff; box-shadow: 0 3px 10px rgba(0,0,0,.35); position: relative; }
+.ic span { text-shadow: 0 1px 3px #000; font-size: 12px; }
+.dot { position: absolute; right: -2px; bottom: -2px; width: 11px; height: 11px; border-radius: 50%; border: 2px solid #222; background: var(--off); }
+.dot.up { background: var(--ok); }
+.dock { position: relative; cursor: pointer; border-radius: 10px; padding: 3px; }
+.dock .g { margin: 0; width: 40px; height: 40px; font-size: 15px; }
+.dock:hover { background: rgba(255,255,255,.12); }
+.dock.open::after { content: ''; position: absolute; left: 50%; bottom: -3px; width: 6px; height: 3px; margin-left: -3px; border-radius: 2px; background: #fff; }
+body.ubuntu .dock.open::after { left: -5px; top: 50%; bottom: auto; width: 3px; height: 6px; margin: -3px 0 0; }
+.win { position: fixed; background: #fff; box-shadow: 0 18px 50px rgba(0,0,0,.55); display: flex; flex-direction: column; overflow: hidden; min-width: 320px; min-height: 200px; }
+.win.max { left: 0 !important; top: 0 !important; width: 100% !important; height: 100% !important; border-radius: 0; }
+body.ubuntu .win.max { left: 76px !important; top: 28px !important; width: calc(100% - 76px) !important; height: calc(100% - 28px) !important; }
+body.windows .win.max { height: calc(100% - 46px) !important; }
+.win.min { display: none; }
+.win .tb { height: 32px; flex: none; display: flex; align-items: center; padding: 0 10px; gap: 8px; color: var(--fg); cursor: move; position: relative; font-weight: 600; }
+.win .tb .t { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.win .ctl { display: flex; gap: 6px; margin-left: auto; }
+.win .ctl b { display: grid; place-items: center; cursor: pointer; font: 400 12px system-ui; color: #ddd; }
+.win iframe { flex: 1; border: 0; width: 100%; background: #111; }
+.win .grip { position: absolute; right: 0; bottom: 0; width: 16px; height: 16px; cursor: nwse-resize; }
+.win.drag iframe { pointer-events: none; }
+.win .off { flex: 1; display: grid; place-items: center; background: #1b1b1b; color: var(--dim); text-align: center; padding: 20px; }
+#menu { position: fixed; z-index: 9500; background: rgba(30,30,30,.96); border: 1px solid #444; border-radius: 8px; padding: 6px; display: none; min-width: 210px; }
+#menu button { display: block; width: 100%; text-align: left; background: none; border: 0; color: var(--fg); padding: 7px 10px; border-radius: 5px; font: inherit; cursor: pointer; }
+#menu button:hover { background: #e95420; }
+body.windows #menu button:hover { background: #0f6cbd; }
+</style>
+</head>
+<body class="ubuntu">
+<div id="desk"></div>
+<div id="top"><span class="l" title="Look and settings">Activities</span><span id="clock"></span><span class="r"><span id="upcount"></span></span></div>
+<div id="icons"></div>
+<div id="bar"><span class="tray" id="tray"></span></div>
+<div id="menu"></div>
+<script>
+// Desk: the home apps as icons and windows, Ubuntu or Windows look. Windows remember where they were.
+const HOST = location.hostname || '127.0.0.1';
+const APPS = [
+  { id: 'kiln', name: 'Kiln', port: 8510, c: '#ff5b2e', g: 'K' },
+  { id: 'cutroom', name: 'Cutroom', port: 8500, c: '#3d7bd9', g: 'Cu' },
+  { id: 'ytgrab', name: 'ytgrab', port: 8480, c: '#d93d3d', g: '▶' },
+  { id: 'homebase', name: 'HOMEBASE', port: 8490, c: '#2f9e6e', g: 'H', popout: true, note: 'Opens in its own tab (it refuses to be framed, by design)' },
+  { id: 'panel', name: 'Panel', port: 8790, c: '#6b6f7a', g: 'P' },
+  { id: 'legofind', name: 'LegoFind', port: 8440, c: '#e3b021', g: 'L' },
+  { id: 'toyfinder', name: 'ToyFinder', port: 8450, c: '#9b59d0', g: 'T' },
+  { id: 'wiw', name: "What's it Worth?", port: 8460, c: '#1f9fb0', g: '$' },
+  { id: 'wiwsite', name: 'WIW-Site', port: 8461, c: '#167a88', g: 'W' },
+  { id: 'ostink', name: 'OStink', port: 8470, c: '#3a3a3a', g: 'O' },
+  { id: 'roundtable', name: 'Roundtable', port: 8430, c: '#8a5a2e', g: 'R' },
+];
+const $ = s => document.querySelector(s), el = (t, a = {}, ...k) => { const n = document.createElement(t); for (const [q, v] of Object.entries(a)) { if (q.startsWith('on')) n[q] = v; else if (q === 'style') Object.assign(n.style, v); else n.setAttribute(q, v); } n.append(...k.filter(x => x != null)); return n; };
+const store = { get(k, d) { try { const v = localStorage.getItem('desk.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } }, set(k, v) { try { localStorage.setItem('desk.' + k, JSON.stringify(v)); } catch { } } };
+let up = {}, z = 100, wins = {}, flavour = store.get('flavour', 'ubuntu');
+const url = a => `http://${HOST}:${a.port}/`;
+
+function glyph(a) { return el('div', { class: 'g', style: { background: a.c } }, a.g, el('i', { class: 'dot' + (up[a.port] ? ' up' : ''), 'data-port': a.port })); }
+function drawIcons() {
+  $('#icons').replaceChildren(...APPS.map(a => el('div', { class: 'ic', title: `${a.name} · port ${a.port}${a.note ? ' · ' + a.note : ''} · double-click to open`, ondblclick: () => open(a) }, glyph(a), el('span', {}, a.name))));
+  const tray = $('#tray');
+  $('#bar').replaceChildren(...APPS.map(a => el('div', { class: 'dock' + (wins[a.id] ? ' open' : ''), title: a.name + (up[a.port] ? '' : ' (not running)'), onclick: () => dockClick(a) }, glyph(a))), tray);
+}
+function dockClick(a) {
+  const w = wins[a.id];
+  if (!w) return open(a);
+  if (w.classList.contains('min')) { w.classList.remove('min'); front(w); }
+  else if (+w.style.zIndex === z) w.classList.add('min');
+  else front(w);
+  save();
+}
+function front(w) { w.style.zIndex = ++z; }
+function open(a, st) {
+  if (a.popout) { window.open(url(a), '_blank', 'noopener'); return; }
+  if (wins[a.id]) { wins[a.id].classList.remove('min'); front(wins[a.id]); return; }
+  const n = Object.keys(wins).length;
+  st = st || { x: 120 + n * 34, y: 60 + n * 30, w: Math.min(1100, innerWidth - 200), h: Math.min(720, innerHeight - 140), max: false };
+  const body = up[a.port] ? el('iframe', { src: url(a), title: a.name }) : el('div', { class: 'off' }, el('div', {}, el('b', {}, `${a.name} isn't running`), el('br'), `Nothing answers on port ${a.port}. Start its service, then reopen this window.`));
+  const w = el('div', { class: 'win' + (st.max ? ' max' : ''), style: { left: st.x + 'px', top: st.y + 'px', width: st.w + 'px', height: st.h + 'px' } },
+    el('div', { class: 'tb', ondblclick: () => { w.classList.toggle('max'); save(); } },
+      el('span', { class: 't' }, a.name),
+      el('span', { class: 'ctl' },
+        el('b', { title: 'Minimise', onclick: e => { e.stopPropagation(); w.classList.add('min'); save(); } }, flavour === 'windows' ? '—' : ''),
+        el('b', { title: 'Maximise', onclick: e => { e.stopPropagation(); w.classList.toggle('max'); save(); } }, flavour === 'windows' ? '□' : ''),
+        el('b', { class: 'x', title: 'Close', onclick: e => { e.stopPropagation(); w.remove(); delete wins[a.id]; drawIcons(); save(); } }, flavour === 'windows' ? '✕' : ''))),
+    body, el('div', { class: 'grip', title: 'Resize' }));
+  w.dataset.id = a.id;
+  w.addEventListener('pointerdown', () => front(w), true);
+  drag(w, w.querySelector('.tb'), false); drag(w, w.querySelector('.grip'), true);
+  document.body.append(w); wins[a.id] = w; front(w); drawIcons(); save();
+}
+function drag(w, handle, resize) {
+  handle.addEventListener('pointerdown', e => {
+    if (e.target.closest('.ctl') || w.classList.contains('max')) return;
+    e.preventDefault(); handle.setPointerCapture(e.pointerId); w.classList.add('drag');
+    const r = w.getBoundingClientRect(), sx = e.clientX, sy = e.clientY;
+    const mv = ev => { if (resize) { w.style.width = Math.max(320, r.width + ev.clientX - sx) + 'px'; w.style.height = Math.max(200, r.height + ev.clientY - sy) + 'px'; } else { w.style.left = Math.max(-r.width + 80, r.left + ev.clientX - sx) + 'px'; w.style.top = Math.max(0, r.top + ev.clientY - sy) + 'px'; } };
+    const end = () => { handle.removeEventListener('pointermove', mv); handle.removeEventListener('pointerup', end); w.classList.remove('drag'); save(); };
+    handle.addEventListener('pointermove', mv); handle.addEventListener('pointerup', end);
+  });
+}
+function save() {
+  store.set('wins', Object.values(wins).map(w => { const r = w.getBoundingClientRect(); return { id: w.dataset.id, x: parseInt(w.style.left), y: parseInt(w.style.top), w: parseInt(w.style.width), h: parseInt(w.style.height), max: w.classList.contains('max'), min: w.classList.contains('min') }; }));
+}
+function setFlavour(f) {
+  flavour = f; store.set('flavour', f); document.body.className = f;
+  const keep = Object.values(wins).map(w => w.dataset.id); save();
+  for (const w of Object.values(wins)) w.remove(); wins = {};
+  restore(); drawIcons();
+}
+function restore() { for (const s of store.get('wins', [])) { const a = APPS.find(a => a.id === s.id); if (a) { open(a, s); if (s.min) wins[a.id]?.classList.add('min'); } } }
+function menu(x, y) {
+  const m = $('#menu');
+  m.replaceChildren(
+    el('button', { onclick: () => setFlavour('ubuntu') }, (flavour === 'ubuntu' ? '● ' : '○ ') + 'Ubuntu look'),
+    el('button', { onclick: () => setFlavour('windows') }, (flavour === 'windows' ? '● ' : '○ ') + 'Windows look'),
+    el('button', { onclick: () => { for (const w of Object.values(wins)) w.classList.add('min'); save(); } }, 'Show desktop'),
+    el('button', { onclick: () => { for (const w of Object.values(wins)) w.remove(); wins = {}; drawIcons(); save(); } }, 'Close all windows'),
+    el('button', { onclick: poll }, 'Refresh status'));
+  m.querySelectorAll('button').forEach(b => b.addEventListener('click', () => { m.style.display = 'none'; }));
+  m.style.display = 'block'; m.style.left = Math.min(x, innerWidth - 230) + 'px'; m.style.top = Math.min(y, innerHeight - 230) + 'px';
+}
+document.addEventListener('pointerdown', e => { if (!e.target.closest('#menu')) $('#menu').style.display = 'none'; });
+$('#desk').addEventListener('contextmenu', e => { e.preventDefault(); menu(e.clientX, e.clientY); });
+$('#top .l').onclick = e => menu(e.clientX, 34);
+$('#tray').onclick = e => menu(e.clientX - 200, innerHeight - 240);
+async function poll() {
+  try { up = (await (await fetch('/api/apps')).json()).up; } catch { }
+  document.querySelectorAll('.dot').forEach(d => d.classList.toggle('up', !!up[d.dataset.port]));
+  const n = APPS.filter(a => up[a.port]).length;
+  $('#upcount').textContent = `${n}/${APPS.length} running`;
+  drawIcons();
+}
+function tick() { const d = new Date(), t = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); $('#clock').textContent = d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' }) + '  ' + t; $('#tray').textContent = ''; $('#tray').append(t, el('br'), d.toLocaleDateString()); }
+document.body.className = flavour;
+tick(); setInterval(tick, 15000);
+poll().then(restore); setInterval(poll, 10000);
+</script>
+</body>
+</html>
