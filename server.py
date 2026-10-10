@@ -743,11 +743,15 @@ def list_projects():
             meta = _meta[str(f)][1]
         else:
             try:
-                meta = json.loads(f.read_text()).get('meta', {})
+                d = json.loads(f.read_text())
+                meta = dict(d.get('meta', {}))
+                # which scene/level/actor this file belongs to, so the editor never saves a different one over it
+                body = next((d[k] for k in ('scene', 'level', 'actor', 'hud') if isinstance(d.get(k), dict)), {})
+                meta.setdefault('sid', body.get('id'))
             except Exception:
                 meta = {}
             _meta[str(f)] = (m, meta)
-        res.append({'id': f.stem, 'kind': meta.get('kind', '?'), 'name': meta.get('name', f.stem),
+        res.append({'id': f.stem, 'kind': meta.get('kind', '?'), 'name': meta.get('name', f.stem), 'sid': meta.get('sid'),
                     'thumb': meta.get('thumb'), 'mtime': f.stat().st_mtime})
     return res
 

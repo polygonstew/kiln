@@ -390,3 +390,7 @@ table.breakdown td.warn { color: var(--bad); } table.breakdown td.ok { color: va
 .layers .eye.solo { color: var(--dx2, #ffc552); }
 .depthwarn { margin: 8px 0 0; padding: 8px; border: 1px solid var(--warn); border-radius: 2px; font-size: 11px; color: var(--warn); display: flex; gap: 8px; align-items: center; }
 .depthwarn span { flex: 1; }
+.ruler { position: relative; height: 36px; margin: 0 0 8px; border-bottom: 1px solid var(--line2); background: linear-gradient(90deg, rgba(138,127,153,.18), transparent); }
+.ruler .mk { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--ok); opacity: .6; }
+.ruler b { position: absolute; transform: translateX(-50%); font: 9px var(--mono); color: var(--dim); background: var(--bg2, #1d1c1a); padding: 0 3px; border: 1px solid var(--line2); border-radius: 2px; cursor: pointer; white-space: nowrap; font-weight: 400; }
+.ruler b.on { color: var(--ember2); border-color: var(--ember); }

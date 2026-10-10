@@ -12,7 +12,11 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
    `systemctl --user restart kiln` after server.py changes, and check the change with headless Chromium +
    Playwright (venv: `python3 -m venv $TMP/pw && $TMP/pw/bin/pip install playwright pillow`, launch with
    `executable_path='/usr/bin/chromium'`). Look at the screenshot before calling it done.
-3. **Respect the user's data.** They use Kiln live. Name test actors/scenes `zz_test…` and delete them afterwards.
+3. **Respect the user's data.** INCIDENT 2026-10-10: Scenes tests overwrote the user's "night" scene (a preset renamed a new
+   scene onto it) and every fresh test browser re-saved "pallid". Fixed: scenes never save over another scene's name
+   (owner ids → `name_2`), a fresh browser opens the latest scene without saving, and opening is read-only.
+   Before any test, `stat` the user's files and check afterwards that they're unchanged. Create test items with New + a `zz_` name.
+   (Original rule follows.) They use Kiln live. Name test actors/scenes `zz_test…` and delete them afterwards.
    Never overwrite their actors, scenes or `library/` files. Never delete anything you didn't create.
 4. **Money:** no paid cloud generation in tests. The Cloudflare free quota is fine, a few images at most.
    The paid OpenRouter backup is capped at $2 total; leave it to the user.
@@ -29,7 +33,8 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 
 - [x] **Scenes 1, layer control:** undo/redo (Ctrl+Z/Y), Delete with undo, Ctrl+D duplicate, drag to reorder, Alt+click eye = solo,
   H hide, [ ] select; depth-order warning + "Sort by depth"; zoom Auto/Sharp/Fill/1–4×; the duplicate Look control removed; wheel + ? entries.
-- [ ] **Scenes 2, layer look:** per-layer opacity, tint, blend (normal / add for glows), and haze override; a depth ruler showing the
+- [x] **Scenes 2, layer look** DONE: opacity, blend (Glow/Light/Shade → Godot CanvasItemMaterial), tint, own haze, depth ruler,
+  reroll ◀ ▶ history, Reset; verified in Godot 4.7. Was: per-layer opacity, tint, blend (normal / add for glows), and haze override; a depth ruler showing the
   scroll speeds side by side; regenerate keeps the seed history (back/forward through rolls). Every new control needs undo.
 - [ ] **Scenes 3, better generators:** ground with a surface edge and detail (cobbles, roots, puddles), foreground silhouettes
   (scroll > 1, darkened), weather layers (rain, snow, embers, drifting fog) that animate in the preview and export as a Godot
@@ -100,3 +105,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: run 8. Juice exported to Godot (script + shader wired into each actor .tscn, tested in Godot 4.7); fixed the stale Save button name after New.
 - 2026-10-10: run 9. Levels tab (tile painting, solid tiles, Godot TileSet + TileMapLayer export with collision, tested in Godot).
 - 2026-10-10: user asked to double down on Scenes. Scenes 1 done (undo, solo, drag reorder, duplicate, depth sort, zoom modes); Scenes 2-5 queued at the top.
+- 2026-10-10: run 10. Scenes 2 (layer look). Found and fixed scene-overwrite bugs (my tests had overwritten the user's "night" scene; not recoverable, no /home snapshots).

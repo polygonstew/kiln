@@ -26,6 +26,9 @@ const snap = () => ({ layers: SC.layers.map(L => ({ ...L, params: L.params ? { .
 function pushUndo() { undoS.push(snap()); if (undoS.length > 60) undoS.shift(); redoS = []; }
 function undo() { if (!undoS.length) return toast('Nothing to undo'); redoS.push(snap()); const s = undoS.pop(); SC.layers = s.layers; sel = Math.min(s.sel, SC.layers.length - 1); drawAll(); save(); }
 function redo() { if (!redoS.length) return; undoS.push(snap()); const s = redoS.pop(); SC.layers = s.layers; sel = Math.min(s.sel, SC.layers.length - 1); drawAll(); save(); }
+// one undo step per control gesture (a slider drag, a colour pick)
+const edit = () => { if (!V.editing) { pushUndo(); V.editing = true; } };
+window.addEventListener('change', () => { V.editing = false; });
 let solo = null;     // id of the only layer shown (Alt+click an eye), null = all
 let zoomPick = pref.get('scene.zoom', 0);
 let cam = 0, playing = true, speed = pref.get('scene.speed', 30), actor = null, actorX = 0;
@@ -83,11 +86,20 @@ async function source(L) {
   return im;
 }
 function haze(im, L) {
-  if (!SC.hazeAmt || SC.look === 'cart' || L.scroll >= 1 || L.kind === 'gen' && L.gen === 'sky') return im;
-  const t = SC.hazeAmt * (1 - L.scroll), hc = rgb(SC.haze), o = cloneImg(im);
-  for (let i = 0; i < o.data.length; i += 4) if (o.data[i + 3] >= 128) { const c = mix([o.data[i], o.data[i + 1], o.data[i + 2]], hc, t); o.data[i] = c[0]; o.data[i + 1] = c[1]; o.data[i + 2] = c[2]; }
+  // the layer's own haze amount wins; otherwise far layers (low scroll) fade toward the scene haze
+  const auto = SC.look === 'cart' || L.scroll >= 1 || L.kind === 'gen' && L.gen === 'sky' ? 0 : SC.hazeAmt * (1 - L.scroll);
+  const t = L.hazeOver != null ? L.hazeOver : auto, tt = L.tint && L.tintAmt ? L.tintAmt : 0;
+  if (!t && !tt) return im;
+  const hc = rgb(SC.haze), tc = tt ? rgb(L.tint) : null, o = cloneImg(im);
+  for (let i = 0; i < o.data.length; i += 4) if (o.data[i + 3] >= 128) {
+    let c = [o.data[i], o.data[i + 1], o.data[i + 2]];
+    if (tt) c = mix(c, tc, tt);
+    if (t) c = mix(c, hc, t);
+    o.data[i] = c[0]; o.data[i + 1] = c[1]; o.data[i + 2] = c[2];
+  }
   return o;
 }
+const BLEND = { normal: 'source-over', add: 'lighter', screen: 'screen', multiply: 'multiply' };
 function look(im, L, idx) {
   const master = STYLE.palette;
   if (SC.look === 'ink') {
@@ -140,7 +152,8 @@ function nearestLab(c, pal) {
 }
 const sat = c => { const mx = Math.max(...c), mn = Math.min(...c); return mx ? (mx - mn) / mx : 0; };
 let procT;
-function process(only) {
+// quiet = just opened: draw it, but don't write it back to disk until something actually changes
+function process(only, quiet) {
   clearTimeout(procT);
   procT = setTimeout(async () => {
     for (const [i, L] of SC.layers.entries()) {
@@ -148,7 +161,7 @@ function process(only) {
       L.out = look(haze(await source(L), L), L, i);
       L.tiles = tileCount(L.out);
     }
-    drawLayers(); drawPreview(); save();
+    drawLayers(); drawPreview(); if (!quiet) save();
   }, 40);
 }
 function tileCount(im) {
@@ -179,7 +192,7 @@ function usePreset(k, silent) {
   if (!silent && SC.layers.length && !confirm(`Replace the current layers with "${PRESETS[k].name}"?`)) return;
   SC.layers = [];
   for (const [g, p] of PRESETS[k].layers) addGen(g, p);
-  if (SC.name === 'scene' || PRESETS[SC.name]) SC.name = k;
+  if (SC.name === 'scene') SC.name = freeName(k, SC.id);     // only an unnamed scene takes the preset's name, and never a taken one
   sel = 0; drawAll(); process();
 }
 async function addImageLayer(url, name) {
@@ -230,22 +243,44 @@ function genAI(L) {
 function serial() {
   return { meta: { kind: 'scene', name: SC.name }, scene: { ...SC, layers: SC.layers.map(({ out, _src, busy, tiles, ...L }) => L) } };
 }
+// Names already used by other scenes: name -> that scene's id. A scene never saves over another one:
+// if its name is taken by a different scene it gets a free name instead (pallid -> pallid_2).
+let owners = new Map();
+async function loadOwners() {
+  const ps = await api('/api/projects').catch(() => null);
+  if (ps) owners = new Map(ps.filter(p => p.kind === 'scene').map(p => [p.name, p.sid]));
+}
+function freeName(base, id) {
+  base = slug(base); let n = base, i = 2;
+  while (owners.has(n) && owners.get(n) !== id) n = `${base}_${i++}`;
+  return n;
+}
 let saveT;
 function save() {
   clearTimeout(saveT);
   saveT = setTimeout(() => {
+    if (!SC.id) SC.id = uid();
+    const free = freeName(SC.name, SC.id);
+    if (free !== SC.name) { toast(`"${SC.name}" is another scene's name, so this one is saved as "${free}"`); SC.name = free; drawLeft(); }
+    owners.set(SC.name, SC.id);
     try { localStorage.setItem('kiln.scene.cur', JSON.stringify(serial())); } catch { }
     api('/api/project', { id: 'scene-' + slug(SC.name), data: serial() }).catch(() => { });
   }, 1200);
 }
 async function restore() {
-  try { const d = JSON.parse(localStorage.getItem('kiln.scene.cur') || 'null'); if (d) { SC = d.scene; sel = 0; drawAll(); process(); } } catch { }
+  try { const d = JSON.parse(localStorage.getItem('kiln.scene.cur') || 'null'); if (d) { SC = d.scene; sel = 0; drawAll(); process(null, true); return; } } catch { }
+  // a browser that has never opened Scenes: open the most recent saved scene rather than starting a new one
+  // (a new one used to take a preset's name and could land on top of an existing scene)
+  const latest = (await api('/api/projects').catch(() => [])).find(p => p.kind === 'scene');
+  if (latest) {
+    try { const d = await (await fetch('/api/project?id=' + encodeURIComponent(latest.id))).json(); SC = d.scene; sel = 0; drawAll(); process(null, true); } catch { }
+  }
 }
 const slug = s => (s || 'scene').toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_|_$/g, '') || 'scene';
 async function openSceneDir(dir) {
   const name = dir.split('/').pop();
   const proj = await fetch('/api/project?id=scene-' + slug(name)).then(r => r.ok ? r.json() : null).catch(() => null);
-  if (proj) { SC = proj.scene; sel = 0; drawAll(); process(); toast('Opened ' + name); return; }
+  if (proj) { SC = proj.scene; sel = 0; drawAll(); process(null, true); toast('Opened ' + name); return; }
   try {
     const sj = await (await fetch(rawURL(dir + '/scene.json'))).json();
     SC = blankScene(); SC.name = slug(name); SC.view = sj.view || SC.view; SC.look = sj.look || SC.look;
@@ -299,6 +334,7 @@ function build(el) {
   const tick = t => { const dt = Math.min(.1, (t - last) / 1000); last = t; if (playing && el.classList.contains('on')) { cam += speed * dt; actorX += dt; drawPreview(); } requestAnimationFrame(tick); };
   requestAnimationFrame(tick);
   refreshActors();
+  loadOwners();
 }
 function drawAll() { if (!V.left) return; drawLeft(); drawLayers(); drawRight(); drawLooks(); drawPreview(); }
 function drawLooks() {
@@ -322,10 +358,12 @@ function drawPreview() {
     if (!L.out || (solo ? L.id !== solo : !L.visible)) continue;
     const c = L._cv && L._cvFor === L.out ? L._cv : (L._cv = toCanvas(L.out), L._cvFor = L.out, L._cv);
     const y = hh - L.h + (L.y || 0);
+    x.globalAlpha = L.opacity ?? 1; x.globalCompositeOperation = BLEND[L.blend] || 'source-over';
     let ox = -cam * L.scroll;
     if (L.repeat) { ox = ((ox % L.w) + L.w) % L.w - L.w; for (; ox < w; ox += L.w) x.drawImage(c, Math.round(ox), y); }
     else x.drawImage(c, Math.round(ox), y);
     // the actor walks on the layer that scrolls at camera speed (the ground)
+    x.globalAlpha = 1; x.globalCompositeOperation = 'source-over';
     if (actor && L.scroll >= 1 && L === SC.layers.filter(l => l.scroll >= 1).pop()) drawActor(x);
   }
   if (actor && !SC.layers.some(l => l.scroll >= 1)) drawActor(x);
@@ -363,7 +401,7 @@ function drawLeft() {
   const L0 = LOOKS[SC.look];
   V.left.replaceChildren(
     h('div', { class: 'sec' }, h('h3', {}, 'Scene', h('span', { class: 'grow' }),
-      h('button', { class: 'btn sm ghost', onclick: openMenu }, 'Open'), h('button', { class: 'btn sm ghost', onclick: () => { if (confirm('Start an empty scene?')) { SC = blankScene(); sel = 0; drawAll(); } } }, 'New')),
+      h('button', { class: 'btn sm ghost', onclick: openMenu }, 'Open'), h('button', { class: 'btn sm ghost', title: 'Start a new empty scene (the current one is kept)', onclick: async () => { const n = prompt('Name for the new scene', 'scene'); if (!n) return; await loadOwners(); SC = blankScene(); SC.name = freeName(n, SC.id); sel = 0; undoS = []; redoS = []; drawAll(); save(); } }, 'New')),
       field('Name', nm),
       field('Screen', select(VIEWS, `${SC.view.w}x${SC.view.h}`, v => { const [w, hh] = v.split('x').map(Number); SC.view = { w, h: hh }; for (const L of SC.layers) { L.w = L.gen === 'sky' && L.kind === 'gen' ? w : w * 2; L.h = hh; } drawAll(); process(); })),
       field('Haze', h('span', { style: { display: 'flex', gap: '8px', alignItems: 'center' } }, h('input', { type: 'color', value: SC.haze, oninput: e => { SC.haze = e.target.value; process(); } }),
@@ -381,7 +419,7 @@ async function openMenu() {
   const m = h('div', { class: 'modal', onclick: e => { if (e.target === m) m.remove(); } }, h('div', {},
     h('header', {}, h('span', { class: 'grow' }, 'Open a scene'), h('button', { class: 'ibtn', onclick: () => m.remove() }, '✕')),
     h('div', { class: 'body' }, list.length ? list.map(p => h('div', { class: 'palrow', onclick: async () => {
-      m.remove(); const d = await (await fetch('/api/project?id=' + encodeURIComponent(p.id))).json(); SC = d.scene; sel = 0; drawAll(); process();
+      m.remove(); const d = await (await fetch('/api/project?id=' + encodeURIComponent(p.id))).json(); SC = d.scene; sel = 0; drawAll(); process(null, true);
     } }, icon('folder'), h('span', {}, p.name))) : h('p', { class: 'note' }, 'No saved scenes yet. They save themselves as you work.'))));
   document.body.append(m);
 }
@@ -406,6 +444,13 @@ function drawLayers() {
     return row;
   }));
   if (!SC.layers.length) V.list.append(h('p', { class: 'note' }, 'No layers. Start from a preset or add one on the left.'));
+  // depth ruler: where each layer sits between "fixed to the screen" (0) and "moves with the camera" (1)
+  if (SC.layers.length > 1) {
+    const max = Math.max(1.2, ...SC.layers.map(L => L.scroll));
+    V.list.prepend(h('div', { class: 'ruler', title: 'Scroll speed of each layer: left = far (moves slowly), right = near. Click one to select it' },
+      h('i', { class: 'mk', style: { left: (1 / max * 100) + '%' }, title: 'camera speed (the ground)' }),
+      ...SC.layers.map((L, i) => h('b', { class: i === sel ? 'on' : '', style: { left: (L.scroll / max * 100) + '%', top: (4 + (i % 3) * 9) + 'px' }, title: `${L.name}: scroll ${L.scroll}`, onclick: () => { sel = i; drawLayers(); drawRight(); } }, L.name.slice(0, 8)))));
+  }
   // layers further back should scroll slower; flag any that would slide in front of nearer ones
   const bad = SC.layers.findIndex((L, i) => i > 0 && L.scroll < SC.layers[i - 1].scroll - 1e-6);
   if (bad > 0) V.list.append(h('div', { class: 'depthwarn' }, h('span', {}, `"${SC.layers[bad].name}" scrolls slower than "${SC.layers[bad - 1].name}" behind it: it will look like it's further away.`),
@@ -440,14 +485,33 @@ function drawRight() {
       field('Raise', range(L.y || 0, -SC.view.h, SC.view.h, 1, v => { if (!V.editing) { pushUndo(); V.editing = true; } L.y = v; drawPreview(); save(); }, v => v + 'px')),
       field('Width', select([[SC.view.w, '1 screen'], [SC.view.w * 2, '2 screens'], [SC.view.w * 3, '3 screens'], [SC.view.w * 4, '4 screens']], L.w, v => { L.w = +v; process(L); }), 'Wider layers repeat less often'),
       field('Repeat', check('tile sideways', L.repeat, v => { L.repeat = v; process(L); })),
-      field('Solid', check('player stands on it (Godot collision)', isSolid(L), v => { L.solid = v; save(); }), 'Exports collision polygons traced from this layer\'s shapes')));
+      field('Solid', check('player stands on it (Godot collision)', isSolid(L), v => { L.solid = v; save(); }), 'Exports collision polygons traced from this layer\'s shapes')),
+      h('div', { class: 'sec' }, h('h3', {}, 'Look of this layer', h('span', { class: 'grow' }),
+          h('button', { class: 'btn sm ghost', title: 'Back to plain: full opacity, normal blend, no tint, scene haze', onclick: () => { pushUndo(); Object.assign(L, { opacity: 1, blend: 'normal', tint: null, tintAmt: 0, hazeOver: null }); drawRight(); process(L); } }, 'Reset')),
+        field('Opacity', range(L.opacity ?? 1, 0, 1, .05, v => { edit(); L.opacity = v; drawPreview(); save(); }, v => Math.round(v * 100) + '%'), 'See-through layers: mist, light shafts, glass'),
+        field('Blend', seg([['normal', 'Normal'], ['add', 'Glow'], ['screen', 'Light'], ['multiply', 'Shade']], L.blend || 'normal', v => { pushUndo(); L.blend = v; drawPreview(); save(); }), 'Glow adds light (fire, windows, magic); Shade darkens what is behind'),
+        field('Tint', h('span', { style: { display: 'flex', gap: '8px', alignItems: 'center' } },
+          h('input', { type: 'color', value: L.tint || '#ff5b2e', title: 'Tint colour', oninput: e => { edit(); L.tint = e.target.value; if (!L.tintAmt) L.tintAmt = .3; process(L); } }),
+          range(L.tintAmt || 0, 0, 1, .05, v => { edit(); L.tintAmt = v; if (!L.tint) L.tint = '#ff5b2e'; process(L); }, v => Math.round(v * 100) + '%')), 'Pushes the layer toward a colour, then back into the palette'),
+        field('Haze', h('span', { style: { display: 'flex', gap: '8px', alignItems: 'center' } },
+          check('own', L.hazeOver != null, v => { pushUndo(); L.hazeOver = v ? +(SC.hazeAmt * (1 - L.scroll)).toFixed(2) : null; drawRight(); process(L); }),
+          L.hazeOver != null ? range(L.hazeOver, 0, 1, .02, v => { edit(); L.hazeOver = v; process(L); }, v => Math.round(v * 100) + '%') : h('span', { class: 'faint', style: { fontSize: '11px' } }, `auto ${Math.round((SC.look === 'cart' || L.scroll >= 1 ? 0 : SC.hazeAmt * (1 - L.scroll)) * 100)}% from depth`)), 'How much this layer fades into the scene haze')));
     if (L.kind === 'gen') {
       const G = GENS[L.gen];
       insp.append(h('div', { class: 'sec' }, h('h3', {}, G.name, h('span', { class: 'grow' }),
-        L.params.seed !== undefined ? h('button', { class: 'btn sm ghost', title: 'Another variation', onclick: () => { L.params.seed = 1 + Math.floor(Math.random() * 9998); drawRight(); process(L); } }, icon('dice'), 'Reroll') : null),
+        L.params.seed !== undefined ? [
+          h('button', { class: 'btn sm ghost', title: 'Previous roll', disabled: !(L.seedAt > 0), onclick: () => { pushUndo(); L.seedAt--; L.params.seed = L.seeds[L.seedAt]; drawRight(); process(L); } }, '◀'),
+          h('button', { class: 'btn sm ghost', title: 'Next roll (back to a newer one)', disabled: !(L.seeds && L.seedAt < L.seeds.length - 1), onclick: () => { pushUndo(); L.seedAt++; L.params.seed = L.seeds[L.seedAt]; drawRight(); process(L); } }, '▶'),
+          h('button', { class: 'btn sm ghost', title: 'Another variation (◀ ▶ step back through the rolls)', onclick: () => {
+            pushUndo();
+            if (!L.seeds) { L.seeds = [L.params.seed]; L.seedAt = 0; }
+            L.seeds = L.seeds.slice(0, L.seedAt + 1); L.params.seed = 1 + Math.floor(Math.random() * 9998); L.seeds.push(L.params.seed); L.seedAt = L.seeds.length - 1;
+            if (L.seeds.length > 30) { L.seeds.shift(); L.seedAt--; }
+            drawRight(); process(L);
+          } }, icon('dice'), 'Reroll')] : null),
         ...G.params.filter(q => q[0] !== 'seed').map(([k, l, d, mn, mx, stp]) => mn === 'color'
-          ? field(l, h('input', { type: 'color', value: L.params[k], oninput: e => { L.params[k] = e.target.value; process(L); } }))
-          : field(l, range(L.params[k], mn, mx, stp, v => { L.params[k] = v; process(L); }, v => stp < 1 ? (+v).toFixed(2) : v)))));
+          ? field(l, h('input', { type: 'color', value: L.params[k], oninput: e => { edit(); L.params[k] = e.target.value; process(L); } }))
+          : field(l, range(L.params[k], mn, mx, stp, v => { edit(); L.params[k] = v; process(L); }, v => stp < 1 ? (+v).toFixed(2) : v)))));
     } else {
       const pr = h('textarea', { id: 'layerPrompt', rows: 3, value: L.prompt || '', placeholder: 'what this layer shows, e.g. "ruined gothic towers and broken bridges"', oninput: e => { L.prompt = e.target.value; save(); } });
       insp.append(h('div', { class: 'sec' }, h('h3', {}, L.kind === 'image' ? 'Image' : 'Described layer'),
@@ -472,6 +536,11 @@ function drawRight() {
 /* -------------------------------------------------------------- export ---- */
 async function exportScene() {
   if (!SC.layers.some(l => l.out)) return toast('Nothing to save yet');
+  await loadOwners();
+  if (!SC.id) SC.id = uid();
+  const free = freeName(SC.name, SC.id);
+  if (free !== SC.name) { toast(`"${SC.name}" belongs to another scene, so this one is saved as "${free}"`); SC.name = free; drawAll(); }
+  owners.set(SC.name, SC.id);
   const dir = `backgrounds/${SC.name}`, files = [];
   const sj = { view: SC.view, look: SC.look, source: 'kiln', layers: [] };
   const used = new Map();
@@ -480,7 +549,7 @@ async function exportScene() {
     const n = (used.get(L.name) || 0) + 1; used.set(L.name, n);
     const name = n > 1 ? `${L.name}_${n}` : L.name, file = `${name}.png`;
     files.push({ name: file, b64: toDataURL(L.out) });
-    const lj = { name, file, scroll: L.scroll, y: SC.view.h - L.h + (L.y || 0), repeat: L.repeat, w: L.w, h: L.h, visible: L.visible };
+    const lj = { name, file, scroll: L.scroll, y: SC.view.h - L.h + (L.y || 0), repeat: L.repeat, w: L.w, h: L.h, visible: L.visible, opacity: L.opacity ?? 1, blend: L.blend || 'normal' };
     if (isSolid(L)) lj.collision = tracePolys(L.out, { minArea: 16, eps: 1.5 });
     sj.layers.push(lj);
   }
@@ -498,14 +567,17 @@ async function exportScene() {
 function isSolid(L) { return L.solid ?? (Math.abs(L.scroll - 1) < .05 && /ground|floor|platform|terrain|street|road/i.test(L.name)); }
 function godotScene(sj, res) {
   const ext = sj.layers.map((l, i) => `[ext_resource type="Texture2D" path="${res}/${l.file}" id="${i + 1}"]`);
-  const nodes = sj.layers.map((l, i) => `[node name="${l.name}" type="Parallax2D" parent="."]\nscroll_scale = Vector2(${l.scroll}, 1)\n${l.repeat ? `repeat_size = Vector2(${l.w}, 0)\nrepeat_times = 3\n` : ''}${l.visible === false ? 'visible = false\n' : ''}\n[node name="Sprite2D" type="Sprite2D" parent="${l.name}"]\ntexture = ExtResource("${i + 1}")\ncentered = false\nposition = Vector2(0, ${l.y})\ntexture_filter = 1\n`);
+  // Godot CanvasItemMaterial blend modes: 1 add, 3 multiply ("screen" has no built-in: add is the closest)
+  const GB = { add: 1, screen: 1, multiply: 3 }, mats = [...new Set(sj.layers.map(l => GB[l.blend]).filter(Boolean))];
+  const subs = mats.map(m => `[sub_resource type="CanvasItemMaterial" id="blend${m}"]\nblend_mode = ${m}\n`);
+  const nodes = sj.layers.map((l, i) => `[node name="${l.name}" type="Parallax2D" parent="."]\nscroll_scale = Vector2(${l.scroll}, 1)\n${l.repeat ? `repeat_size = Vector2(${l.w}, 0)\nrepeat_times = 3\n` : ''}${l.visible === false ? 'visible = false\n' : ''}\n[node name="Sprite2D" type="Sprite2D" parent="${l.name}"]\n${GB[l.blend] ? `material = SubResource("blend${GB[l.blend]}")\n` : ''}${l.opacity < 1 ? `modulate = Color(1, 1, 1, ${l.opacity})\n` : ''}texture = ExtResource("${i + 1}")\ncentered = false\nposition = Vector2(0, ${l.y})\ntexture_filter = 1\n`);
   // solid layers: a StaticBody2D of traced polygons in world space (one copy per repeat, starting at x=0)
   const bodies = sj.layers.filter(l => l.collision?.length).map(l => {
     const copies = l.repeat ? 3 : 1, out = [`[node name="${l.name}_solid" type="StaticBody2D" parent="."]\nposition = Vector2(0, ${l.y})\n`];
     for (let c = 0; c < copies; c++) l.collision.forEach((poly, i) => out.push(`[node name="shape_${c}_${i}" type="CollisionPolygon2D" parent="${l.name}_solid"]\npolygon = PackedVector2Array(${poly.map(([x, y]) => `${x + c * l.w}, ${y}`).join(', ')})\n`));
     return out.join('\n');
   });
-  return `[gd_scene load_steps=${ext.length + 1} format=3]\n\n${ext.join('\n')}\n\n[node name="${SC.name}" type="Node2D"]\n\n${nodes.join('\n')}${bodies.length ? '\n' + bodies.join('\n') : ''}`;
+  return `[gd_scene load_steps=${ext.length + subs.length + 1} format=3]\n\n${ext.join('\n')}\n\n${subs.length ? subs.join('\n') + '\n' : ''}[node name="${SC.name}" type="Node2D"]\n\n${nodes.join('\n')}${bodies.length ? '\n' + bodies.join('\n') : ''}`;
 }
 
 /* ------------------------------------------------- command wheel & keys ---- */
