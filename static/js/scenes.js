@@ -60,6 +60,41 @@ async function drain() {
 
 /* ------------------------------------------------------------- process ---- */
 // source -> layer pixels (size, seam, sky key, haze) -> look (palette + dither)
+// Weather: animated particle layers. Drawn live each frame in the preview (seeded, so they look the same
+// every time) and exported to Godot as GPUParticles2D. speed < 0 rises (embers).
+export const WEATHER = {
+  rain: { name: 'Rain', note: 'Slanted streaks', p: { color: '#9fb2d9', amount: .5, speed: 260, wind: -50, size: 4 } },
+  snow: { name: 'Snow', note: 'Slow drifting flakes', p: { color: '#eef2f8', amount: .4, speed: 28, wind: 12, size: 1 } },
+  embers: { name: 'Embers', note: 'Sparks rising and flickering', p: { color: '#ff8a3c', amount: .25, speed: -35, wind: 8, size: 1 } },
+  mist: { name: 'Mist', note: 'Soft drifting fog wisps', p: { color: '#a9a2b8', amount: .3, speed: 0, wind: 10, size: 18 } },
+};
+const hsh = (i, k) => { const v = Math.sin(i * 127.1 + k * 311.7) * 43758.5453; return v - Math.floor(v); };
+let wT = 0;
+function drawWeather(x, L, w, hh) {
+  const P = L.params, n = Math.round(P.amount * (P.size > 8 ? 40 : 600)), c = P.color, al = L.opacity ?? 1;
+  x.fillStyle = c;
+  for (let i = 0; i < n; i++) {
+    const a = hsh(i, 1), b = hsh(i, 2), v = .7 + .6 * hsh(i, 3);
+    const H = hh + 20, W = w + 20;
+    const y = (((b * H + wT * P.speed * v) % H) + H) % H - 10;
+    const X = (((a * W + wT * P.wind * v - cam * L.scroll) % W) + W) % W - 10;
+    if (P.size > 8) {          // mist: wide translucent wisps
+      x.globalAlpha = al * .07 * (.5 + hsh(i, 4)); x.fillRect(Math.round(X - P.size * 2), Math.round(y), P.size * 4, Math.max(2, P.size / 3)); x.fillRect(Math.round(X - P.size), Math.round(y - 2), P.size * 2, 2);
+    } else if (Math.abs(P.speed) > 120) {   // rain: a streak along its fall direction
+      x.globalAlpha = al * .7; const dx = P.wind / P.speed;
+      for (let k = 0; k < P.size; k++) x.fillRect(Math.round(X + dx * k), Math.round(y + k), 1, 1);
+    } else {                    // snow and embers: dots; embers flicker
+      x.globalAlpha = al * (P.speed < 0 ? .5 + .5 * Math.sin(wT * 9 + i) : .9);
+      x.fillRect(Math.round(X), Math.round(y), P.size + (hsh(i, 5) < .2 ? 1 : 0), P.size);
+    }
+  }
+  x.globalAlpha = 1;
+}
+function addWeather(k) {
+  pushUndo();
+  const W = WEATHER[k], L = newLayer({ name: k, kind: 'weather', weather: k, params: { ...W.p }, scroll: 1, w: SC.view.w, h: SC.view.h, repeat: false });
+  SC.layers.push(L); sel = SC.layers.length - 1; drawAll(); save();
+}
 async function source(L) {
   if (L.kind === 'gen') return GENS[L.gen].make(L.w, L.h, L.params);
   if (!L._src && L.srcURL) L._src = await imgData(L.srcURL);
@@ -158,6 +193,7 @@ function process(only, quiet) {
   procT = setTimeout(async () => {
     for (const [i, L] of SC.layers.entries()) {
       if (only != null && only !== L) continue;
+      if (L.kind === 'weather') { L.out = null; continue; }
       L.out = look(haze(await source(L), L), L, i);
       L.tiles = tileCount(L.out);
     }
@@ -331,7 +367,7 @@ function build(el) {
   });
   new ResizeObserver(() => drawPreview()).observe(V.vp);
   let last = performance.now();
-  const tick = t => { const dt = Math.min(.1, (t - last) / 1000); last = t; if (playing && el.classList.contains('on')) { cam += speed * dt; actorX += dt; drawPreview(); } requestAnimationFrame(tick); };
+  const tick = t => { const dt = Math.min(.1, (t - last) / 1000); last = t; if (el.classList.contains('on')) { wT += dt; if (playing) { cam += speed * dt; actorX += dt; drawPreview(); } else if (SC?.layers.some(l => l.kind === 'weather' && l.visible !== false)) drawPreview(); } requestAnimationFrame(tick); };
   requestAnimationFrame(tick);
   refreshActors();
   loadOwners();
@@ -355,7 +391,9 @@ function drawPreview() {
   const x = V.cv.getContext('2d');
   x.fillStyle = '#000'; x.fillRect(0, 0, w, hh);
   for (const L of SC.layers) {
-    if (!L.out || (solo ? L.id !== solo : !L.visible)) continue;
+    if (solo ? L.id !== solo : !L.visible) continue;
+    if (L.kind === 'weather') { drawWeather(x, L, w, hh); continue; }
+    if (!L.out) continue;
     const c = L._cv && L._cvFor === L.out ? L._cv : (L._cv = toCanvas(L.out), L._cvFor = L.out, L._cv);
     const y = hh - L.h + (L.y || 0);
     x.globalAlpha = L.opacity ?? 1; x.globalCompositeOperation = BLEND[L.blend] || 'source-over';
@@ -411,6 +449,8 @@ function drawLeft() {
     h('div', { class: 'sec' }, h('h3', {}, 'Start from'),
       h('div', { class: 'chips' }, ...Object.entries(PRESETS).map(([k, p]) => h('button', { onclick: () => usePreset(k) }, p.name)))),
     h('div', { class: 'sec' }, h('h3', {}, 'Add a layer'), gens,
+      h('div', { class: 'chips', style: { margin: '8px 0' } }, h('span', { class: 'lbl', style: { marginRight: '4px' } }, 'Weather'),
+        ...Object.entries(WEATHER).map(([k, W]) => h('button', { title: W.note + ' (animated; exported to Godot as particles)', onclick: () => addWeather(k) }, W.name))),
       h('div', { class: 'btns' },
         h('button', { class: 'btn', onclick: () => { const L = newLayer({ name: 'painted', kind: 'ai', prompt: '', scroll: .3, engine: 'cloud' }); SC.layers.push(L); sel = SC.layers.length - 1; drawAll(); setTimeout(() => $('#layerPrompt')?.focus(), 50); } }, icon('wand'), 'Described layer'),
         h('button', { class: 'btn', onclick: () => { const i = h('input', { type: 'file', accept: 'image/*' }); i.onchange = () => { const f = i.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => addImageLayer(r.result, f.name.replace(/\.\w+$/, '')); r.readAsDataURL(f); }; i.click(); } }, 'Image…')),
@@ -435,7 +475,7 @@ function drawLayers() {
     const row = h('div', { class: 'ly' + (i === sel ? ' on' : '') + (solo && solo !== L.id ? ' dim' : ''), draggable: true, title: 'Drag to reorder (back at the top, front at the bottom)', onclick: () => { sel = i; drawRight(); drawLayers(); drawPreview(); } },
       h('button', { class: 'eye' + (L.visible ? ' on' : '') + (solo === L.id ? ' solo' : ''), title: 'Show / hide (H)  ·  Alt+click: show only this layer',
         onclick: e => { e.stopPropagation(); if (e.altKey) { solo = solo === L.id ? null : L.id; } else { pushUndo(); L.visible = !L.visible; save(); } drawLayers(); drawPreview(); } }, icon(L.visible ? 'eye' : 'eyeoff')),
-      c, h('div', { class: 'nm' }, L.name, h('small', {}, L.busy ? 'drawing…' : `${L.kind === 'gen' ? GENS[L.gen].name : L.kind === 'ai' ? (L.srcURL ? 'described' : 'not drawn yet') : 'image'} · scroll ${L.scroll}`)),
+      c, h('div', { class: 'nm' }, L.name, h('small', {}, L.busy ? 'drawing…' : `${L.kind === 'weather' ? 'Weather' : L.kind === 'gen' ? GENS[L.gen].name : L.kind === 'ai' ? (L.srcURL ? 'described' : 'not drawn yet') : 'image'} · scroll ${L.scroll}`)),
       h('span', { style: { display: 'flex', flexDirection: 'column' } },
         h('button', { class: 'eye', title: 'Move toward the back', onclick: e => { e.stopPropagation(); move(i, -1); } }, icon('up')),
         h('button', { class: 'eye', title: 'Move toward the front', onclick: e => { e.stopPropagation(); move(i, 1); } }, icon('down'))));
@@ -498,7 +538,15 @@ function drawRight() {
         field('Haze', h('span', { style: { display: 'flex', gap: '8px', alignItems: 'center' } },
           check('own', L.hazeOver != null, v => { pushUndo(); L.hazeOver = v ? +(SC.hazeAmt * (1 - L.scroll)).toFixed(2) : null; drawRight(); process(L); }),
           L.hazeOver != null ? range(L.hazeOver, 0, 1, .02, v => { edit(); L.hazeOver = v; process(L); }, v => Math.round(v * 100) + '%') : h('span', { class: 'faint', style: { fontSize: '11px' } }, `auto ${Math.round((SC.look === 'cart' || L.scroll >= 1 ? 0 : SC.hazeAmt * (1 - L.scroll)) * 100)}% from depth`)), 'How much this layer fades into the scene haze')));
-    if (L.kind === 'gen') {
+    if (L.kind === 'weather') {
+      const P = L.params, f = (k, lbl, mn, mx, st, fmt, hint) => field(lbl, range(P[k], mn, mx, st, v => { edit(); P[k] = v; drawPreview(); save(); }, fmt), hint);
+      insp.append(h('div', { class: 'sec' }, h('h3', {}, WEATHER[L.weather]?.name || 'Weather'),
+        field('Colour', h('input', { type: 'color', value: P.color, oninput: e => { edit(); P.color = e.target.value; drawPreview(); save(); } })),
+        f('amount', 'Amount', .02, 1, .02, v => Math.round(v * 100) + '%'),
+        f('speed', 'Fall speed', -120, 400, 2, v => v + ' px/s', 'Negative rises (embers, ash)'),
+        f('wind', 'Wind', -150, 150, 2, v => v + ' px/s'),
+        f('size', 'Size', 1, 32, 1, v => v + ' px', 'Streak length for rain, wisp size for mist')));
+    } else if (L.kind === 'gen') {
       const G = GENS[L.gen];
       insp.append(h('div', { class: 'sec' }, h('h3', {}, G.name, h('span', { class: 'grow' }),
         L.params.seed !== undefined ? [
@@ -547,6 +595,11 @@ async function exportScene() {
   const sj = { view: SC.view, look: SC.look, source: 'kiln', layers: [] };
   const used = new Map();
   for (const L of SC.layers) {
+    if (L.kind === 'weather') {
+      const n = (used.get(L.name) || 0) + 1; used.set(L.name, n);
+      sj.layers.push({ name: n > 1 ? `${L.name}_${n}` : L.name, kind: 'weather', weather: L.weather, scroll: L.scroll, visible: L.visible, opacity: L.opacity ?? 1, w: SC.view.w, h: SC.view.h, ...L.params });
+      continue;
+    }
     if (!L.out) continue;
     const n = (used.get(L.name) || 0) + 1; used.set(L.name, n);
     const name = n > 1 ? `${L.name}_${n}` : L.name, file = `${name}.png`;
@@ -568,18 +621,29 @@ async function exportScene() {
 // a gameplay layer (moves with the camera) named like ground/floor/platform is solid unless switched off
 function isSolid(L) { return L.solid ?? (Math.abs(L.scroll - 1) < .05 && /ground|floor|platform|terrain|street|road/i.test(L.name)); }
 function godotScene(sj, res) {
-  const ext = sj.layers.map((l, i) => `[ext_resource type="Texture2D" path="${res}/${l.file}" id="${i + 1}"]`);
+  const img = sj.layers.filter(l => l.file), eid = l => img.indexOf(l) + 1;
+  const ext = img.map(l => `[ext_resource type="Texture2D" path="${res}/${l.file}" id="${eid(l)}"]`);
+  const wsub = [], wnode = l => {
+    const id = 'w_' + l.name, c = rgb(l.color).map(v => (v / 255).toFixed(3)), up = l.speed < 0, mist = l.size > 8, sp = Math.abs(l.speed) || 1;
+    const life = mist ? 12 : +((l.h + 20) / sp).toFixed(2), amount = Math.max(4, Math.round(l.amount * (mist ? 40 : 600)));
+    wsub.push(`[sub_resource type="ParticleProcessMaterial" id="${id}"]\nparticle_flag_disable_z = true\nemission_shape = 3\nemission_box_extents = Vector3(${l.w / 2 + 40}, ${mist ? l.h / 2 : 1}, 1)\n`
+      + `direction = Vector3(${(l.wind / sp).toFixed(3)}, ${up ? -1 : mist ? 0 : 1}, 0)\nspread = ${mist ? 10 : 4}.0\ninitial_velocity_min = ${mist ? Math.abs(l.wind) * .6 : sp * .8}\ninitial_velocity_max = ${mist ? Math.abs(l.wind) * 1.2 + 1 : sp * 1.2}\n`
+      + `gravity = Vector3(0, 0, 0)\nscale_min = ${mist ? l.size : 1}.0\nscale_max = ${mist ? l.size * 2 : l.size > 1 ? l.size : 2}.0\ncolor = Color(${c.join(', ')}, ${mist ? .08 : .8})\n`);
+    return `[node name="${l.name}" type="Parallax2D" parent="."]\nscroll_scale = Vector2(${l.scroll}, 1)\n${l.visible === false ? 'visible = false\n' : ''}\n`
+      + `[node name="Particles" type="GPUParticles2D" parent="${l.name}"]\nposition = Vector2(${l.w / 2}, ${up ? l.h + 8 : mist ? l.h / 2 : -8})\namount = ${amount}\nlifetime = ${life}\npreprocess = ${life}\n`
+      + `visibility_rect = Rect2(${-l.w}, ${-l.h - 40}, ${l.w * 2}, ${l.h * 2 + 80})\nprocess_material = SubResource("${id}")\n${l.opacity < 1 ? `modulate = Color(1, 1, 1, ${l.opacity})\n` : ''}`;
+  };
   // Godot CanvasItemMaterial blend modes: 1 add, 3 multiply ("screen" has no built-in: add is the closest)
   const GB = { add: 1, screen: 1, multiply: 3 }, mats = [...new Set(sj.layers.map(l => GB[l.blend]).filter(Boolean))];
   const subs = mats.map(m => `[sub_resource type="CanvasItemMaterial" id="blend${m}"]\nblend_mode = ${m}\n`);
-  const nodes = sj.layers.map((l, i) => `[node name="${l.name}" type="Parallax2D" parent="."]\nscroll_scale = Vector2(${l.scroll}, 1)\n${l.repeat ? `repeat_size = Vector2(${l.w}, 0)\nrepeat_times = 3\n` : ''}${l.visible === false ? 'visible = false\n' : ''}\n[node name="Sprite2D" type="Sprite2D" parent="${l.name}"]\n${GB[l.blend] ? `material = SubResource("blend${GB[l.blend]}")\n` : ''}${l.opacity < 1 ? `modulate = Color(1, 1, 1, ${l.opacity})\n` : ''}texture = ExtResource("${i + 1}")\ncentered = false\nposition = Vector2(0, ${l.y})\ntexture_filter = 1\n`);
+  const nodes = sj.layers.map((l, i) => l.kind === 'weather' ? wnode(l) : `[node name="${l.name}" type="Parallax2D" parent="."]\nscroll_scale = Vector2(${l.scroll}, 1)\n${l.repeat ? `repeat_size = Vector2(${l.w}, 0)\nrepeat_times = 3\n` : ''}${l.visible === false ? 'visible = false\n' : ''}\n[node name="Sprite2D" type="Sprite2D" parent="${l.name}"]\n${GB[l.blend] ? `material = SubResource("blend${GB[l.blend]}")\n` : ''}${l.opacity < 1 ? `modulate = Color(1, 1, 1, ${l.opacity})\n` : ''}texture = ExtResource("${eid(l)}")\ncentered = false\nposition = Vector2(0, ${l.y})\ntexture_filter = 1\n`);
   // solid layers: a StaticBody2D of traced polygons in world space (one copy per repeat, starting at x=0)
   const bodies = sj.layers.filter(l => l.collision?.length).map(l => {
     const copies = l.repeat ? 3 : 1, out = [`[node name="${l.name}_solid" type="StaticBody2D" parent="."]\nposition = Vector2(0, ${l.y})\n`];
     for (let c = 0; c < copies; c++) l.collision.forEach((poly, i) => out.push(`[node name="shape_${c}_${i}" type="CollisionPolygon2D" parent="${l.name}_solid"]\npolygon = PackedVector2Array(${poly.map(([x, y]) => `${x + c * l.w}, ${y}`).join(', ')})\n`));
     return out.join('\n');
   });
-  return `[gd_scene load_steps=${ext.length + subs.length + 1} format=3]\n\n${ext.join('\n')}\n\n${subs.length ? subs.join('\n') + '\n' : ''}[node name="${SC.name}" type="Node2D"]\n\n${nodes.join('\n')}${bodies.length ? '\n' + bodies.join('\n') : ''}`;
+  return `[gd_scene load_steps=${ext.length + subs.length + wsub.length + 1} format=3]\n\n${ext.join('\n')}\n\n${subs.length ? subs.join('\n') + '\n' : ''}${wsub.length ? wsub.join('\n') + '\n' : ''}[node name="${SC.name}" type="Node2D"]\n\n${nodes.join('\n')}${bodies.length ? '\n' + bodies.join('\n') : ''}`;
 }
 
 /* ------------------------------------------------- command wheel & keys ---- */

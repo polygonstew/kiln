@@ -38,7 +38,8 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
   scroll speeds side by side; regenerate keeps the seed history (back/forward through rolls). Every new control needs undo.
 - [x] **Scenes 3a** DONE: Ground (bumps, lit lip + shadow, texture cobbles/soil+roots/rubble, puddles; old ground layers render as before),
   Foreground generator (grass, railings, pillars, chains; scroll 1.3, the actor walks behind it).
-- [ ] **Scenes 3b, weather:** rain, snow, embers, drifting fog as animated layers in the preview; export as a Godot
+- [x] **Scenes 3b** DONE: weather layers Rain / Snow / Embers / Mist (live animated preview; export = Parallax2D + GPUParticles2D,
+  verified in Godot 4.7). Was: rain, snow, embers, drifting fog as animated layers in the preview; export as a Godot
   GPUParticles2D (or an animated strip). Was: **Scenes 3, better generators:** ground with a surface edge and detail (cobbles, roots, puddles), foreground silhouettes
   (scroll > 1, darkened), weather layers (rain, snow, embers, drifting fog) that animate in the preview and export as a Godot
   GPUParticles2D or an animated strip.
@@ -110,3 +111,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: user asked to double down on Scenes. Scenes 1 done (undo, solo, drag reorder, duplicate, depth sort, zoom modes); Scenes 2-5 queued at the top.
 - 2026-10-10: run 10. Scenes 2 (layer look). Found and fixed scene-overwrite bugs (my tests had overwritten the user's "night" scene; not recoverable, no /home snapshots).
 - 2026-10-10: run 11. Scenes 3a: richer Ground and a new Foreground generator. User files checked unchanged before and after.
+- 2026-10-10: run 12. Scenes weather layers (rain, snow, embers, mist) animated in preview, exported as Godot particles.
