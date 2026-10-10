@@ -78,7 +78,7 @@ function changed(structure = false) {
   A.ai = clamp(A.ai, 0, A.actor.anims.length - 1);
   A.fi = clamp(A.fi, 0, anim().frames.length - 1);
   drawEditor();
-  if (structure) { drawTimeline(); drawLeft(); drawSheet(); } else updateThumb();
+  if (structure) { drawTimeline(); drawLeft(); drawSheet(); if (V.saveBtn) V.saveBtn.textContent = 'Save ' + A.actor.name; } else updateThumb();
   feedPlayer();
   clearTimeout(saveT);
   saveT = setTimeout(autosave, 1500);
@@ -631,7 +631,7 @@ function drawRight() {
       h('p', { class: 'note' }, 'Or pick any image in Files and press "Animate from sheet".')),
     h('div', { class: 'sec' }, h('h3', {}, 'Save to asset folder'),
       h('p', { class: 'note', style: { marginTop: 0 } }, h('b', {}, `sprites/${A.actor.name}/`), ' gets one strip PNG per animation, manifest.json, a Godot SpriteFrames .tres, and a packed sheet + JSON for other engines.'),
-      h('button', { class: 'btn go wide', onclick: exportActor }, 'Save ' + A.actor.name)));
+      V.saveBtn = h('button', { class: 'btn go wide', onclick: exportActor }, 'Save ' + A.actor.name)));
   drawSheet();
   feedPlayer();
 }
@@ -787,6 +787,7 @@ async function exportActor() {
     man.hitbox = { x: Math.round(cx - bw / 2), y: a.h - bh, w: bw, h: bh };
     files.find(f => f.name === 'manifest.json').text = JSON.stringify(man, null, 2) + '\n';
     files.push({ name: `${a.name}.tscn`, text: actorScene(a, res, man.hitbox) });
+    await saveFiles('sprites/_kiln', [{ name: 'juice.gd', text: JUICE_GD }, { name: 'hit_flash.gdshader', text: FLASH_SHADER }]).catch(() => {});
   }
   if (a.identity?.ref) files.push({ name: 'reference.png', b64: a.identity.ref });
   files.push({ name: 'palette.hex', text: a.pal.map(c => hex(c).slice(1)).join('\n') + '\n' });
@@ -800,13 +801,74 @@ async function exportActor() {
     return r;
   } catch (e) { toast('Save failed: ' + e.message, 'bad'); }
 }
-// Godot 4 drop-in: CharacterBody2D (origin at the feet) + AnimatedSprite2D + body hitbox
+// Godot 4 drop-in: CharacterBody2D (origin at the feet) + AnimatedSprite2D + body hitbox, with the same
+// "juice" the Animate preview shows: hit_flash(), squash(), shake() from sprites/_kiln/juice.gd.
+const JUICE_GD = `extends CharacterBody2D
+## Kiln juice: the hit flash, squash and stretch and screen shake you previewed in Kiln's Animate.
+## Call them from your gameplay code, e.g. when the player is hit: hit_flash(); shake()
+
+@onready var sprite: AnimatedSprite2D = $Sprite
+var _base_scale := Vector2.ONE
+var _base_y := 0.0
+
+func _ready() -> void:
+\t_base_scale = sprite.scale
+\t_base_y = sprite.position.y
+
+## Flash the sprite (white by default) a few quick times.
+func hit_flash(times: int = 2, color: Color = Color.WHITE) -> void:
+\tvar m := sprite.material as ShaderMaterial
+\tif m == null:
+\t\treturn
+\tm.set_shader_parameter("flash_color", color)
+\tvar t := create_tween()
+\tfor i in times:
+\t\tt.tween_callback(m.set_shader_parameter.bind("flash", 1.0))
+\t\tt.tween_interval(0.045)
+\t\tt.tween_callback(m.set_shader_parameter.bind("flash", 0.0))
+\t\tt.tween_interval(0.045)
+
+## Squash and spring back, feet staying on the floor (a landing, a heavy hit).
+func squash(amount: float = 0.25, duration: float = 0.42) -> void:
+\tcreate_tween().tween_method(_apply_squash.bind(amount), 1.0, 0.0, duration)
+
+func _apply_squash(k: float, amount: float) -> void:
+\tvar e := sin(k * PI * 2.5) * k
+\tvar s := Vector2(1.0 + amount * e, 1.0 - amount * 0.8 * e)
+\tsprite.scale = _base_scale * s
+\tsprite.position.y = _base_y * s.y
+
+## Shake the active Camera2D (if there is one).
+func shake(strength: float = 4.0, duration: float = 0.3) -> void:
+\tvar cam := get_viewport().get_camera_2d()
+\tif cam == null:
+\t\treturn
+\tvar t := create_tween()
+\tvar steps := maxi(1, int(duration / 0.03))
+\tfor i in steps:
+\t\tvar k := 1.0 - float(i) / steps
+\t\tt.tween_property(cam, "offset", Vector2(randf_range(-1, 1), randf_range(-1, 1)) * strength * k, 0.03)
+\tt.tween_property(cam, "offset", Vector2.ZERO, 0.03)
+`;
+const FLASH_SHADER = `shader_type canvas_item;
+// Kiln hit flash: mixes the sprite toward flash_color while keeping its shape (alpha).
+uniform float flash : hint_range(0.0, 1.0) = 0.0;
+uniform vec4 flash_color : source_color = vec4(1.0);
+
+void fragment() {
+\tvec4 c = texture(TEXTURE, UV);
+\tCOLOR = vec4(mix(c.rgb, flash_color.rgb, flash), c.a);
+}
+`;
 function actorScene(a, res, hb) {
   const start = (a.anims.find(n => /idle|stand/i.test(n.name)) || a.anims[0]).name;
-  return `[gd_scene load_steps=3 format=3]\n\n[ext_resource type="SpriteFrames" path="${res}/${a.name}.tres" id="1"]\n\n`
+  const shared = res.replace(/\/[^/]+$/, '') + '/_kiln';
+  return `[gd_scene load_steps=6 format=3]\n\n[ext_resource type="SpriteFrames" path="${res}/${a.name}.tres" id="1"]\n`
+    + `[ext_resource type="Script" path="${shared}/juice.gd" id="2"]\n[ext_resource type="Shader" path="${shared}/hit_flash.gdshader" id="3"]\n\n`
+    + `[sub_resource type="ShaderMaterial" id="flash"]\nshader = ExtResource("3")\nshader_parameter/flash = 0.0\nshader_parameter/flash_color = Color(1, 1, 1, 1)\n\n`
     + `[sub_resource type="RectangleShape2D" id="body"]\nsize = Vector2(${hb.w}, ${hb.h})\n\n`
-    + `[node name="${a.name}" type="CharacterBody2D"]\n\n`
-    + `[node name="Sprite" type="AnimatedSprite2D" parent="."]\ntexture_filter = 1\nposition = Vector2(0, ${-a.h / 2})\nsprite_frames = ExtResource("1")\nanimation = &"${start}"\nautoplay = "${start}"\n\n`
+    + `[node name="${a.name}" type="CharacterBody2D"]\nscript = ExtResource("2")\n\n`
+    + `[node name="Sprite" type="AnimatedSprite2D" parent="."]\nmaterial = SubResource("flash")\ntexture_filter = 1\nposition = Vector2(0, ${-a.h / 2})\nsprite_frames = ExtResource("1")\nanimation = &"${start}"\nautoplay = "${start}"\n\n`
     + `[node name="Body" type="CollisionShape2D" parent="."]\nposition = Vector2(${hb.x + hb.w / 2 - a.w / 2}, ${hb.y + hb.h / 2 - a.h})\nshape = SubResource("body")\n`;
 }
 // CHARACTER.md: everything needed to come back later (a person or an agent) and make more of this
@@ -844,7 +906,7 @@ ${a.anims.map(n => `- **${n.name}**: ${n.frames.length} frame${n.frames.length >
 
 ## Files
 
-\`${a.name}.tres\` Godot SpriteFrames · \`${a.name}.tscn\` CharacterBody2D + sprite + body hitbox · \`manifest.json\` · \`sheet.png\`/\`sheet.json\` (Aseprite-style) · one strip PNG per animation.
+\`${a.name}.tres\` Godot SpriteFrames · \`${a.name}.tscn\` CharacterBody2D + sprite + body hitbox, with \`hit_flash()\`, \`squash()\`, \`shake()\` (sprites/_kiln/juice.gd) · \`manifest.json\` · \`sheet.png\`/\`sheet.json\` (Aseprite-style) · one strip PNG per animation.
 
 ${notes || '## Notes\n\n_Your notes: personality, rules (e.g. "always holds the lantern in the left hand"), what to avoid. Kept when Kiln rewrites this file._'}
 `;

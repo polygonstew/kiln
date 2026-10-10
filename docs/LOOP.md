@@ -48,7 +48,8 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - [x] **Quick switcher, Ctrl+K** DONE (quick.js + `/api/index`; project list cached by mtime, 6 s → 2 ms).: fuzzy search across actors, scenes, HUDs, files, tabs and wheel actions.
 - [x] **Fun tools, slice 1** DONE: juice preview on the live player (F hit flash, S squash, K shake, ✸ all) and the Forge dice (⚂ Roll / D).
 - [x] **Fun tools, slice 2**: colour cycle DONE (Shift+click palette colours, then "Colour cycle" builds a looping `<anim>_cycle`).
-- [ ] Later (small): export the juice effects as a Godot AnimationPlayer/shader snippet (hit-flash shader + squash tween).
+- [x] Juice in Godot DONE: actor .tscn gets `sprites/_kiln/juice.gd` (`hit_flash()`, `squash()`, `shake()`) + `hit_flash.gdshader`
+  on the sprite; verified by loading the exported scene in headless Godot 4.7 and calling all three.
   Original note: **Fun tools in Animate**: a "juice" preview (hit flash, squash and stretch, screen shake) on the live
   player; a palette-cycle animation; a "dice" button that rolls a random enemy prompt from parts (body,
   weapon, mood, colours) and sends it to Forge.
@@ -78,3 +79,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: run 5. Ctrl+K finds areas, actions, actors, scenes, files (path-order fuzzy); also in the right-click menu and the ? list.
 - 2026-10-10: run 6. Juice preview (flash, squash, shake) in the Animate player plus the Forge dice roll for random enemy ideas.
 - 2026-10-10: run 7. Colour cycling in Animate (Shift+click colours, then Colour cycle).
+- 2026-10-10: run 8. Juice exported to Godot (script + shader wired into each actor .tscn, tested in Godot 4.7); fixed the stale Save button name after New.
