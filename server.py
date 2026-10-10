@@ -591,6 +591,7 @@ LAYOUT = {
     'sprites': 'Characters and objects: one folder per actor, a strip PNG per animation + manifest.json',
     'backgrounds': 'Parallax scenes: one folder per scene, a PNG per layer + scene.json (+ Godot .tscn)',
     'tiles': 'Tilesets: tileset PNG + tileset.json',
+    'levels': 'Levels: one folder per level: tileset PNG, Godot TileSet .tres (solid tiles collide), .tscn with a TileMapLayer, level.json',
     'hud': 'Bars, gauges, panels, icons: PNG parts + hud.json (9-slice margins, fill rects)',
     'fonts': 'Bitmap fonts: atlas PNG + BMFont .fnt (Godot, Unity, LÖVE read it)',
     'palettes': 'Palettes as .hex (one colour per line) + swatch PNG',

@@ -380,3 +380,8 @@ table.breakdown td.warn { color: var(--bad); } table.breakdown td.ok { color: va
 .qk-foot { border-top: 1px solid rgba(232,165,54,.25); padding: 6px 14px; font: 10px var(--mono, monospace); letter-spacing: .2em; color: rgba(232,165,54,.6); }
 .sw i.cyc { outline: 2px solid var(--ember2); outline-offset: 1px; position: relative; }
 .sw i.cyc::after { content: attr(data-cyc); position: absolute; right: 1px; bottom: 0; font: 9px var(--mono); color: #fff; text-shadow: 0 0 2px #000, 0 0 2px #000; }
+.tileset { display: flex; flex-wrap: wrap; gap: 4px; }
+.tileset .tl { padding: 2px; border: 1px solid var(--line2); border-radius: 2px; cursor: pointer; line-height: 0; background: #151514; }
+.tileset .tl canvas { image-rendering: pixelated; }
+.tileset .tl.solid { box-shadow: inset 0 -3px 0 #e5534b; }
+.tileset .tl.on { border-color: var(--ember); outline: 1px solid var(--ember); }

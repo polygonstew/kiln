@@ -93,6 +93,11 @@ into `<asset folder>/concepts/<session>/` (+ `notes.md`), which `/api/inbox` wat
 Forge as "new". Nothing on the sites is automated. A plain iframe can't host meta.ai (Meta blocks framing),
 hence the desktop window. Self-test: `QT_QPA_PLATFORM=offscreen KILN_STUDIO_SHOT=/path.png kiln-studio test`.
 
+## Levels tab (loop run 9)
+
+`static/js/levels.js`: tile painting into a TileMapLayer. Projects `kiln/level-<name>.json`; export `levels/<name>/` (tileset.png,
+<name>.tres TileSet with physics polygons for solid tiles, <name>.tscn with `tile_map_data` = uint16 0 then 6×int16 per cell).
+
 ## Next ideas (not started)
 
 - Pose prompts: klein-9b sometimes changes the pose too little (strike looked like idle). Try stronger

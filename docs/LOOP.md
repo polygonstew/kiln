@@ -53,7 +53,11 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
   Original note: **Fun tools in Animate**: a "juice" preview (hit flash, squash and stretch, screen shake) on the live
   player; a palette-cycle animation; a "dice" button that rolls a random enemy prompt from parts (body,
   weapon, mood, colours) and sends it to Forge.
-- [ ] **Mold existing software: LDtk-style "Levels" tab.** Paint tiles cut from scenes, place entities (actors),
+- [x] **Levels tab, slice 1** DONE (levels.js, key 7): tile painting (left/right/wheel/middle like Animate), starter tileset or any image,
+  solid tiles → Godot TileSet .tres with collision + .tscn TileMapLayer (tile_map_data bytes), verified in Godot 4.7.
+- [ ] **Levels, slice 2:** entities (place actors and a player start, exported as instanced actor .tscn), tiles cut from a Scenes layer,
+  auto-tiling (grass top / dirt fill), several layers (background/foreground).
+  Original: **Mold existing software: LDtk-style "Levels" tab.** Paint tiles cut from scenes, place entities (actors),
   draw collision, and export a Godot TileMap/TileSet plus a .tscn. Start small: grid painting + export.
 - [ ] **Desk in Kiln Studio (the OS idea).** A desktop shell with an Ubuntu or Windows look: wallpaper, dock or
   taskbar, and icons for the user's own apps opening as movable windows with min/max/close. Apps and ports:
@@ -80,3 +84,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: run 6. Juice preview (flash, squash, shake) in the Animate player plus the Forge dice roll for random enemy ideas.
 - 2026-10-10: run 7. Colour cycling in Animate (Shift+click colours, then Colour cycle).
 - 2026-10-10: run 8. Juice exported to Godot (script + shader wired into each actor .tscn, tested in Godot 4.7); fixed the stale Save button name after New.
+- 2026-10-10: run 9. Levels tab (tile painting, solid tiles, Godot TileSet + TileMapLayer export with collision, tested in Godot).
