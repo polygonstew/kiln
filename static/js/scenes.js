@@ -90,6 +90,23 @@ function drawWeather(x, L, w, hh) {
   }
   x.globalAlpha = 1;
 }
+// Cut a layer into T×T tiles, keep each distinct one once (empty ones skipped), pack them 16 per row, send to Levels.
+function cutTiles(L, T) {
+  const im = L.out, seen = new Map(), tiles = [];
+  for (let ty = 0; ty + T <= im.height; ty += T) for (let tx = 0; tx + T <= im.width; tx += T) {
+    let key = '', any = false;
+    for (let y = 0; y < T; y++) for (let x = 0; x < T; x++) { const i = ((ty + y) * im.width + tx + x) * 4; if (im.data[i + 3] >= 128) { any = true; key += im.data[i] + ',' + im.data[i + 1] + ',' + im.data[i + 2] + ';'; } else key += '.;'; }
+    if (!any || seen.has(key)) continue;
+    seen.set(key, 1); tiles.push([tx, ty]);
+    if (tiles.length >= 256) break;
+  }
+  if (!tiles.length) return toast('This layer has no solid pixels to cut', 'bad');
+  const cols = Math.min(16, tiles.length), rows = Math.ceil(tiles.length / cols), cv = document.createElement('canvas');
+  cv.width = cols * T; cv.height = rows * T;
+  const x = cv.getContext('2d'), src = toCanvas(im);
+  tiles.forEach(([tx, ty], i) => x.drawImage(src, tx, ty, T, T, (i % cols) * T, Math.floor(i / cols) * T, T, T));
+  emit('level-tileset', { url: cv.toDataURL('image/png'), tile: T, name: L.name });
+}
 function addWeather(k) {
   pushUndo();
   const W = WEATHER[k], L = newLayer({ name: k, kind: 'weather', weather: k, params: { ...W.p }, scroll: 1, w: SC.view.w, h: SC.view.h, repeat: false });
@@ -527,7 +544,10 @@ function drawRight() {
       field('Raise', range(L.y || 0, -SC.view.h, SC.view.h, 1, v => { if (!V.editing) { pushUndo(); V.editing = true; } L.y = v; drawPreview(); save(); }, v => v + 'px')),
       field('Width', select([[SC.view.w, '1 screen'], [SC.view.w * 2, '2 screens'], [SC.view.w * 3, '3 screens'], [SC.view.w * 4, '4 screens']], L.w, v => { L.w = +v; process(L); }), 'Wider layers repeat less often'),
       field('Repeat', check('tile sideways', L.repeat, v => { L.repeat = v; process(L); })),
-      field('Solid', check('player stands on it (Godot collision)', isSolid(L), v => { L.solid = v; save(); }), 'Exports collision polygons traced from this layer\'s shapes')),
+      field('Solid', check('player stands on it (Godot collision)', isSolid(L), v => { L.solid = v; save(); }), 'Exports collision polygons traced from this layer\'s shapes'),
+      L.out ? h('div', { style: { display: 'flex', gap: '6px', marginTop: '6px' } },
+        h('button', { class: 'btn sm', title: 'Cut this layer into 16 px tiles (each different tile once) and open them in Levels as a tileset', onclick: () => cutTiles(L, 16) }, 'Tiles for Levels (16)'),
+        h('button', { class: 'btn sm ghost', title: 'Same with 8 px tiles', onclick: () => cutTiles(L, 8) }, '8 px')) : null),
       h('div', { class: 'sec' }, h('h3', {}, 'Look of this layer', h('span', { class: 'grow' }),
           h('button', { class: 'btn sm ghost', title: 'Back to plain: full opacity, normal blend, no tint, scene haze', onclick: () => { pushUndo(); Object.assign(L, { opacity: 1, blend: 'normal', tint: null, tintAmt: 0, hazeOver: null }); drawRight(); process(L); } }, 'Reset')),
         field('Opacity', range(L.opacity ?? 1, 0, 1, .05, v => { edit(); L.opacity = v; drawPreview(); save(); }, v => Math.round(v * 100) + '%'), 'See-through layers: mist, light shafts, glass'),

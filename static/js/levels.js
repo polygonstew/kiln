@@ -1,10 +1,11 @@
 // Levels: paint a room from tiles (in the spirit of LDtk), mark which tiles are solid, export a Godot
 // TileSet + TileMapLayer scene with collision. Left click paints, right click erases, wheel rolls tiles.
-import { h, api, toast, pref, clamp, field, range, select, seg, check, imgData, toCanvas, toDataURL, newImg, rawURL, checker, uid } from './core.js';
+import { h, api, toast, on, pref, clamp, field, range, select, seg, check, imgData, toCanvas, toDataURL, newImg, rawURL, checker, uid } from './core.js';
 import { saveFiles, S as FS } from './files.js';
 import { registerWheel } from './wheel.js';
 import { registerKeys } from './wheel.js';
 
+let bgLayers = null;     // the background scene's layers, drawn behind the map: [{cv, y, scroll}]
 let L = null, V = {}, mounted = false, tsImg = null, zoom = 0, hover = null, drag = null, saveT;
 const slug = s => (s || 'level').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'level';
 
@@ -38,6 +39,27 @@ function starterTiles(T = 16) {
   return cv.toDataURL('image/png');
 }
 
+// a tileset cut from a Scenes layer arrives here
+let pendingTs = null;
+on('level-tileset', d => { pendingTs = d; if (mounted) takeTs(); });
+async function takeTs() {
+  if (!pendingTs || !L) return;
+  const d = pendingTs; pendingTs = null;
+  L.ts = d.url; L.tile = d.tile; L.solid = []; L.pick = 0; await loadTiles(); changed(); drawLeft(); draw();
+  toast(`Tileset from "${d.name}": ${tileCount()} tiles of ${d.tile} px. Shift+click the solid ones`, 'ok');
+}
+async function loadBg() {
+  bgLayers = null;
+  if (!L.bg) return;
+  try {
+    const dir = FS.root + '/backgrounds/' + L.bg, sj = await (await fetch(rawURL(dir + '/scene.json'))).json();
+    bgLayers = [];
+    for (const l of sj.layers) if (l.file && l.visible !== false) bgLayers.push({ cv: toCanvas(await imgData(rawURL(dir + '/' + l.file))), y: l.y, scroll: l.scroll, repeat: l.repeat, opacity: l.opacity ?? 1 });
+    V.bgView = sj.view;
+  } catch { bgLayers = null; toast(`Background "${L.bg}" isn't saved yet: save it in Scenes first`, 'bad'); }
+  draw();
+}
+
 /* -------------------------------------------------------------- module ---- */
 export const levels = {
   id: 'levels', title: 'Levels', key: '7',
@@ -57,7 +79,7 @@ export const levels = {
       V.right);
     bind();
     new ResizeObserver(() => draw()).observe(V.vp);
-    loadTiles().then(() => { drawLeft(); drawRight(); draw(); });
+    loadTiles().then(() => { drawLeft(); drawRight(); draw(); takeTs(); loadBg(); });
   },
   show() { draw(); },
 };
@@ -82,6 +104,16 @@ function draw() {
   V.cv.width = W * z; V.cv.height = H * z;
   const x = V.cv.getContext('2d'); x.imageSmoothingEnabled = false;
   checker(x, W * z, H * z, 8 * z, '#1a1a19', '#1f1f1e');
+  if (bgLayers) {
+    // the scene is one screen tall; it sits at the bottom of the map and repeats across, each layer at its parallax rate
+    const vh = V.bgView?.h || H, oy = H - vh;
+    for (const b of bgLayers) {
+      x.globalAlpha = b.opacity;
+      const bw = b.cv.width;
+      for (let bx = 0; bx < W; bx += bw) x.drawImage(b.cv, bx * z, (oy + b.y) * z, bw * z, b.cv.height * z);
+      x.globalAlpha = 1;
+    }
+  }
   const src = toCanvas(tsImg);
   for (let r = 0; r < L.rows; r++) for (let c = 0; c < L.cols; c++) {
     const t = L.cells[r * L.cols + c]; if (t < 0) continue;
@@ -137,12 +169,22 @@ function drawLeft() {
       field('Name', name),
       field('Size', h('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, cols, '×', rows,
         h('button', { class: 'btn sm', title: 'Resize the level in tiles (tiles stay where they are)', onclick: () => resize(+cols.value, +rows.value) }, 'Set')), 'In tiles. 480×270 px is 30×17 tiles of 16'),
+      V.bgSel = select([['', 'None']], L.bg || '', v => { L.bg = v || null; changed(); loadBg(); }),
+      field('Background', V.bgSel, 'A scene from Scenes, shown behind the map and placed behind it in Godot'),
       field('Tile', seg([[8, '8'], [16, '16'], [32, '32']], L.tile, v => { L.tile = +v; L.ts = null; loadTiles().then(() => { changed(); drawLeft(); draw(); }); }), 'Pixels per tile')),
     h('div', { class: 'sec' }, h('h3', {}, 'Tiles', h('span', { class: 'grow' }), h('small', {}, `${n} · red = solid`)), tiles,
       h('div', { style: { display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' } },
         h('button', { class: 'btn sm', title: 'Use any image as the tileset: it is cut into tiles of the size above', onclick: pickTileset }, 'Tileset image…'),
         h('button', { class: 'btn sm ghost', title: 'Go back to the built-in starter tiles', onclick: () => { L.ts = null; loadTiles().then(() => { changed(); drawLeft(); draw(); }); } }, 'Starter tiles'),
         h('button', { class: 'btn sm ghost' + (V.showSolid ? ' on' : ''), title: 'Tint solid tiles red on the map', onclick: () => { V.showSolid = !V.showSolid; drawLeft(); draw(); } }, 'Show solid'))));
+  fillBgSel();
+}
+async function fillBgSel() {
+  if (!V.bgSel) return;
+  const r = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/backgrounds')).catch(() => ({ items: [] }));
+  const names = (r.items || []).filter(i => i.dir).map(i => i.name);
+  V.bgSel.replaceChildren(h('option', { value: '' }, 'None'), ...names.map(n => h('option', { value: n }, n)));
+  V.bgSel.value = L.bg || '';
 }
 function resize(c, r) {
   c = clamp(c | 0, 4, 400); r = clamp(r | 0, 4, 200);
@@ -191,9 +233,14 @@ async function exportLevel() {
   const tres = `[gd_resource type="TileSet" load_steps=3 format=3]\n\n[ext_resource type="Texture2D" path="${res}/tileset.png" id="1"]\n\n`
     + `[sub_resource type="TileSetAtlasSource" id="atlas"]\ntexture = ExtResource("1")\ntexture_region_size = Vector2i(${T}, ${T})\n${tiles.join('\n')}\n\n`
     + `[resource]\ntile_size = Vector2i(${T}, ${T})\nphysics_layer_0/collision_layer = 1\nsources/0 = SubResource("atlas")\n`;
-  const tscn = `[gd_scene load_steps=2 format=3]\n\n[ext_resource type="TileSet" path="${res}/${L.name}.tres" id="1"]\n\n`
-    + `[node name="${L.name}" type="Node2D"]\n\n[node name="Tiles" type="TileMapLayer" parent="."]\ntexture_filter = 1\ntile_map_data = PackedByteArray(${tileMapData()})\ntile_set = ExtResource("1")\n`;
-  const json = { tile: T, cols: L.cols, rows: L.rows, tileset: 'tileset.png', tilesetCols: L.tsCols, solid: L.solid, cells: L.cells, source: 'kiln' };
+  // res is ".../levels/<name>": the background scene lives next door in ".../backgrounds/<scene>/"
+  const base = res.replace(/(^|\/)levels\/[^/]+$/, '');
+  const bgRes = L.bg ? (base ? base + '/' : '') + `backgrounds/${L.bg}/${L.bg}.tscn` : null;
+  const tscn = `[gd_scene load_steps=${bgRes ? 3 : 2} format=3]\n\n[ext_resource type="TileSet" path="${res}/${L.name}.tres" id="1"]\n`
+    + (bgRes ? `[ext_resource type="PackedScene" path="${bgRes}" id="2"]\n` : '') + `\n[node name="${L.name}" type="Node2D"]\n\n`
+    + (bgRes ? `[node name="Background" parent="." instance=ExtResource("2")]\nposition = Vector2(0, ${(L.rows * T) - (V.bgView?.h || L.rows * T)})\n\n` : '')
+    + `[node name="Tiles" type="TileMapLayer" parent="."]\ntexture_filter = 1\ntile_map_data = PackedByteArray(${tileMapData()})\ntile_set = ExtResource("1")\n`;
+  const json = { background: L.bg || null, tile: T, cols: L.cols, rows: L.rows, tileset: 'tileset.png', tilesetCols: L.tsCols, solid: L.solid, cells: L.cells, source: 'kiln' };
   try {
     await saveFiles(dir, [{ name: 'tileset.png', b64: toDataURL(tsImg) }, { name: `${L.name}.tres`, text: tres }, { name: `${L.name}.tscn`, text: tscn },
       { name: 'level.json', text: JSON.stringify(json) + '\n' }]);

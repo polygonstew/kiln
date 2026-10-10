@@ -43,7 +43,8 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
   GPUParticles2D (or an animated strip). Was: **Scenes 3, better generators:** ground with a surface edge and detail (cobbles, roots, puddles), foreground silhouettes
   (scroll > 1, darkened), weather layers (rain, snow, embers, drifting fog) that animate in the preview and export as a Godot
   GPUParticles2D or an animated strip.
-- [ ] **Scenes 4, Scenes to Levels bridge:** "Use as level background" (the parallax layers go behind a Levels map, exported together)
+- [x] **Scenes 4** DONE: Levels → Background (a saved scene drawn behind the map, instanced behind the TileMapLayer in Godot);
+  Scenes layer → "Tiles for Levels (16/8)" cuts unique tiles into a Levels tileset. Verified in Godot 4.7. Was: "Use as level background" (the parallax layers go behind a Levels map, exported together)
   and cutting 8/16 px tiles from a layer into a Levels tileset.
 - [ ] **Scenes 5, review mode:** a safe-frame / HUD overlay toggle, the actor walking on the ground line (exists, check it), a
   day/night palette shift slider, and PNG/GIF export of a short pan for sharing.
@@ -112,3 +113,5 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: run 10. Scenes 2 (layer look). Found and fixed scene-overwrite bugs (my tests had overwritten the user's "night" scene; not recoverable, no /home snapshots).
 - 2026-10-10: run 11. Scenes 3a: richer Ground and a new Foreground generator. User files checked unchanged before and after.
 - 2026-10-10: run 12. Scenes weather layers (rain, snow, embers, mist) animated in preview, exported as Godot particles.
+- 2026-10-10: run 13. Scenes ↔ Levels bridge (scene as level background; cut layer tiles into a tileset). TODO next to it: Levels needs the same
+  name-ownership guard as Scenes (a new level named like an existing one would save over it).
