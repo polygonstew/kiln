@@ -74,6 +74,7 @@ function drawGrid() {
         h('button', { class: 'btn sm', title: 'Open in Forge as the source: pixelize it into a sprite', onclick: () => emit('forge-image', it.path) }, 'Pixelize'),
         h('button', { class: 'btn sm ghost', title: 'Use as the guide image in Forge (shape and design reference for a new generation)', onclick: () => emit('forge-guide', url) }, 'Guide'),
         h('button', { class: 'btn sm ghost', title: 'Cut it into frames in Animate (for sheets)', onclick: () => emit('slice-sheet', it.path) }, 'Frames'),
+        h('button', { class: 'btn sm go', title: 'Make an actor from it: pixelized with your Forge settings, with the full hero animation set laid out to pose', onclick: () => { const n = prompt('Name for the actor', it.name.replace(/^\d+-\d+-/, '').replace(/\.\w+$/, '').slice(0, 24)); if (n) emit('make-actor', { path: it.path, name: n.toLowerCase().replace(/[^a-z0-9]+/g, '_'), set: 'hero' }); } }, 'Actor'),
         h('button', { class: 'ibtn', title: 'Move to the trash (kept in .trash, not deleted)', onclick: async () => { await api('/api/fs', { op: 'trash', path: it.path }).catch(e => toast(e.message, 'bad')); load(); } }, '✕')));
   }) : [h('p', { class: 'note', style: { gridColumn: '1/-1' } }, 'Nothing here yet. Open meta.ai (left), make something, then paste or drop it above.')]));
 }

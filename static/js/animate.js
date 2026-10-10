@@ -295,8 +295,13 @@ function fromForge(d) {
     A.actor.kind = d.identity?.kind;
     A.actor.anims[0].frames = [cloneImg(img)];
     if (d.identity) A.actor.identity = { ...d.identity, refSprite: toDataURL(img) };
+    if (d.set && SETS[d.set]) {
+      // the whole set laid out; every frame starts as the sprite (centred, feet down) so you pose instead of drawing from nothing
+      A.actor.anims = SETS[d.set].anims.map(([name, n, span, fps, loop]) => ({ name, fps, loop, span,
+        frames: Array.from({ length: n }, () => blit(newImg(img.width * span, img.height), img, Math.floor((img.width * span - img.width) / 2), 0)) }));
+    }
     A.ai = A.fi = 0; A.undo = []; A.redo = [];
-    toast('New actor from Forge. Try a motion on the right to start animating', 'ok');
+    toast(d.set ? `${A.actor.name}: ${A.actor.anims.length} animations ready to pose. Animations & sheet → Box template to draw them on paper or in another app` : 'New actor from Forge. Try a motion on the right to start animating', 'ok');
   } else {
     if (d.forName && d.forName !== A.actor.name) { toast(`That frame is for ${d.forName}, but ${A.actor.name} is open. Open ${d.forName} first`, 'bad'); return; }
     if (img.width > A.actor.w || img.height > A.actor.h) {

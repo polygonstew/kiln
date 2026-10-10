@@ -43,6 +43,16 @@ let inbox = [];    // images just saved to ~/Downloads (from any site), newest f
 let ID = null;   // identity of the actor being extended: {name, desc, kind, ref, refW, refH, refSprite, pal, w, h, scale, seed}
 
 on('forge-image', p => { pending = { path: p }; if (mounted) takePending(); });
+// one step from a picture to an actor with a full set of animations to pose (Concepts card "Actor", or the button below)
+on('make-actor', async d => {
+  await new Promise(r => setTimeout(r, 120));          // let the Forge tab mount first (it is switched to by the same event)
+  ID = null;
+  await setSource(d.url || rawURL(d.path), d.name);
+  await new Promise(r => setTimeout(r, 250));          // pixelize runs debounced
+  if (!out) return toast('Could not make a sprite from that image', 'bad');
+  if (d.name) st.prompt = st.prompt.trim() || d.name.replace(/_/g, ' ');
+  sendToAnimate('new', d.set || 'hero', d.name);
+});
 on('forge-guide', async url => { const im = await imgData(url).catch(() => null); if (!im) return toast('Could not read that image', 'bad'); guide = flatSmall(im); if (mounted) drawLeft(); toast('Guide image set'); });
 on('use-palette', p => { customPal = p; st.palMode = 'custom'; if (mounted) { drawRight(); run(); } });
 on('job-done', j => { if (j.forge) addResults(j); });
@@ -442,6 +452,9 @@ function drawRight() {
     clean,
     h('div', { class: 'sec' }, h('h3', {}, 'Use it'),
       h('button', { class: 'btn go wide', onclick: () => sendToAnimate('new') }, 'New actor in Animate'),
+      h('div', { style: { display: 'flex', gap: '6px', marginTop: '6px', alignItems: 'center' } },
+        V.setSel = select([['hero', 'Hero set'], ['enemy', 'Enemy set'], ['flyer', 'Flyer set'], ['boss', 'Boss set'], ['npc', 'NPC set'], ['prop', 'Prop set']], st.kind === 'creature' ? 'enemy' : 'hero', () => {}),
+        h('button', { class: 'btn', title: 'New actor with every animation of the chosen set already laid out, each frame starting from this sprite to pose', onclick: () => sendToAnimate('new', V.setSel.value) }, '+ animations')),
       h('p', { class: 'note' }, 'Makes this the actor\'s reference: its description, palette, size and scale are kept for every later frame.'),
       h('div', { class: 'btns' },
         h('button', { class: 'btn', onclick: () => sendToAnimate('frame') }, 'Add as frame'),
@@ -465,14 +478,14 @@ function refImage() {
   x.globalCompositeOperation = 'destination-over'; x.fillStyle = '#fff'; x.fillRect(0, 0, cv.width, cv.height);
   return { url: cv.toDataURL('image/png'), w: im.width };
 }
-function sendToAnimate(mode) {
+function sendToAnimate(mode, set, name) {
   if (!out) return toast('Nothing to send yet');
   const bb = bbox(out);
   const identity = mode === 'new' ? (() => {
     const ref = refImage();
     return { desc: st.prompt.trim(), kind: st.kind, ref: ref.url, refW: ref.w, scale: (out.scale || 1) * out.srcW / ref.w, figH: bb ? bb.h : out.height, cell: out.cell1024 || 0, seed: results.find(r => r.url === srcURL)?.seed ?? -1 };
   })() : null;
-  emit('to-animate', { mode, img: out, pal: outPal, name: ID ? ID.name : nameFromPrompt(), identity, forName: ID?.name });
+  emit('to-animate', { mode, img: out, pal: outPal, name: name || (ID ? ID.name : nameFromPrompt()), identity, forName: ID?.name, set });
 }
 async function savePNG() {
   if (!out) return;

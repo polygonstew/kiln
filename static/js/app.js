@@ -44,7 +44,7 @@ async function boot() {
   on('tab', id => show(id));
   $('#stylechip').onclick = editStyle;
   // cross-tab requests switch to the tab that handles them
-  const route = { 'open-actor': 'animate', 'slice-sheet': 'animate', 'forge-image': 'forge', 'open-scene': 'scenes', 'scene-layer': 'scenes', 'use-palette': 'forge', 'to-animate': 'animate', 'forge-for': 'forge', 'level-tileset': 'levels', 'forge-guide': 'forge' };
+  const route = { 'open-actor': 'animate', 'slice-sheet': 'animate', 'forge-image': 'forge', 'open-scene': 'scenes', 'scene-layer': 'scenes', 'use-palette': 'forge', 'to-animate': 'animate', 'forge-for': 'forge', 'level-tileset': 'levels', 'forge-guide': 'forge', 'make-actor': 'forge' };
   for (const [ev, tab] of Object.entries(route)) on(ev, () => { if (mods.some(m => m.id === tab)) show(tab); });
   document.addEventListener('keydown', e => {
     if (e.target.matches('input,textarea,select') || e.ctrlKey || e.metaKey || e.altKey) return;
