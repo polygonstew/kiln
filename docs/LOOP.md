@@ -217,3 +217,4 @@ override everything; each gets a Help section and a Godot export):**
 - 2026-10-10: Actor workshop slice 1 shipped (tested: checklist, add all, local face, save writes faces.png/json). GDScript editor queued.
 - 2026-10-10: user asked for collapsible sections (logged above, GUI pass later); continuing with Actor workshop slice 2.
 - 2026-10-10: Actor workshop slice 2 shipped (reactions, projectiles, HUD faces). Next: Colliders.
+- 2026-10-10: Colliders slice 1 (actor boxes): per-frame hit/hurt boxes in Animate (Boxes, Guess hitboxes, Copy → next) → Hitbox/Hurtbox Area2D driven by juice.gd + manifest boxes. Verified in Godot (hit → hurt, flip mirrors). Next colliders: level one-way/ladder/hazard/trigger tiles.

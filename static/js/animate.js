@@ -62,15 +62,16 @@ async function drain() {
 /* --------------------------------------------------------- persistence ---- */
 function serialize(a = A.actor) {
   return { meta: { kind: 'actor', name: a.name, thumb: a.anims[0]?.frames[0] ? toDataURL(a.anims[0].frames[0]) : null },
-    actor: { ...a, anims: a.anims.map(n => ({ ...n, frames: n.frames.map(f => toDataURL(f)) })) } };
+    actor: { ...a, anims: a.anims.map(n => ({ ...n, frames: n.frames.map(f => toDataURL(f)), boxes: n.frames.map(f => f.boxes || null) })) } };
 }
 async function deserialize(d) {
   const a = d.actor;
   const anims = [];
-  for (const n of a.anims) anims.push({ ...n, frames: await Promise.all(n.frames.map(u => imgData(u))) });
+  for (const n of a.anims) { const frames = await Promise.all(n.frames.map(u => imgData(u))); (n.boxes || []).forEach((b, i) => { if (b && frames[i]) frames[i].boxes = b; }); const { boxes, ...rest } = n; anims.push({ ...rest, frames }); }
   return { ...a, anims };
 }
-function snapshot() { return { ...A.actor, pal: A.actor.pal.map(c => c.slice()), anims: A.actor.anims.map(n => ({ ...n, frames: n.frames.map(cloneImg) })) }; }
+const cloneF = f => { const c = cloneImg(f); if (f.boxes) c.boxes = JSON.parse(JSON.stringify(f.boxes)); return c; };      // a frame with its hit/hurt boxes
+function snapshot() { return { ...A.actor, pal: A.actor.pal.map(c => c.slice()), anims: A.actor.anims.map(n => ({ ...n, frames: n.frames.map(cloneF) })) }; }
 function pushUndo() { A.undo.push({ actor: snapshot(), ai: A.ai, fi: A.fi }); if (A.undo.length > 40) A.undo.shift(); A.redo = []; }
 function undo() { if (!A.undo.length) return; A.redo.push({ actor: snapshot(), ai: A.ai, fi: A.fi }); const s = A.undo.pop(); A.actor = s.actor; A.ai = s.ai; A.fi = s.fi; changed(true); }
 function redo() { if (!A.redo.length) return; A.undo.push({ actor: snapshot(), ai: A.ai, fi: A.fi }); const s = A.redo.pop(); A.actor = s.actor; A.ai = s.ai; A.fi = s.fi; changed(true); }
@@ -125,6 +126,7 @@ function build(el) {
         h('button', { class: 'btn sm ghost', title: 'Flip every frame of this animation', onclick: () => { pushUndo(); anim().frames = anim().frames.map(flipX); changed(true); } }, 'Flip anim'),
         h('i', { class: 'sep' }),
         h('button', { class: 'btn sm go', title: 'Workshop: everything this actor needs (animations, status faces) as a checklist', onclick: () => workshop() }, 'Workshop'),
+        V.boxBtn = h('button', { class: 'btn sm' + (A.boxes ? ' on' : ' ghost'), title: 'Hit and hurt boxes: drag to draw (red hits, blue gets hit), right-click removes. Exported to Godot frame by frame', onclick: () => { A.boxes = !A.boxes; V.boxBtn.className = 'btn sm' + (A.boxes ? ' on' : ' ghost'); drawTimeline(); drawEditor(); } }, 'Boxes'),
         h('span', { class: 'grow' }), V.status,
         h('span', { class: 'lbl' }, 'Zoom'),
         V.zoomSel = select([[0, 'Fit'], ...[2, 3, 4, 6, 8, 10, 12, 16, 20].map(z => [z, z + '×'])], A.zoom, v => { A.zoom = +v; pref.set('anim.zoom', A.zoom); drawEditor(); })),
@@ -387,6 +389,13 @@ function drawEditor() {
   if (A.mirror) { x.strokeStyle = '#ff5b2e88'; x.setLineDash([4, 4]); x.beginPath(); x.moveTo(cw / 2, 0); x.lineTo(cw / 2, ch); x.stroke(); x.setLineDash([]); }
   const s = A.float ? { x: A.float.x, y: A.float.y, w: A.float.img.width, h: A.float.img.height } : A.sel;
   if (s) { x.strokeStyle = '#fff'; x.setLineDash([3, 3]); x.lineDashOffset = (performance.now() / 60) % 6; x.strokeRect(s.x * zoomNow + .5, s.y * zoomNow + .5, s.w * zoomNow - 1, s.h * zoomNow - 1); x.setLineDash([]); }
+  if (A.boxes) {      // hit (red) / hurt (blue) boxes of this frame; the body box shows dashed when no hurtbox is set
+    const f0 = frame(), B = f0.boxes || {}, body = bodyBox(f0.width), put = (r, c, dash) => { x.strokeStyle = c; x.lineWidth = 2; x.setLineDash(dash ? [4, 4] : []); x.strokeRect(r.x * zoomNow + 1, r.y * zoomNow + 1, r.w * zoomNow - 2, r.h * zoomNow - 2); x.fillStyle = c.replace(/[\d.]+\)$/, '.12)'); x.fillRect(r.x * zoomNow, r.y * zoomNow, r.w * zoomNow, r.h * zoomNow); x.setLineDash([]); };
+    if (!(B.hurt || []).length && body) put(body, 'rgba(111,179,217,.7)', true);
+    for (const r of B.hurt || []) put(r, 'rgba(111,179,217,.95)');
+    for (const r of B.hit || []) put(r, 'rgba(229,83,75,.95)');
+    if (drag?.t === 'box' && drag.r) put(drag.r, drag.kind === 'hit' ? 'rgba(229,83,75,.95)' : 'rgba(111,179,217,.95)');
+  }
   if (hover && !drag) { x.strokeStyle = 'rgba(255,255,255,.5)'; x.strokeRect(hover[0] * zoomNow + .5, hover[1] * zoomNow + .5, zoomNow - 1, zoomNow - 1); }
   V.status.textContent = `${anim().name} ${A.fi + 1}/${fr.length}${hover ? `  ·  ${hover[0]},${hover[1]}` : ''}  ·  ${zoomNow}×${edge.length ? '  ·  touches the box edge: may be cut off' : ''}`;
 }
@@ -432,6 +441,14 @@ function bindCanvas() {
   cv.addEventListener('contextmenu', e => e.preventDefault());
   cv.addEventListener('pointerdown', e => {
     cv.setPointerCapture(e.pointerId);
+    if (A.boxes) {
+      const p0 = px(e), f0 = frame(), B = (f0.boxes ||= { hit: [], hurt: [] });
+      if (e.button === 2) {
+        for (const k of ['hit', 'hurt']) { const i = (B[k] || []).findIndex(r => p0[0] >= r.x && p0[1] >= r.y && p0[0] < r.x + r.w && p0[1] < r.y + r.h); if (i >= 0) { pushUndo(); frame().boxes[k].splice(i, 1); changed(); return; } }
+        return;
+      }
+      drag = { t: 'box', kind: A.boxKind || 'hit', p0: p0, r: null }; return;
+    }
     const p = px(e), f = frame();
     // left click adds, right click removes (with any drawing tool), middle click picks the colour under the cursor
     if (e.button === 1) { e.preventDefault(); if (inside(p)) { const k = getPx(f, ...p); if (k) { A.c1 = k; drawLeft(); } } return; }
@@ -456,6 +473,7 @@ function bindCanvas() {
     hover = inside(p) ? p : null;
     if (!drag) { drawEditor(); return; }
     const f = frame();
+    if (drag.t === 'box') { const [x0, y0] = drag.p0; drag.r = { x: Math.max(0, Math.min(x0, p[0])), y: Math.max(0, Math.min(y0, p[1])), w: Math.abs(p[0] - x0) + 1, h: Math.abs(p[1] - y0) + 1 }; drawEditor(); return; }
     if (drag.t === 'paint') { line(f, drag.last, p, drag.c); drag.last = p; drawEditor(); }
     else if (drag.t === 'line' || drag.t === 'rect') {
       f.data.set(drag.base.data);
@@ -476,7 +494,9 @@ function bindCanvas() {
       A.float.x = drag.o[0] + p[0] - drag.p0[0]; A.float.y = drag.o[1] + p[1] - drag.p0[1]; drawEditor();
     }
   });
-  const up = () => { if (!drag) return; const t = drag.t; drag = null; if (t !== 'sel' && t !== 'float') changed(); else drawEditor(); };
+  const up = () => {
+    if (drag?.t === 'box') { const d = drag; drag = null; if (d.r && d.r.w > 1 && d.r.h > 1) { pushUndo(); const B = (frame().boxes ||= { hit: [], hurt: [] }); (B[d.kind] ||= []).push(d.r); changed(); } else drawEditor(); return; }
+    if (!drag) return; const t = drag.t; drag = null; if (t !== 'sel' && t !== 'float') changed(); else drawEditor(); };
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   cv.addEventListener('pointerleave', () => { hover = null; drawEditor(); });
   V.vp.addEventListener('wheel', e => {
@@ -566,13 +586,17 @@ function drawTimeline() {
     h('button', { class: 'btn sm', title: 'Duplicate frame (N)', onclick: dupFrame }, icon('dup'), 'Copy frame'),
     h('button', { class: 'btn sm', onclick: () => { pushUndo(); n.frames.splice(A.fi + 1, 0, newImg(fw(n), a.h)); A.fi++; changed(true); } }, icon('plus'), 'Blank'),
     h('i', { class: 'sep' }),
+    ...(A.boxes ? [seg([['hit', 'Hitbox (red)'], ['hurt', 'Hurtbox (blue)']], A.boxKind || 'hit', v => { A.boxKind = v; }),
+      h('button', { class: 'btn sm', title: 'Box whatever sticks out past the body on every frame of this animation (weapons, slashes)', onclick: guessHitboxes }, 'Guess hitboxes'),
+      h('button', { class: 'btn sm ghost', title: 'Copy this frame\'s boxes to the next frame', onclick: () => { const fr = anim().frames, nx = fr[A.fi + 1]; if (!nx) return; pushUndo(); nx.boxes = JSON.parse(JSON.stringify(frame().boxes || {})); A.fi++; changed(true); } }, 'Copy → next'),
+      h('button', { class: 'btn sm ghost', title: 'Remove this frame\'s boxes', onclick: () => { pushUndo(); frame().boxes = null; changed(); } }, 'Clear'), h('i', { class: 'sep' })] : []),
     h('span', { class: 'lbl', title: 'How many boxes wide this animation\'s frames are. 2 gives a long swing or lunge room without cutting it off' }, 'Box'),
     seg([[1, '1 wide'], [2, '2 wide']], n.span || 1, v => setSpan(n, +v)),
     h('button', { class: 'btn sm ghost', title: 'Move frame left', onclick: () => moveFrame(-1) }, '◂'),
     h('button', { class: 'btn sm ghost', title: 'Move frame right', onclick: () => moveFrame(1) }, '▸'),
     h('button', { class: 'btn sm ghost danger', onclick: delFrame }, 'Delete frame'),
     h('span', { class: 'grow' }),
-    h('button', { class: 'btn sm ghost', title: 'Copy this whole animation as a new one', onclick: () => { pushUndo(); a.anims.splice(A.ai + 1, 0, { ...n, name: n.name + '_copy', frames: n.frames.map(cloneImg) }); A.ai++; A.fi = 0; changed(true); } }, 'Duplicate anim'),
+    h('button', { class: 'btn sm ghost', title: 'Copy this whole animation as a new one', onclick: () => { pushUndo(); a.anims.splice(A.ai + 1, 0, { ...n, name: n.name + '_copy', frames: n.frames.map(cloneF) }); A.ai++; A.fi = 0; changed(true); } }, 'Duplicate anim'),
     h('button', { class: 'btn sm ghost danger', onclick: () => { if (a.anims.length < 2) return toast('An actor needs at least one animation'); if (!confirm(`Delete the animation "${n.name}"?`)) return; pushUndo(); a.anims.splice(A.ai, 1); A.ai = Math.max(0, A.ai - 1); A.fi = 0; changed(true); } }, 'Delete anim'));
   const th = Math.min(64, Math.max(32, a.h * 2)), z = th / a.h;
   let dragFrom = null;
@@ -594,7 +618,31 @@ function updateThumb() {
   const c = el.querySelector('canvas'); if (!c) return;
   c.getContext('2d').putImageData(frame(), 0, 0);
 }
-function dupFrame() { pushUndo(); anim().frames.splice(A.fi + 1, 0, cloneImg(frame())); A.fi++; changed(true); }
+// the body box (default hurtbox): the idle pose's figure, trimmed to its core width, in a frame `W` wide
+function bodyBox(W) {
+  const base = A.actor.anims.find(n => /idle|stand/i.test(n.name)) || A.actor.anims[0];
+  const bbs = base.frames.map(bbox).filter(Boolean); if (!bbs.length) return null;
+  const med = k => bbs.map(b => b[k]).sort((p, q) => p - q)[bbs.length >> 1];
+  const bh = med('h'), bw = Math.max(2, Math.round(med('w') * .6)), cx = med('x') + med('w') / 2 + (W - base.frames[0].width) / 2;
+  return { x: Math.round(cx - bw / 2), y: A.actor.h - bh, w: bw, h: bh };
+}
+// hitboxes for an attack: whatever sticks out past the body on each frame (the weapon, the slash)
+function guessHitboxes() {
+  const n = anim(); pushUndo(); let made = 0;
+  for (const f of n.frames) {
+    const body = bodyBox(f.width); if (!body) break;
+    let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+    for (let y = 0; y < f.height; y++) for (let x = 0; x < f.width; x++) {
+      if (f.data[(y * f.width + x) * 4 + 3] < 128 || (x >= body.x - 1 && x < body.x + body.w + 1)) continue;
+      if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y;
+    }
+    const B = (f.boxes ||= { hit: [], hurt: [] });
+    B.hit = x1 >= 0 && (x1 - x0 + 1) * (y1 - y0 + 1) >= 6 ? [{ x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 }] : [];
+    if (B.hit.length) made++;
+  }
+  changed(); toast(made ? `Hitboxes on ${made} of ${n.frames.length} frames (what sticks out past the body). Adjust by drawing / right-click` : 'Nothing sticks out past the body in this animation', made ? 'ok' : '');
+}
+function dupFrame() { pushUndo(); anim().frames.splice(A.fi + 1, 0, cloneF(frame())); A.fi++; changed(true); }
 function delFrame() { const n = anim(); if (n.frames.length < 2) { pushUndo(); n.frames[0] = newImg(fw(n), A.actor.h); changed(true); return; } pushUndo(); n.frames.splice(A.fi, 1); changed(true); }
 function moveFrame(d) { const n = anim(), j = A.fi + d; if (j < 0 || j >= n.frames.length) return; pushUndo(); [n.frames[A.fi], n.frames[j]] = [n.frames[j], n.frames[A.fi]]; A.fi = j; changed(true); }
 function addAnim() {
@@ -807,6 +855,7 @@ async function exportActor() {
     const med = k => bbs.map(b => b[k]).sort((p, q) => p - q)[bbs.length >> 1];
     const bh = med('h'), bw = Math.max(2, Math.round(med('w') * 0.6)), cx = med('x') + med('w') / 2;
     man.hitbox = { x: Math.round(cx - bw / 2), y: a.h - bh, w: bw, h: bh };
+    if (Object.keys(boxesOf(a)).length) man.boxes = boxesOf(a);        // other engines: same boxes, centre-based, feet at 0
     files.find(f => f.name === 'manifest.json').text = JSON.stringify(man, null, 2) + '\n';
     files.push({ name: `${a.name}.tscn`, text: actorScene(a, res, man.hitbox) });
     await saveFiles('sprites/_kiln', [{ name: 'juice.gd', text: JUICE_GD }, { name: 'hit_flash.gdshader', text: FLASH_SHADER }, { name: 'projectile.gd', text: PROJECTILE_GD }]).catch(() => {});
@@ -838,6 +887,53 @@ var _base_y := 0.0
 func _ready() -> void:
 \t_base_scale = sprite.scale
 \t_base_y = sprite.position.y
+\t_hitbox = get_node_or_null("Hitbox")
+\t_hurtbox = get_node_or_null("Hurtbox")
+\tif _hurtbox and _hurtbox.get_child_count() > 0:
+\t\tvar c := _hurtbox.get_child(0) as CollisionShape2D
+\t\t_body_box = [c.position.x, c.position.y, c.shape.size.x, c.shape.size.y]
+\tif _hitbox:
+\t\t_hitbox.area_entered.connect(_on_hitbox)
+\tsprite.frame_changed.connect(_update_boxes)
+\tsprite.animation_changed.connect(_update_boxes)
+\t_update_boxes()
+
+# ---------------------------------------------------------------- hit / hurt boxes (drawn in Kiln, per frame)
+var _hitbox: Area2D
+var _hurtbox: Area2D
+var _body_box := []
+
+## Moves the Hitbox / Hurtbox shapes to this frame's boxes (metadata "boxes", written by Kiln).
+func _update_boxes() -> void:
+\tvar all: Dictionary = get_meta("boxes", {})
+\tvar frames: Array = all.get(String(sprite.animation), [])
+\tvar b: Dictionary = frames[sprite.frame] if sprite.frame < frames.size() and frames[sprite.frame] is Dictionary else {}
+\t_place(_hitbox, b.get("hit", []))
+\tvar hurt_boxes: Array = b.get("hurt", [])
+\t_place(_hurtbox, hurt_boxes if hurt_boxes.size() > 0 else ([_body_box] if _body_box.size() == 4 else []))
+
+func _place(area: Area2D, rects: Array) -> void:
+\tif area == null:
+\t\treturn
+\twhile area.get_child_count() < rects.size():
+\t\tvar c := CollisionShape2D.new()
+\t\tc.shape = RectangleShape2D.new()
+\t\tarea.add_child(c)
+\tvar flip := -1.0 if sprite.flip_h else 1.0
+\tfor i in area.get_child_count():
+\t\tvar c := area.get_child(i) as CollisionShape2D
+\t\tif i < rects.size():
+\t\t\tvar r: Array = rects[i]
+\t\t\tc.position = Vector2(r[0] * flip, r[1])
+\t\t\tc.shape = c.shape.duplicate() if c.shape.get_reference_count() > 1 else c.shape
+\t\t\tc.shape.size = Vector2(r[2], r[3])
+\t\tc.set_deferred("disabled", i >= rects.size())
+
+## A hitbox touched someone's Hurtbox: hurt them (they ignore it while invulnerable).
+func _on_hitbox(other: Area2D) -> void:
+\tvar t := other.get_parent()
+\tif other.name == "Hurtbox" and t != self and t.has_method("hurt"):
+\t\tt.hurt(global_position)
 
 ## Flash the sprite (white by default) a few quick times.
 func hit_flash(times: int = 2, color: Color = Color.WHITE) -> void:
@@ -949,11 +1045,14 @@ func _physics_process(delta: float) -> void:
 \tposition += velocity * delta
 
 func _on_hit(other: Node) -> void:
-\tif other == shooter:
+\tif other is Area2D and other.name != "Hurtbox":
+\t\treturn          # only bodies and Kiln Hurtboxes count, not hitboxes or other triggers
+\tvar t := other if other.has_method("hurt") else other.get_parent()
+\tif t == shooter:
 \t\treturn
-\thit.emit(other)
-\tif other.has_method("hurt"):
-\t\tother.hurt(global_position)
+\thit.emit(t)
+\tif t.has_method("hurt"):
+\t\tt.hurt(global_position)
 \tif not pierce:
 \t\tqueue_free()
 `;
@@ -970,14 +1069,27 @@ void fragment() {
 function actorScene(a, res, hb) {
   const start = (a.anims.find(n => /idle|stand/i.test(n.name)) || a.anims[0]).name;
   const shared = res.replace(/\/[^/]+$/, '') + '/_kiln', R = a.react || {}, pj = (a.projectiles || [])[0];
-  return `[gd_scene load_steps=${pj ? 7 : 6} format=3]\n\n[ext_resource type="SpriteFrames" path="${res}/${a.name}.tres" id="1"]\n`
+  return `[gd_scene load_steps=${pj ? 8 : 7} format=3]\n\n[ext_resource type="SpriteFrames" path="${res}/${a.name}.tres" id="1"]\n`
     + (pj ? `[ext_resource type="PackedScene" path="${res}/projectile_${pj.name}.tscn" id="4"]\n` : '')
     + `[ext_resource type="Script" path="${shared}/juice.gd" id="2"]\n[ext_resource type="Shader" path="${shared}/hit_flash.gdshader" id="3"]\n\n`
     + `[sub_resource type="ShaderMaterial" id="flash"]\nshader = ExtResource("3")\nshader_parameter/flash = 0.0\nshader_parameter/flash_color = Color(1, 1, 1, 1)\n\n`
     + `[sub_resource type="RectangleShape2D" id="body"]\nsize = Vector2(${hb.w}, ${hb.h})\n\n`
-    + `[node name="${a.name}" type="CharacterBody2D"]\nscript = ExtResource("2")\nknockback = ${R.knockback ?? 60}.0\ninvulnerable_time = ${R.iframes ?? 0.6}\n${pj ? 'projectile = ExtResource("4")\n' : ''}\n`
+    + `[sub_resource type="RectangleShape2D" id="hurt"]\nsize = Vector2(${hb.w}, ${hb.h})\n\n`
+    + `[node name="${a.name}" type="CharacterBody2D"]\nscript = ExtResource("2")\nknockback = ${R.knockback ?? 60}.0\ninvulnerable_time = ${R.iframes ?? 0.6}\n${pj ? 'projectile = ExtResource("4")\n' : ''}`
+    + (Object.keys(boxesOf(a)).length ? `metadata/boxes = ${JSON.stringify(boxesOf(a))}\n` : '') + '\n'
     + `[node name="Sprite" type="AnimatedSprite2D" parent="."]\nmaterial = SubResource("flash")\ntexture_filter = 1\nposition = Vector2(0, ${-a.h / 2})\nsprite_frames = ExtResource("1")\nanimation = &"${start}"\nautoplay = "${start}"\n\n`
-    + `[node name="Body" type="CollisionShape2D" parent="."]\nposition = Vector2(${hb.x + hb.w / 2 - a.w / 2}, ${hb.y + hb.h / 2 - a.h})\nshape = SubResource("body")\n`;
+    + `[node name="Body" type="CollisionShape2D" parent="."]\nposition = Vector2(${hb.x + hb.w / 2 - a.w / 2}, ${hb.y + hb.h / 2 - a.h})\nshape = SubResource("body")\n\n`
+    + `[node name="Hurtbox" type="Area2D" parent="."]\n\n[node name="Shape" type="CollisionShape2D" parent="Hurtbox"]\nposition = Vector2(${hb.x + hb.w / 2 - a.w / 2}, ${hb.y + hb.h / 2 - a.h})\nshape = SubResource("hurt")\n\n`
+    + `[node name="Hitbox" type="Area2D" parent="."]\n`;
+}
+// per-frame boxes in the actor's local space ([centre x, centre y, w, h], feet at 0): { anim: [ {hit, hurt} | {} per frame ] }
+function boxesOf(a) {
+  const out = {}, loc = (r, f) => [r.x + r.w / 2 - f.width / 2, r.y + r.h / 2 - a.h, r.w, r.h];
+  for (const n of a.anims) {
+    if (!n.frames.some(f => f.boxes && ((f.boxes.hit || []).length || (f.boxes.hurt || []).length))) continue;
+    out[n.name] = n.frames.map(f => f.boxes ? { hit: (f.boxes.hit || []).map(r => loc(r, f)), hurt: (f.boxes.hurt || []).map(r => loc(r, f)) } : {});
+  }
+  return out;
 }
 // a projectile: Area2D flying one of the actor's animations (proj_<name>), with a round hit shape from its first frame
 function projectileScene(a, res, pj) {
