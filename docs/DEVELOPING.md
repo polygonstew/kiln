@@ -59,6 +59,13 @@ the blank actor `new_actor`, the HUD `hud`; nothing saves until something is edi
 | `GET /api/godot?path=` | the Godot project containing a path, or null |
 | `GET /api/index` · `GET /api/inbox?since=` · `GET /api/apps` · `GET /api/settings` | Ctrl+K, Downloads/concepts inbox, Desk, settings |
 
+## Godot plugin
+
+`godot/addons/kiln/` (GDScript, Godot 4). Test without touching the user's settings: make a temp project with
+`[editor_plugins] enabled=PackedStringArray("res://addons/kiln/plugin.cfg")` and run
+`godot --headless --editor --path <proj> --quit-after 400`: the dock prints `Kiln: …` after its connection check.
+Never press "Link here" in tests: it changes Kiln's asset folder.
+
 ## Conventions
 
 Plain-English UI text, a `title` tooltip on every control, no AI/model names in the UI, the dark theme with the

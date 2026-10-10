@@ -79,3 +79,16 @@ weather layers `{kind: weather, weather: rain|snow|embers|mist, color, amount, s
 
 `manifest.json` anims may carry `w` (2-wide animations), plus `hitbox {x, y, w, h}`. `<actor>.tscn`: CharacterBody2D (origin at the
 feet) with `Sprite` (AnimatedSprite2D, hit-flash ShaderMaterial) and `Body` (RectangleShape2D); script `sprites/_kiln/juice.gd`.
+
+## hud/<hud>/ for Godot
+
+`<hud>.tscn`: CanvasLayer (script `hud.gd`, `items_json`) → `Screen` (Control, view size) → one node per widget: bar = TextureProgressBar
+(`_frame.png` under, `_fill.png` progress), gauge = radial TextureProgressBar (`_track`/`_arc`), pips = Control + TextureRect pips (AtlasTexture of
+`_icons.png`: full/half/empty), counter/text = Label (font `fonts/kiln_<font>_white.fnt`, tinted), panel/slot/portrait = NinePatchRect (`_9slice.png`),
+inventory/dialogue/prompt = NinePatchRect/Control trees (start hidden). `items.json` = [{id, name, desc, count, icon}]. Node metadata `kiln` names the
+widget kind for `hud.gd`.
+
+## godot/addons/kiln (the Godot plugin)
+
+`plugin.cfg`, `plugin.gd` (EditorPlugin: adds the dock), `kiln_dock.gd` (HTTP to Kiln: /api/settings, POST /api/fs {op: root} to link). Served as
+`/godot-plugin.zip`; `POST /api/godot/install {path}` copies it into the project containing `path` and enables it in project.godot.

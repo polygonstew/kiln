@@ -39,6 +39,7 @@ const MENUS = () => [
     ['Forge: roll an enemy idea', 'A random grim enemy description', () => { go('forge'); setTimeout(() => press(/Roll$/, 'Roll'), 300); }],
     null,
     ['Desk (your apps)', 'Your home apps as windows', () => window.open('/desk', '_blank')],
+    ['Godot plugin…', 'Install the Kiln dock into your Godot project (or download it)', godotPlugin],
   ]],
   ['Help', [
     ['Guide', 'How every area works, with pictures; searchable', () => window.open('/help', '_blank'), 'F1'],
@@ -49,6 +50,16 @@ const MENUS = () => [
 ];
 
 // The menus live under the KILN logo: click it for File · Edit · View · Tools · Help, hover one for its items.
+// Install the Godot add-on into the project the asset folder lives in; otherwise hand over the zip.
+async function godotPlugin() {
+  const g = await fetch('/api/godot?path=' + encodeURIComponent(document.querySelector('#rootchip')?.dataset.root || '')).then(r => r.json()).catch(() => ({}));
+  if (g.root && confirm(`Install the Kiln plugin into ${g.root}/addons/kiln and switch it on?\n\nIn Godot you then get a "Kiln" dock (top right): link, list and add Kiln's assets.`)) {
+    const r = await fetch('/api/godot/install', { method: 'POST', body: JSON.stringify({}) }).then(r => r.json()).catch(e => ({ err: e.message }));
+    return r.err ? toast(r.err, 'bad') : toast('Installed: reopen the project in Godot to see the Kiln dock', 'ok');
+  }
+  const a = h('a', { href: '/godot-plugin.zip', download: 'kiln-godot-plugin.zip' }); document.body.append(a); a.click(); a.remove();
+  toast('Downloaded the plugin: unzip it into your Godot project (it makes addons/kiln), then Project Settings → Plugins → Kiln → On', 'ok');
+}
 let open = null;
 function close() { open?.root.remove(); open?.sub?.remove(); $('#logo')?.classList.remove('on'); open = null; }
 function item(it) {

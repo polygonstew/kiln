@@ -191,10 +191,20 @@ svg text { font-family: 'IBM Plex Sans Condensed'; }
 
 <section id="hud" data-title="HUD">
 <h2>HUD <kbd>5</kbd></h2>
-<p class="lead">Health bars, gauges, pips, panels, slots, portraits, counters and bitmap fonts, laid out on the game screen.</p>
-<figure><img src="/help/hud.jpg" alt="HUD"><figcaption>HUD: add widgets and fonts left, the screen in the middle, widget settings right.</figcaption></figure>
-<ul><li>Drag widgets; arrows nudge (Shift: 8 px); <kbd class="k">Ctrl+D</kbd> duplicates; <b>Play values</b> animates them.</li>
-<li>Save writes every widget as engine-ready parts with 9-slice margins; <b>Save font for engines</b> writes a BMFont.</li></ul>
+<p class="lead">Everything on screen during play: health bars, gauges, pips, counters, text, panels, slots, portraits, an <b>inventory</b>, a <b>dialogue box</b> and button <b>prompts</b>, plus bitmap fonts. It saves as a real Godot scene.</p>
+<figure><img src="/help/hud.jpg" alt="HUD"><figcaption>HUD: add widgets and fonts left, the game screen in the middle, widget settings right.</figcaption></figure>
+<ul><li>Drag widgets; arrows nudge (Shift: 8 px); <kbd class="k">Ctrl+D</kbd> duplicates; <b>Play values</b> animates everything (bars move, dialogue types, the inventory cursor walks).</li>
+<li><b>Inventory</b>: columns, rows, slot size, frame styles; <b>+ Item</b> adds items with an icon (any saved actor's first frame), name, description and count.</li>
+<li><b>Dialogue</b>: a face, the speaker's name and the line; <b>Prompt</b>: a key cap and an action ("E Open").</li></ul>
+<h3>In Godot</h3>
+<p><b>Save</b> writes <code>hud/&lt;name&gt;/&lt;name&gt;.tscn</code> (a CanvasLayer of real nodes: TextureProgressBar, NinePatchRect, Labels using Kiln's bitmap fonts) and <code>hud.gd</code>. Add the scene to your game and call:</p>
+<table><tr><th>Call</th><th>Does</th></tr>
+<tr><td><code>set_value("health", 0.5)</code></td><td>bars, gauges and pips (0 to 1)</td></tr>
+<tr><td><code>set_number("score", 120)</code> · <code>set_text("title", "…")</code></td><td>counters and text</td></tr>
+<tr><td><code>say("Monk", "The bells…")</code></td><td>shows the dialogue box and types the line; <code>ui_accept</code> skips / closes; signal <code>dialogue_finished</code></td></tr>
+<tr><td><code>prompt("E", "Open")</code> · <code>hide_prompt()</code></td><td>the button prompt</td></tr>
+<tr><td><code>toggle_inventory()</code> · <code>add_item("key")</code> · <code>remove_item("flask")</code> · <code>has_item("key")</code></td><td>the inventory (also opens on an input action named <code>inventory</code>; arrows move; signal <code>item_used</code>)</td></tr></table>
+<div class="tip">Set the Godot window to the HUD's screen size (e.g. 480×270, stretch mode "viewport") so the pixels stay crisp.</div>
 </section>
 
 <section id="stage" data-title="Stage">
@@ -202,6 +212,14 @@ svg text { font-family: 'IBM Plex Sans Condensed'; }
 <p class="lead">Play an actor in a scene with the HUD on top, to check scale, timing and contrast before it goes into the game.</p>
 <figure><img src="/help/stage.jpg" alt="Stage"><figcaption>Stage: pick actor, scene and HUD; map animations to actions.</figcaption></figure>
 <p>← → walk, Shift run, Space/↑ jump, Z attack, X hurt, ↓ crouch, K death. If feet slide, the walk fps and walk speed disagree.</p>
+</section>
+
+<section id="plugin" data-title="Godot plugin">
+<h2>The Kiln plugin for Godot</h2>
+<p class="lead">A <b>Kiln</b> dock inside the Godot editor (top right). It talks to Kiln over the network, so Kiln keeps running as it is.</p>
+<ul><li><b>Install</b>: in Kiln, Tools → <b>Godot plugin…</b>. If your asset folder is inside a Godot project it installs and switches itself on; otherwise you get a zip to unzip into the project (it makes <code>addons/kiln</code>), then Project Settings → Plugins → Kiln → On.</li>
+<li><b>Check</b> shows whether Kiln is running and where it saves. <b>Link here</b> makes Kiln save straight into this project (<code>res://assets</code>, changeable in Project Settings → kiln/assets_dir).</li>
+<li>The list shows the actors, scenes, levels and HUDs Kiln has saved: double-click opens one, <b>+</b> adds it to the open scene (undoable). <b>Rescan</b> picks up new saves; <b>Open Kiln</b> opens it in the browser.</li></ul>
 </section>
 
 <section id="engines" data-title="Generators and budget">
@@ -253,7 +271,7 @@ svg text { font-family: 'IBM Plex Sans Condensed'; }
 // contents from the sections; search hides sections that don't match and marks the words that do
 const doc = document.getElementById('doc'), toc = document.getElementById('toc'), q = document.getElementById('q');
 const secs = [...doc.querySelectorAll('section')];
-const groups = { start: 'Start', files: 'Areas', engines: 'More', dev: 'Developers' };
+const groups = { start: 'Start', files: 'Areas', plugin: 'Godot', engines: 'More', dev: 'Developers' };
 toc.innerHTML = secs.map(s => (groups[s.id] ? `<div class="grp">${groups[s.id]}</div>` : '') + `<a href="#${s.id}" data-id="${s.id}">${s.dataset.title}</a>`).join('');
 const plain = secs.map(s => s.innerHTML);
 function search() {

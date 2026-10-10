@@ -21,7 +21,7 @@ export async function loadSettings() {
 }
 function drawRootChip() {
   const c = $('#rootchip');
-  c.replaceChildren(h('b', {}, 'Asset folder'), short(S.root));
+  c.replaceChildren(h('b', {}, 'Asset folder'), short(S.root)); c.dataset.root = S.root;
   // is this folder inside a Godot project? Then every export uses res:// paths and Godot picks it up directly
   api('/api/godot?path=' + encodeURIComponent(S.root)).then(g => {
     c.append(h('i', { class: 'godot ' + (g.root ? 'ok' : 'no') }, g.root ? 'Godot ✓' : 'not in Godot'));

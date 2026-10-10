@@ -507,6 +507,43 @@ def status():
     return s
 
 
+# ------------------------------------------------- Godot plugin (godot/addons/kiln) ---
+PLUGIN = ROOT / 'godot' / 'addons' / 'kiln'
+
+
+def plugin_zip():
+    import io, zipfile
+    b = io.BytesIO()
+    with zipfile.ZipFile(b, 'w', zipfile.ZIP_DEFLATED) as z:
+        for f in PLUGIN.iterdir():
+            if f.is_file():
+                z.write(f, f'addons/kiln/{f.name}')
+    return b.getvalue()
+
+
+def plugin_install(path):
+    """Copy the Kiln add-on into the Godot project that contains `path` and switch it on in project.godot."""
+    root = godot_root(path)
+    if not root:
+        raise ValueError('that folder is not inside a Godot project (no project.godot above it)')
+    dst = Path(root) / 'addons' / 'kiln'
+    dst.mkdir(parents=True, exist_ok=True)
+    for f in PLUGIN.iterdir():
+        if f.is_file():
+            (dst / f.name).write_bytes(f.read_bytes())
+    pg = Path(root) / 'project.godot'
+    text, entry = pg.read_text(), 'res://addons/kiln/plugin.cfg'
+    if entry not in text:
+        m = re.search(r'(\[editor_plugins\][^\[]*?enabled=PackedStringArray\()([^)]*)\)', text, re.S)
+        if m:
+            inner = m.group(2).strip()
+            text = text[:m.start()] + m.group(1) + (inner + ', ' if inner else '') + f'"{entry}")' + text[m.end():]
+        else:
+            text = text.rstrip() + f'\n\n[editor_plugins]\n\nenabled=PackedStringArray("{entry}")\n'
+        pg.write_text(text)
+    return {'project': root, 'addon': str(dst)}
+
+
 # ------------------------------------------------- desk: which home apps are running ---
 DESK_PORTS = (8440, 8450, 8460, 8461, 8470, 8480, 8490, 8500, 8510, 8790, 8430)
 
@@ -822,6 +859,8 @@ class H(BaseHTTPRequestHandler):
                 s['layout'] = LAYOUT
                 s['home'] = str(HOME)
                 return self.send(200, s)
+            if u.path == '/godot-plugin.zip':
+                return self.send(200, plugin_zip(), 'application/zip')
             if u.path == '/api/apps':
                 return self.send(200, {'up': apps_up()})
             if u.path == '/api/index':
@@ -867,6 +906,8 @@ class H(BaseHTTPRequestHandler):
                 d.mkdir(parents=True, exist_ok=True)
                 (d / f'{pid}.json').write_text(json.dumps(b['data']))
                 return self.send(200, {'ok': True})
+            if u.path == '/api/godot/install':
+                return self.send(200, plugin_install(b.get('path') or settings().get('root')))
             if u.path == '/api/project/delete':
                 f = proj_dir() / (re.sub(r'[^\w.-]', '_', b['id']) + '.json')
                 if f.exists():

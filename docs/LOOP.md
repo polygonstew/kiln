@@ -51,6 +51,30 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - [x] **Flow 3** DONE: sendto.js right-click "Send to" on Concepts cards, Forge results/viewports, Files images, Animate frames,
   scene layers, batch cards: Forge source/guide, Animate frame, new actor, Scene layer, Level tileset (asks if > 256 tiles), Concept board. Was: Every image (Concepts, Forge results, Files, Animate frames, scene layers) gets the same
   right-click "Send to": Forge source · Forge guide · Animate frame · new actor · Scene layer · Level tileset · Concept board.
+**User, 2026-10-10 (big features, in this order; Claude decides the layout, keep it simple by default and let users
+override everything; each gets a Help section and a Godot export):**
+
+- [ ] **Actor workshop** ("open an actor → everything for it"): one page per actor with a checklist of what a game character
+  needs (animation set status, hit/hurt reaction, death, projectiles, sounds later), each item one click to make (Forge locked
+  to the identity). **Hurt-state portrait faces like the Doom marine** (healthy, hurt, badly hurt, near death, dead, grin,
+  look left/right) generated from the reference, wired to HUD portraits: `hud.gd set_health()` switches the face.
+  **Projectiles**: sprite + flight animation + impact, speed/gravity/lifetime, exported as a scene + script.
+- [ ] **Colliders**: per-animation-frame hitboxes and hurtboxes on actors (attack frames get hitboxes), drawn in Animate;
+  level extras: one-way platforms, ladders, hazards (spike tiles), trigger areas. Export: Area2D/CollisionShape2D per frame
+  driven by the AnimatedSprite2D frame, and level Area2D nodes.
+- [ ] **Systems / Logic** (a tab): ready-made behaviours as small editable GDScript: platformer player controller (speed,
+  jump, coyote time, dash, attack), enemy AI (patrol, chase, attack range), health/damage/knockback/i-frames, pickups,
+  doors/switches/triggers, save points. Presets with sliders; an "edit the code" view to override. Attach to actors/levels.
+- [ ] **Dialogue + lore**: dialogue trees (lines, choices, conditions, item checks) for the HUD dialogue box, a lore bible
+  (characters, places, factions) and a writing assistant (free text engines first, per the AI cost rules; no model names
+  in the UI). Export: JSON + a runner that drives `hud.gd say()`.
+- [ ] **Cutscenes**: a timeline (camera moves, actor animations/positions, dialogue lines, fades, waits) exported as a
+  Godot AnimationPlayer scene + script.
+- [ ] LATER: **menus and boot** (splash, title, options, save slots, pause) and **music options**.
+- [ ] **Godot Asset Library / standalone**: a public repo with the plugin (MIT licence, icon, README); optionally ship Kiln
+  inside the addon (server.py + static) with a "Start Kiln" button so others can use it without this machine. Needs the
+  user's go-ahead (public release).
+
 - [ ] **Redesign pass (user: "redesign sections that seem janky"):** from the 2026-10-10 review: Forge's right panel is long
   (split into Size / Colour / Clean-up tabs or collapsible groups); Animate's right panel stacks too much (preview,
   identity, motions, sheet, import, save: make collapsible with remembered state); Stage needs a "pick actor" hint inline;
@@ -174,3 +198,5 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: menu bar, /help guide (searchable, illustrated, Into Godot), DEVELOPING.md, smoke test, Godot chip, quick fixes
   (missing file 404, Levels Background row, new_actor default, Stage preselects). Redesign pass queued.
 - 2026-10-10: timer changed to every 45 min; each run now opens with a bug hunt (rotation starts at Files).
+- 2026-10-10: HUD inventory/dialogue/prompt + Godot HUD scene + hud.gd; Godot plugin (dock, zip, one-click install). Queued: actor
+  workshop, colliders, systems/logic, dialogue+lore, cutscenes, menus/music, asset library.
