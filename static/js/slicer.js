@@ -178,6 +178,15 @@ export function analyzeSheet(keyed, name) {
   const per = rb.map(r => runs(keyed, true, 0, W, r.a, r.b, (r.b - r.a) * 0.01).filter(c => c.b - c.a > 2));
   const counts = per.map(c => c.length), mode = [...counts].sort((a, b) => counts.filter(v => v === b).length - counts.filter(v => v === a).length)[0];
   const good = per.filter(c => c.length === mode && even(c));
+  // rows with gaps (a pose left out) still sit on the same columns: a grid when every figure lands on the fullest rows' pitch
+  const most = Math.max(...counts), full = per.filter(c => c.length === most && even(c));
+  if (rb.length >= 2 && rb.length <= 16 && most >= 2 && full.length && !(good.length >= rb.length * 0.6 && mode === most)) {
+    const pitch = full.map(even).reduce((a, b) => a + b, 0) / full.length;
+    const x0 = Math.max(0, full.map(c => (c[0].a + c[0].b) / 2).reduce((a, b) => a + b, 0) / full.length - pitch / 2);
+    const onGrid = c => c.every(q => { const k = ((q.a + q.b) / 2 - x0) / pitch - .5; return Math.abs(k - Math.round(k)) < .25; });
+    if (per.every(c => c.length <= most && onGrid(c)))
+      return { mode: 'bands', bands: rb, pitch, x0, cols: most, rows: rb.length, names: hint.names.length === rb.length ? hint.names : [], why: `${rb.length} rows of up to ${most} frames (gaps left out)` };
+  }
   if (rb.length >= 1 && mode >= 2 && good.length >= Math.max(1, rb.length * 0.6) && rb.length <= 16) {
     const pitch = good.map(even).reduce((a, b) => a + b, 0) / good.length;
     const x0 = Math.max(0, good.map(c => (c[0].a + c[0].b) / 2).reduce((a, b) => a + b, 0) / good.length - pitch / 2);
@@ -420,7 +429,8 @@ export async function openSlicer(src, opts = {}) {
           // Custom starts from the boxes you see now and keeps them: nothing is re-found, you place every box
           if (v === 'custom') custom = rows.map(r => r.map(b => ({ ...b })));
           st.mode = v; drawCtl(); compute();
-        }), 'Custom: your own boxes. Drag to move, corner square to size, drag on empty space to add, right-click to remove'),
+        }), { bands: 'Rows of evenly spaced poses, found in the sheet; empty spots are left out', auto: 'Each separate figure is a frame; Join gaps glues capes and weapons to their body',
+          grid: 'Cut the sheet into equal cells; drag the grid to line it up, right-click a cell to skip it', custom: 'Your own boxes: drag to move, corner square to size, drag on empty space to add, right-click to remove' }[st.mode] || ''),
         st.mode === 'custom' ? h('div', { style: { display: 'flex', gap: '6px', flexWrap: 'wrap', margin: '4px 0' } },
           h('button', { class: 'btn sm', title: 'Make every box the size of the box under the mouse / the first box', onclick: () => { const all = rows.flat(), ref = hot || all[0]; if (!ref) return; for (const b of all) { b.w = ref.w; b.h = ref.h; } draw(); } }, 'Same size for all'),
           h('button', { class: 'btn sm', title: 'Line every row up: same top edge within a row', onclick: () => { for (const r of rows) { const y = Math.min(...r.map(b => b.y)); for (const b of r) b.y = y; } draw(); } }, 'Align rows'),
