@@ -39,7 +39,8 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - [x] **Flow 2** DONE: Concepts "Batch → sprites": one shared palette (pooled from all images), one height (median default), outline,
   hardware; tick + rename; saves sprites/<name>/<name>.png, never into an existing folder (name_2). Was: Pick a concept session or a folder: every image → sprite with ONE shared palette, size and
   outline (consistency), saved to sprites/<name>/. Preview grid first, then save the ticked ones.
-- [ ] **Flow 3: "Send to…" everywhere.** Every image (Concepts, Forge results, Files, Animate frames, scene layers) gets the same
+- [x] **Flow 3** DONE: sendto.js right-click "Send to" on Concepts cards, Forge results/viewports, Files images, Animate frames,
+  scene layers, batch cards: Forge source/guide, Animate frame, new actor, Scene layer, Level tileset (asks if > 256 tiles), Concept board. Was: Every image (Concepts, Forge results, Files, Animate frames, scene layers) gets the same
   right-click "Send to": Forge source · Forge guide · Animate frame · new actor · Scene layer · Level tileset · Concept board.
 - [ ] **Flow 4: Save all + project health.** One button (top bar) exports every changed actor/scene/level/HUD for Godot, then
   a health report: unsaved items, actors missing animations from their set, frames touching box edges, colours over the
@@ -152,3 +153,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: run 19. Batch pixelize a concept session into a consistent sprite set.
 - 2026-10-10: slicer "Untangle touching frames" (grid/rows modes): pieces go to the box they mostly sit in; joined poses split along
   min-pixel seams between every adjacent pair; frames grow by common margins (no clipping). Tested: unit cases + the hero sheet's attack row.
+- 2026-10-10: run 20. "Send to…" on every image. User then asked: better controls to clear out a space and work section by section (next).

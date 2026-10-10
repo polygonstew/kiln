@@ -132,7 +132,7 @@ function drawGrid() {
     const th = h('div', { class: 'th' });
     const role = it.role === 'actor' || it.role === 'scene' ? it.role : null;
     const el = h('div', {
-      class: 'it' + (S.sel?.path === it.path ? ' on' : ''), tabIndex: 0, title: it.help || it.info || it.name,
+      class: 'it' + (S.sel?.path === it.path ? ' on' : ''), tabIndex: 0, 'data-name': it.name, title: it.help || it.info || it.name,
       onclick: () => { S.sel = it; for (const x of V.grid.children) x.classList.toggle('on', x === el); drawDetail(); },
       ondblclick: () => it.dir ? go(it.path) : openFile(it),
     }, th, h('div', { class: 'nm' }, it.name),

@@ -60,6 +60,9 @@ on('level-tileset', d => { pendingTs = d; if (mounted) takeTs(); });
 async function takeTs() {
   if (!pendingTs || !L) return;
   const d = pendingTs; pendingTs = null;
+  // a whole picture sent as a tileset makes thousands of tiles: check first
+  const probe = await imgData(d.url).catch(() => null);
+  if (probe && Math.floor(probe.width / d.tile) * Math.floor(probe.height / d.tile) > 256 && !confirm(`That image cuts into ${Math.floor(probe.width / d.tile) * Math.floor(probe.height / d.tile)} tiles of ${d.tile} px. It is probably a picture, not a tileset.\n\nUse it anyway?`)) return;
   L.ts = d.url; L.tile = d.tile; L.solid = []; L.pick = 0; await loadTiles(); changed(); drawLeft(); draw();
   toast(`Tileset from "${d.name}": ${tileCount()} tiles of ${d.tile} px. Shift+click the solid ones`, 'ok');
 }

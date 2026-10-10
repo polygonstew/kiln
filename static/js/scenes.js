@@ -62,7 +62,7 @@ async function drain() {
   while (pending.length) {
     const [k, d] = pending.shift();
     if (k === 'open') await openSceneDir(d);
-    if (k === 'layer') await addImageLayer(rawURL(d), d.split('/').pop().replace(/\.\w+$/, ''));
+    if (k === 'layer') await addImageLayer(/^(data:|\/api\/|https?:)/.test(d) ? d : rawURL(d), layerName(d));
   }
 }
 
@@ -255,6 +255,12 @@ function usePreset(k, silent) {
   for (const [g, p] of PRESETS[k].layers) addGen(g, p);
   if (SC.name === 'scene') SC.name = freeName(k, SC.id);     // only an unnamed scene takes the preset's name, and never a taken one
   sel = 0; drawAll(); process();
+}
+// a readable layer name from a path, a /api/fs/raw?path=… URL or a data URL
+function layerName(d) {
+  if (d.startsWith('data:')) return 'image';
+  const p = d.includes('path=') ? decodeURIComponent(d.split('path=')[1].split('&')[0]) : d.split('?')[0];
+  return p.split('/').pop().replace(/\.\w+$/, '').replace(/^\d{8,}-\d+-/, '') || 'image';
 }
 async function addImageLayer(url, name) {
   try {

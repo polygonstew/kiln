@@ -110,7 +110,8 @@ export const forge = {
 async function takePending() {
   if (!pending) return;
   const p = pending; pending = null;
-  await setSource(rawURL(p.path), p.path.split('/').pop());
+  // a path in the asset folder, or already a URL (a cloud image, a data URL from "Send to")
+  await setSource(/^(data:|\/api\/|https?:)/.test(p.path) ? p.path : rawURL(p.path), p.path.split('/').pop().split('?')[0]);
 }
 
 /* -------------------------------------------------------------- prompt ---- */
@@ -523,11 +524,5 @@ registerWheel('forge', () => ({
     { label: 'Zoom 4×', on: st.zoom === 4, run: () => { st.zoom = 4; save(); paint(); } },
   ],
 }));
-registerMenu('#v-forge .results .r', el => {
-  const img = el.querySelector('img'); if (!img) return [];
-  const url = img.getAttribute('src');
-  return [{ head: 'Image' },
-    { label: 'Use as source', run: () => { setSource(url, ''); drawResults(); } },
-    { label: 'Use as guide', run: async () => { const im = await imgData(url).catch(() => null); if (im) { guide = flatSmall(im); drawLeft(); } } },
-    { label: 'Open in new tab', run: () => window.open(url, '_blank') }];
-});
+// right-click on a result: the shared "Send to" menu (sendto.js)
+

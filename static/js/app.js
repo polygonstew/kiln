@@ -6,6 +6,7 @@ import { files, loadSettings } from './files.js';
 import { editStyle } from './style.js';
 import { initWheel, registerWheel } from './wheel.js';
 import './quick.js';
+import './sendto.js';
 
 const mods = [files];
 const optional = ['forge', 'animate', 'scenes', 'levels', 'hud', 'stage', 'concepts'];
