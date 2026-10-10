@@ -479,6 +479,9 @@ function keys(e) {
   if (tool) { setTool(tool[0]); return; }
   if (k === 'x') { [A.c1, A.c2] = [A.c2, A.c1]; drawLeft(); }
   else if (k === 'o') { A.onion = !A.onion; drawEditor(); }
+  else if (k === 'f') player?.juice('flash');
+  else if (k === 's') player?.juice('squash');
+  else if (k === 'k') player?.juice('shake');
   else if (k === 'h') { pushUndo(); setFrame(flipX(frame())); }
   else if (k === ',') goFrame(-1);
   else if (k === '.') goFrame(1);
@@ -838,6 +841,9 @@ registerWheel('animate', () => ({
     { label: 'Pixel grid', on: !!A.grid, run: () => { A.grid = !A.grid; drawEditor(); } },
     { label: 'Mirror draw', on: !!A.mirror, hint: 'draw both sides', run: () => { A.mirror = !A.mirror; drawEditor(); } },
     { label: '2-wide box', on: (anim().span || 1) > 1, hint: 'room for long swings', run: () => setSpan(anim(), (anim().span || 1) > 1 ? 1 : 2) },
+    { label: 'Hit flash', key: 'F', hint: 'preview', run: () => player?.juice('flash') },
+    { label: 'Squash', key: 'S', hint: 'preview', run: () => player?.juice('squash') },
+    { label: 'Shake', key: 'K', hint: 'preview', run: () => player?.juice('shake') },
     { label: 'Box template', hint: 'draw into boxes', run: templateOut },
     { label: 'Save actor', run: exportActor },
   ],

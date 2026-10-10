@@ -148,9 +148,9 @@ function closeMenu() {
 const KEYS = {
   '*': [['1 – 6', 'Switch area'], ['Ctrl+K', 'Find anything: areas, actions, actors, scenes, files'], ['Shift+A', 'Command wheel (area / tool / guide)'], ['Right-click', 'Kiln menu (Shift+right-click: browser menu)'], ['?', 'This list'], ['Esc', 'Close wheel, menu or this list']],
   files: [['Enter', 'Open'], ['F2', 'Rename'], ['Delete', 'Move to trash'], ['Backspace', 'Up a folder'], ['Drop files', 'Copy them into this folder']],
-  forge: [['Ctrl+V', 'Paste an image as the source'], ['Click source', 'Pick the background colour to remove'], ['Drop on guide box', 'Set a guide image'], ['Right-click a result', 'Use as source / as guide']],
+  forge: [['D', 'Roll the dice: a random enemy idea'], ['Ctrl+V', 'Paste an image as the source'], ['Click source', 'Pick the background colour to remove'], ['Drop on guide box', 'Set a guide image'], ['Right-click a result', 'Use as source / as guide']],
   animate: [['Left click', 'Add pixels'], ['Right click', 'Remove pixels'], ['Mouse wheel', 'Roll through the palette'], ['Middle click', 'Pick the colour under the cursor'], ['Ctrl/Alt+wheel', 'Zoom'],
-    ['B E G I L R M V', 'Pencil, eraser, fill, pick, line, rectangle, select, move'], ['Shift+drag (R)', 'Filled rectangle'], ['O', 'Onion skin'], ['H', 'Flip frame'], ['N', 'Copy frame'],
+    ['B E G I L R M V', 'Pencil, eraser, fill, pick, line, rectangle, select, move'], ['Shift+drag (R)', 'Filled rectangle'], ['O', 'Onion skin'], ['H', 'Flip frame'], ['F / S / K', 'Preview: hit flash, squash, shake'], ['N', 'Copy frame'],
     [', and .', 'Previous / next frame'], ['Ctrl+Z / Ctrl+Y', 'Undo / redo'], ['Ctrl+C / Ctrl+V', 'Copy / paste selection'], ['Enter or Esc', 'Drop the selection'], ['Delete', 'Clear the selection'], ['Drop a sheet', 'Cut it into frames']],
   scenes: [['← →', 'Pan the camera'], ['Space', 'Play / pause the scroll']],
   hud: [['Arrows', 'Nudge the widget (Shift: 8 px)'], ['Ctrl+D', 'Duplicate widget'], ['Delete', 'Remove widget']],

@@ -8,7 +8,7 @@ export class Player {
   /* anims: [{name, fps, loop, frames: [ImageData|canvas]}] */
   constructor({ compact = false, height = 260, onFrame = null } = {}) {
     this.anims = []; this.cur = 0; this.i = 0; this.playing = true; this.dir = 1;
-    this.pingpong = false; this.onion = false; this.flip = false; this.bounds = false;
+    this.pingpong = false; this.onion = false; this.flip = false; this.bounds = false; this.fx = {};
     this.zoom = 0; this.bg = pref.get('player.bg', 'checker'); this.onFrame = onFrame; this.speed = 1;
     this.cv = h('canvas');
     this.scr = h('div', { class: 'scr', style: { height: height + 'px' } }, this.cv);
@@ -22,6 +22,12 @@ export class Player {
       tb('onion', 'Onion skin: show the frame before', () => this.onion = !this.onion, () => this.onion),
       tb('flip', 'Face the other way', () => this.flip = !this.flip, () => this.flip),
       tb('grid', 'Show frame bounds and baseline', () => this.bounds = !this.bounds, () => this.bounds),
+      // juice: how the sprite feels in the game when something happens to it
+      h('i', { class: 'sep' }),
+      h('button', { class: 'ibtn juice', title: 'Hit flash: the sprite flashes white, as when it takes a hit (F)', onclick: () => this.juice('flash') }, 'F'),
+      h('button', { class: 'ibtn juice', title: 'Squash and stretch: a landing squash that springs back (S)', onclick: () => this.juice('squash') }, 'S'),
+      h('button', { class: 'ibtn juice', title: 'Screen shake: a heavy impact (K)', onclick: () => this.juice('shake') }, 'K'),
+      h('button', { class: 'ibtn juice', title: 'All three: a big hit', onclick: () => { this.juice('flash'); this.juice('squash'); this.juice('shake'); } }, '✸'),
     ];
     this.speedSel = h('select', { style: { width: '64px' }, title: 'Playback speed', onchange: () => this.speed = +this.speedSel.value },
       ...[[.25, '¼×'], [.5, '½×'], [1, '1×'], [2, '2×']].map(([v, l]) => h('option', { value: v }, l)));
@@ -47,6 +53,7 @@ export class Player {
         while (this.acc >= dt && n++ < 8) { this.acc -= dt; this.advance(); }
       }
       this.t = now;
+      if (Object.keys(this.fx).length) this.draw();          // effects animate even while paused
       this.raf = requestAnimationFrame(tick);
     };
     this.raf = requestAnimationFrame(tick);
@@ -83,6 +90,7 @@ export class Player {
     } else this.i++;
     this.draw();
   }
+  juice(kind) { this.fx[kind] = performance.now(); this.draw(); }
   step(d) { const a = this.anims[this.cur]; if (!a) return; this.i = (this.i + d + a.frames.length) % a.frames.length; this.draw(); }
   draw() {
     const a = this.anims[this.cur];
@@ -95,11 +103,20 @@ export class Player {
     const z = this.zoom || Math.max(1, Math.floor(Math.min((W - 16) / fw, (H - 16) / fh)));
     const ox = Math.floor((W - fw * z) / 2), oy = Math.floor((H - fh * z) / 2);
     x.imageSmoothingEnabled = false;
+    // effects: age (0..1) of each running one; finished ones are dropped
+    const now = performance.now(), age = {}, DUR = { flash: 180, squash: 420, shake: 300 };
+    for (const [k, t0] of Object.entries(this.fx)) { const a = (now - t0) / DUR[k]; if (a >= 1) delete this.fx[k]; else age[k] = a; }
+    let dx = 0, dy = 0, sx = 1, sy = 1;
+    if (age.shake != null) { const m = (1 - age.shake) * Math.max(2, z * 1.5); dx = Math.round((Math.random() * 2 - 1) * m); dy = Math.round((Math.random() * 2 - 1) * m * .6); }
+    if (age.squash != null) { const e = Math.sin(age.squash * Math.PI * 2.5) * (1 - age.squash); sx = 1 + .28 * e; sy = 1 - .22 * e; }
+    const flashOn = age.flash != null && Math.floor(age.flash * 3) % 2 === 0;   // two quick white blinks
     const put = (f, alpha) => {
-      const c = f instanceof ImageData ? toCanvas(f) : f;
+      let c = f instanceof ImageData ? toCanvas(f) : f;
+      if (flashOn && alpha === 1) { const t = toCanvas(f); const q = t.getContext('2d'); q.globalCompositeOperation = 'source-atop'; q.fillStyle = '#fff'; q.fillRect(0, 0, t.width, t.height); c = t; }
       x.save(); x.globalAlpha = alpha;
-      if (this.flip) { x.translate(ox + fw * z, oy); x.scale(-1, 1); x.drawImage(c, 0, 0, fw * z, fh * z); }
-      else x.drawImage(c, ox, oy, fw * z, fh * z);
+      // squash and stretch keep the feet on the floor: scale around the bottom centre
+      x.translate(ox + fw * z / 2 + dx, oy + fh * z + dy); x.scale((this.flip ? -1 : 1) * sx, sy);
+      x.drawImage(c, -fw * z / 2, -fh * z, fw * z, fh * z);
       x.restore();
     };
     if (this.onion && a.frames.length > 1) put(a.frames[(this.i - 1 + a.frames.length) % a.frames.length], .28);

@@ -46,7 +46,9 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
   Original plan: Every button and control in every tab gets a `title`. Press `?` for a
   shortcuts overlay (black-and-gold HUD style), generated from a shared registry.
 - [x] **Quick switcher, Ctrl+K** DONE (quick.js + `/api/index`; project list cached by mtime, 6 s → 2 ms).: fuzzy search across actors, scenes, HUDs, files, tabs and wheel actions.
-- [ ] **Fun tools in Animate**: a "juice" preview (hit flash, squash and stretch, screen shake) on the live
+- [x] **Fun tools, slice 1** DONE: juice preview on the live player (F hit flash, S squash, K shake, ✸ all) and the Forge dice (⚂ Roll / D).
+- [ ] **Fun tools, slice 2**: palette-cycle animation (glow, water, torch flicker) and "juice" exported as a Godot AnimationPlayer snippet.
+  Original note: **Fun tools in Animate**: a "juice" preview (hit flash, squash and stretch, screen shake) on the live
   player; a palette-cycle animation; a "dice" button that rolls a random enemy prompt from parts (body,
   weapon, mood, colours) and sends it to Forge.
 - [ ] **Mold existing software: LDtk-style "Levels" tab.** Paint tiles cut from scenes, place entities (actors),
@@ -73,3 +75,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: run 3. IP-Adapter tried and rejected (weak likeness on this model, 6.6 GB RAM); 2.4 GB download removed.
 - 2026-10-10: run 4. `?` controls overlay per area plus shared button tooltips (wheel.js).
 - 2026-10-10: run 5. Ctrl+K finds areas, actions, actors, scenes, files (path-order fuzzy); also in the right-click menu and the ? list.
+- 2026-10-10: run 6. Juice preview (flash, squash, shake) in the Animate player plus the Forge dice roll for random enemy ideas.

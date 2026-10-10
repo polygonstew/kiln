@@ -78,6 +78,10 @@ export const forge = {
             h('button', { class: 'btn sm ghost', onclick: () => { if (confirm('Clear the list? The image files are kept.')) { results = []; pref.set('forge.results', results); drawResults(); } } }, 'Clear list')),
           V.results)),
       V.right);
+    el.addEventListener('keydown', e => {
+      if (e.target.matches('input,textarea,select') || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.key.toLowerCase() === 'd' && !ID) { roll(); e.preventDefault(); }
+    });
     document.addEventListener('paste', e => {
       if (!el.classList.contains('on')) return;
       const f = [...(e.clipboardData?.files || [])].find(f => f.type.startsWith('image/'));
@@ -113,6 +117,24 @@ function fullPrompt() {
   if (v && st.kind !== 'item' && st.kind !== 'fx') bits.push(v[2]);
   bits.push(stylePrompt());
   return bits.filter(Boolean).join(', ');
+}
+// The dice: a random enemy idea from parts, in the game's grim register. Fills the description and moods.
+const DICE = {
+  who: ['drowned bell-ringer', 'plague-masked friar', 'hollow knight of the gutter', 'chained penitent', 'rat-king beggar', 'wax-faced choir boy',
+    'gravedigger with too many arms', 'tar-soaked sewer hound', 'faceless lamplighter', 'stitched executioner', 'moth-winged nun', 'rusted clockwork deacon',
+    'bone-masked hunter', 'candle-headed wanderer', 'crow-feathered witch', 'butcher in a blood-stiff apron', 'drowned sailor', 'pallid twin'],
+  holds: ['a rusted flail', 'a hooked cleaver', 'a lantern of green flame', 'a broken church bell', 'a bundle of nails', 'an anchor chain',
+    'a thurible leaking smoke', 'a crooked spear', 'a bone saw', 'a cage holding a bird skull', 'a scythe made from a door', 'a pair of shears'],
+  detail: ['cracked porcelain mask', 'iron collar', 'too-long fingers', 'hunched spine', 'wet rags', 'barbed wire wrapped around the arms',
+    'a hole where the face should be', 'candles melted onto the shoulders', 'a stitched-shut mouth', 'glowing eyes', 'barnacles on the skin', 'a ring of keys'],
+  palette: ['bone white and rust', 'sickly green and black', 'dried-blood red and grey', 'cold blue and tarnished gold', 'sepia and soot', 'violet and ash'],
+};
+const pickOne = a => a[Math.floor(Math.random() * a.length)];
+function roll() {
+  st.prompt = `${pickOne(DICE.who)} holding ${pickOne(DICE.holds)}, ${pickOne(DICE.detail)}, ${pickOne(DICE.palette)} colours`;
+  st.kind = Math.random() < .25 ? 'creature' : 'character';
+  st.moods = [...new Set([pickOne(MOODS.slice(0, 10)), pickOne(['grim', 'eerie', 'grotesque', 'ragged'])])];
+  save(); drawLeft(); toast('Rolled: ' + st.prompt.split(',')[0]);
 }
 function chips(list, key, multi, onChange) {
   const box = h('div', { class: 'chips' });
@@ -166,7 +188,8 @@ function drawLeft() {
     const ta = h('textarea', { rows: 3, value: st.prompt, placeholder: 'What is it? e.g. "drowned sailor with an anchor chain"', oninput: () => { st.prompt = ta.value; save(); } });
     const neg = h('input', { type: 'text', value: st.neg, placeholder: 'things to keep out', oninput: () => { st.neg = neg.value; save(); } });
     V.left.replaceChildren(...[
-      h('div', { class: 'sec' }, h('h3', {}, 'Describe it'), ta,
+      h('div', { class: 'sec' }, h('h3', {}, 'Describe it', h('span', { class: 'grow' }),
+        h('button', { class: 'btn sm ghost dice', title: 'Roll the dice: a random enemy idea from parts (D). Roll again until one grabs you', onclick: roll }, '⚂ Roll')), ta,
         h('div', { style: { marginTop: '8px' } }, chips(KINDS.map(k => [k[0], k[1]]), 'kind')),
         h('div', { style: { marginTop: '8px' } }, chips(VIEWS.map(v => [v[0], v[1]]), 'view')),
         h('div', { style: { marginTop: '8px' } }, chips(MOODS.map(m => [m, m]), 'moods', true)),
@@ -472,6 +495,7 @@ async function savePalette() {
 registerWheel('forge', () => ({
   tools: [
     { label: 'Generate', hint: ID ? 'for ' + ID.name : st.engine, run: generate },
+    { label: 'Roll dice', key: 'D', hint: 'random enemy', run: roll },
     { label: 'Open image', run: () => V.file?.click() },
     { label: 'Use as guide', hint: 'source to guide', run: () => { if (!src) return toast('Nothing in the Source pane yet'); guide = flatSmall(src); drawLeft(); } },
     { label: 'New actor', hint: 'to Animate', run: () => sendToAnimate('new') },
