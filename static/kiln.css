@@ -309,3 +309,8 @@ input[type=color] { width: 28px; height: 22px; padding: 0; border: 1px solid var
 .reflink { color: var(--ember2); text-decoration: none; } .reflink:hover { text-decoration: underline; }
 .results .r.inbox { position: relative; outline: 1px dashed var(--ok); }
 .results .r.inbox b { position: absolute; top: 2px; left: 2px; font: 9px var(--mono); background: var(--ok); color: #111; padding: 0 3px; border-radius: 2px; }
+table.breakdown { width: 100%; border-collapse: collapse; font-size: 12px; }
+table.breakdown th { text-align: left; font: 10px var(--mono); color: var(--faint); text-transform: uppercase; letter-spacing: .06em; padding: 2px 4px; }
+table.breakdown td { padding: 3px 4px; border-top: 1px solid var(--line); color: var(--dim); cursor: pointer; }
+table.breakdown tr.on td { color: var(--ember2); }
+table.breakdown td.warn { color: var(--bad); } table.breakdown td.ok { color: var(--ok); }

@@ -123,7 +123,7 @@ export async function loadActor(dir) {
   for (const [name, a] of Object.entries(man.anims || {})) {
     try {
       const im = await imgData(rawURL(dir + '/' + (a.file || name + '.png')));
-      const w = man.w || Math.floor(im.width / (a.frames || 1)), hh = man.h || im.height;
+      const w = a.w || man.w || Math.floor(im.width / (a.frames || 1)), hh = man.h || im.height;
       const n = a.frames || Math.max(1, Math.floor(im.width / w));
       const frames = [];
       for (let i = 0; i < n; i++) frames.push(crop(im, i * w, 0, w, hh));

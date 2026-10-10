@@ -5,6 +5,7 @@ import { icon } from './icons.js';
 import { Player, loadActor } from './player.js';
 import { MOTIONS } from './motion.js';
 import { openSlicer } from './slicer.js';
+import { SETS, makeTemplate, readTemplate, download as downloadSheet } from './sheets.js';
 import { saveFiles, S as FS } from './files.js';
 
 const ANIM_NAMES = ['idle', 'walk', 'run', 'jump', 'fall', 'attack', 'hurt', 'death', 'crouch', 'cast', 'climb', 'dash', 'block', 'spin'];
@@ -76,7 +77,7 @@ function changed(structure = false) {
   A.ai = clamp(A.ai, 0, A.actor.anims.length - 1);
   A.fi = clamp(A.fi, 0, anim().frames.length - 1);
   drawEditor();
-  if (structure) { drawTimeline(); drawLeft(); } else updateThumb();
+  if (structure) { drawTimeline(); drawLeft(); drawSheet(); } else updateThumb();
   feedPlayer();
   clearTimeout(saveT);
   saveT = setTimeout(autosave, 1500);
@@ -141,7 +142,7 @@ function drawLeft() {
   const wIn = h('input', { type: 'number', value: a.w, min: 4, max: 256, style: { width: '62px' } });
   const hIn = h('input', { type: 'number', value: a.h, min: 4, max: 256, style: { width: '62px' } });
   const sw = h('div', { class: 'sw big' }, ...a.pal.map((c, i) => h('i', {
-    class: A.c1 && hex(A.c1) === hex(c) ? 'on' : '', title: `${hex(c)}  ·  click: draw  ·  right-click: second colour  ·  double-click: recolour everywhere`,
+    class: A.c1 && hex(A.c1) === hex(c) ? 'on' : '', title: `${hex(c)}  ·  click: draw with it  ·  double-click: recolour it everywhere  ·  on the canvas: left adds, right removes, wheel rolls colours, middle-click picks`,
     style: { background: hex(c) },
     onclick: () => { A.c1 = c; if (A.tool === 'eraser' || A.tool === 'pick') A.tool = 'pencil'; drawLeft(); },
     oncontextmenu: e => { e.preventDefault(); A.c2 = c; drawLeft(); },
@@ -159,8 +160,8 @@ function drawLeft() {
     h('div', { class: 'sec' }, h('h3', {}, 'Tools'),
       h('div', { class: 'tools' }, ...TOOLS.map(([t, k, title]) => h('button', { class: A.tool === t ? 'on' : '', title: `${title} (${k})`, onclick: () => setTool(t) }, icon(t === 'pick' ? 'pick' : t), h('kbd', {}, k)))),
       h('div', { style: { display: 'flex', gap: '14px', marginTop: '10px', alignItems: 'center' } },
-        chip(A.c1, 'draw'), chip(A.c2, 'right-click'),
-        h('button', { class: 'btn sm ghost', title: 'Swap (X)', onclick: () => { [A.c1, A.c2] = [A.c2, A.c1]; drawLeft(); } }, 'Swap'))),
+        chip(A.c1, 'left click adds'), h('span', { style: { fontSize: '11px', color: 'var(--faint)' } }, 'right click removes · wheel rolls colours · middle click picks'),
+        )),
     h('div', { class: 'sec' }, h('h3', {}, 'Palette', h('span', { class: 'grow' }), h('small', { style: { color: used.size > H.sprite ? 'var(--warn)' : 'var(--faint)' } }, `${used.size} used · ${H.name} allows ${H.sprite}`)),
       sw,
       h('div', { class: 'btns' },
@@ -187,11 +188,21 @@ function recolour(i) {
   };
   inp.click();
 }
+// change an animation's box width; art stays centred, and narrowing never silently cuts art off
+function setSpan(n, span) {
+  if ((n.span || 1) === span) return;
+  const W = A.actor.w * span;
+  const cut = n.frames.some(f => { const b = bbox(f); return b && (b.w > W || b.x < (f.width - W) / 2 || b.x + b.w > (f.width + W) / 2); });
+  if (cut && !confirm(`Some frames of "${n.name}" have art outside a ${W}px box and it would be cut off.\n\nNarrow it anyway?`)) return drawTimeline();
+  pushUndo();
+  n.frames = n.frames.map(f => blit(newImg(W, A.actor.h), f, Math.floor((W - f.width) / 2), 0));
+  n.span = span; changed(true);
+}
 function resizeActor(w, hh) {
   w = clamp(w | 0, 4, 256); hh = clamp(hh | 0, 4, 256);
   if (w === A.actor.w && hh === A.actor.h) return;
   pushUndo();
-  for (const n of A.actor.anims) n.frames = n.frames.map(f => blit(newImg(w, hh), f, Math.floor((w - f.width) / 2), hh - f.height));
+  for (const n of A.actor.anims) n.frames = n.frames.map(f => blit(newImg(w * (n.span || 1), hh), f, Math.floor((w * (n.span || 1) - f.width) / 2), hh - f.height));
   A.actor.w = w; A.actor.h = hh; changed(true);
 }
 function newActor() {
@@ -233,7 +244,7 @@ async function openActorDir(dir) {
       const pal = new Map();
       for (const n of a.anims) for (const f of n.frames.slice(0, 2)) for (const c of colorsOf(f)) pal.set(hex(c), c);
       A.actor = { id: uid(), name: slug(name), w: a.w || a.anims[0].frames[0].width, h: a.h || a.anims[0].frames[0].height, desc: '',
-        pal: [...pal.values()].slice(0, 64).sort((x, y) => luma(x) - luma(y)), anims: a.anims.map(n => ({ name: n.name, fps: n.fps, loop: n.loop, frames: n.frames })) };
+        pal: [...pal.values()].slice(0, 64).sort((x, y) => luma(x) - luma(y)), anims: a.anims.map(n => ({ name: n.name, fps: n.fps, loop: n.loop, frames: n.frames, span: Math.max(1, Math.round(n.frames[0].width / (a.w || n.frames[0].width))) })) };
     }
     A.ai = A.fi = 0; A.undo = []; A.redo = []; changed(true);
     toast('Opened ' + name);
@@ -291,11 +302,14 @@ function sliceInto(src, name) {
 
 /* --------------------------------------------------------------- editor ---- */
 let zoomNow = 8, origin = [0, 0];
+// An animation can be 1 or 2 boxes wide (a long swing, a lunge): its frames are span × the actor's width.
+const fw = (n = anim()) => A.actor.w * (n.span || 1);
 function drawEditor() {
   if (!V.cv || !A.actor) return;
   const a = A.actor, W = V.vp.clientWidth, H = V.vp.clientHeight;
-  zoomNow = A.zoom || Math.max(1, Math.floor(Math.min((W - 40) / a.w, (H - 40) / a.h)));
-  const cw = a.w * zoomNow, ch = a.h * zoomNow;
+  const FW = frame().width;
+  zoomNow = A.zoom || Math.max(1, Math.floor(Math.min((W - 40) / FW, (H - 40) / a.h)));
+  const cw = FW * zoomNow, ch = a.h * zoomNow;
   V.cv.width = cw; V.cv.height = ch;
   V.cv.style.width = cw + 'px'; V.cv.style.height = ch + 'px';
   const x = V.cv.getContext('2d');
@@ -311,24 +325,38 @@ function drawEditor() {
   if (A.float) x.drawImage(toCanvas(A.float.img), A.float.x * zoomNow, A.float.y * zoomNow, A.float.img.width * zoomNow, A.float.img.height * zoomNow);
   if (A.grid && zoomNow >= 6) {
     x.strokeStyle = 'rgba(255,255,255,.06)'; x.lineWidth = 1; x.beginPath();
-    for (let i = 1; i < a.w; i++) { x.moveTo(i * zoomNow + .5, 0); x.lineTo(i * zoomNow + .5, ch); }
+    for (let i = 1; i < FW; i++) { x.moveTo(i * zoomNow + .5, 0); x.lineTo(i * zoomNow + .5, ch); }
     for (let i = 1; i < a.h; i++) { x.moveTo(0, i * zoomNow + .5); x.lineTo(cw, i * zoomNow + .5); }
     x.stroke();
     // 8×8 tile lines, slightly stronger: hardware sprites are built from these
     x.strokeStyle = 'rgba(255,255,255,.12)'; x.beginPath();
-    for (let i = 8; i < a.w; i += 8) { x.moveTo(i * zoomNow + .5, 0); x.lineTo(i * zoomNow + .5, ch); }
+    for (let i = 8; i < FW; i += 8) { x.moveTo(i * zoomNow + .5, 0); x.lineTo(i * zoomNow + .5, ch); }
     for (let i = 8; i < a.h; i += 8) { x.moveTo(0, i * zoomNow + .5); x.lineTo(cw, i * zoomNow + .5); }
     x.stroke();
   }
+  // a 2-wide frame: show where the normal 1-box body area sits, so the body stays put between animations
+  if (FW > a.w) { x.strokeStyle = 'rgba(227,176,75,.45)'; x.setLineDash([2, 4]); const bx = (FW - a.w) / 2 * zoomNow; x.strokeRect(bx + .5, .5, a.w * zoomNow - 1, ch - 1); x.setLineDash([]); }
+  // art touching the left, right or top edge may be cut off in the game: mark that edge
+  const edge = touches(frame());
+  if (edge.length) { x.fillStyle = '#e5534b'; for (const e of edge) { if (e === 'l') x.fillRect(0, 0, 3, ch); if (e === 'r') x.fillRect(cw - 3, 0, 3, ch); if (e === 't') x.fillRect(0, 0, cw, 3); } }
   if (A.mirror) { x.strokeStyle = '#ff5b2e88'; x.setLineDash([4, 4]); x.beginPath(); x.moveTo(cw / 2, 0); x.lineTo(cw / 2, ch); x.stroke(); x.setLineDash([]); }
   const s = A.float ? { x: A.float.x, y: A.float.y, w: A.float.img.width, h: A.float.img.height } : A.sel;
   if (s) { x.strokeStyle = '#fff'; x.setLineDash([3, 3]); x.lineDashOffset = (performance.now() / 60) % 6; x.strokeRect(s.x * zoomNow + .5, s.y * zoomNow + .5, s.w * zoomNow - 1, s.h * zoomNow - 1); x.setLineDash([]); }
   if (hover && !drag) { x.strokeStyle = 'rgba(255,255,255,.5)'; x.strokeRect(hover[0] * zoomNow + .5, hover[1] * zoomNow + .5, zoomNow - 1, zoomNow - 1); }
-  V.status.textContent = `${anim().name} ${A.fi + 1}/${fr.length}${hover ? `  ·  ${hover[0]},${hover[1]}` : ''}  ·  ${zoomNow}×`;
+  V.status.textContent = `${anim().name} ${A.fi + 1}/${fr.length}${hover ? `  ·  ${hover[0]},${hover[1]}` : ''}  ·  ${zoomNow}×${edge.length ? '  ·  touches the box edge: may be cut off' : ''}`;
 }
 setInterval(() => { if (mounted && (A.sel || A.float) && V.cv?.isConnected) drawEditor(); }, 120);
 const px = e => { const r = V.cv.getBoundingClientRect(); return [Math.floor((e.clientX - r.left) / zoomNow), Math.floor((e.clientY - r.top) / zoomNow)]; };
-const inside = ([x, y]) => x >= 0 && y >= 0 && x < A.actor.w && y < A.actor.h;
+const inside = ([x, y]) => x >= 0 && y >= 0 && x < frame().width && y < A.actor.h;
+// which edges (left, right, top) have opaque pixels on them; the bottom row is the floor, feet belong there
+function touches(f) {
+  const out = [], a = (x, y) => f.data[(y * f.width + x) * 4 + 3] >= 128;
+  let l = false, r = false, t = false;
+  for (let y = 0; y < f.height; y++) { if (a(0, y)) l = true; if (a(f.width - 1, y)) r = true; }
+  for (let x = 0; x < f.width; x++) if (a(x, 0)) t = true;
+  if (l) out.push('l'); if (r) out.push('r'); if (t) out.push('t');
+  return out;
+}
 function setPx(f, x, y, c) {
   const put = (x, y) => { if (x < 0 || y < 0 || x >= f.width || y >= f.height) return; const i = (y * f.width + x) * 4; if (!c) { f.data[i + 3] = 0; return; } f.data[i] = c[0]; f.data[i + 1] = c[1]; f.data[i + 2] = c[2]; f.data[i + 3] = 255; };
   put(x, y); if (A.mirror) put(f.width - 1 - x, y);
@@ -359,9 +387,12 @@ function bindCanvas() {
   cv.addEventListener('contextmenu', e => e.preventDefault());
   cv.addEventListener('pointerdown', e => {
     cv.setPointerCapture(e.pointerId);
-    const p = px(e), f = frame(), c = e.button === 2 ? A.c2 : A.c1;
-    const t = A.tool;
-    if (t === 'pick') { if (inside(p)) { const k = getPx(f, ...p); if (e.button === 2) A.c2 = k; else A.c1 = k; drawLeft(); } return; }
+    const p = px(e), f = frame();
+    // left click adds, right click removes (with any drawing tool), middle click picks the colour under the cursor
+    if (e.button === 1) { e.preventDefault(); if (inside(p)) { const k = getPx(f, ...p); if (k) { A.c1 = k; drawLeft(); } } return; }
+    const erase = e.button === 2, c = erase ? null : A.c1;
+    const t = erase && ['pick', 'select', 'move'].includes(A.tool) ? 'pencil' : A.tool;
+    if (t === 'pick') { if (inside(p)) { const k = getPx(f, ...p); if (k) A.c1 = k; drawLeft(); } return; }
     if (t === 'select') {
       if (A.float && hit(p, A.float)) { drag = { t: 'float', p0: p, o: [A.float.x, A.float.y] }; return; }
       if (A.sel && hit(p, A.sel) && !A.float) { liftSel(); drag = { t: 'float', p0: p, o: [A.float.x, A.float.y] }; return; }
@@ -371,7 +402,7 @@ function bindCanvas() {
     if (t === 'move') { drag = { t: 'move', p0: p, base: cloneImg(f) }; return; }
     if (t === 'fill') { if (inside(p)) { flood(f, ...p, c); changed(); } return; }
     if (t === 'line' || t === 'rect') { drag = { t, p0: p, base: cloneImg(f), c, fill: e.shiftKey }; return; }
-    const col = t === 'eraser' ? null : c;
+    const col = t === 'eraser' || erase ? null : c;
     drag = { t: 'paint', last: p, c: col };
     setPx(f, ...p, col); drawEditor();
   });
@@ -392,8 +423,9 @@ function bindCanvas() {
     } else if (drag.t === 'move') {
       f.data.set(shift(drag.base, p[0] - drag.p0[0], p[1] - drag.p0[1]).data); drawEditor();
     } else if (drag.t === 'sel') {
-      const x0 = clamp(Math.min(drag.p0[0], p[0]), 0, A.actor.w - 1), y0 = clamp(Math.min(drag.p0[1], p[1]), 0, A.actor.h - 1);
-      const x1 = clamp(Math.max(drag.p0[0], p[0]), 0, A.actor.w - 1), y1 = clamp(Math.max(drag.p0[1], p[1]), 0, A.actor.h - 1);
+      const FW = frame().width;
+      const x0 = clamp(Math.min(drag.p0[0], p[0]), 0, FW - 1), y0 = clamp(Math.min(drag.p0[1], p[1]), 0, A.actor.h - 1);
+      const x1 = clamp(Math.max(drag.p0[0], p[0]), 0, FW - 1), y1 = clamp(Math.max(drag.p0[1], p[1]), 0, A.actor.h - 1);
       A.sel = { x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 }; drawEditor();
     } else if (drag.t === 'float') {
       A.float.x = drag.o[0] + p[0] - drag.p0[0]; A.float.y = drag.o[1] + p[1] - drag.p0[1]; drawEditor();
@@ -403,10 +435,21 @@ function bindCanvas() {
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   cv.addEventListener('pointerleave', () => { hover = null; drawEditor(); });
   V.vp.addEventListener('wheel', e => {
-    if (!e.ctrlKey && !e.altKey) return;
     e.preventDefault();
+    // plain wheel rolls through the palette; Ctrl or Alt + wheel zooms
+    if (!e.ctrlKey && !e.altKey) { rollColour(e.deltaY > 0 ? 1 : -1); return; }
     A.zoom = clamp((A.zoom || zoomNow) + (e.deltaY < 0 ? 1 : -1), 1, 40); pref.set('anim.zoom', A.zoom); drawEditor();
   }, { passive: false });
+}
+let rollT = 0;
+function rollColour(d) {
+  const now = performance.now(); if (now - rollT < 45) return; rollT = now;      // a fast wheel shouldn't skip half the palette
+  const pal = A.actor.pal; if (!pal.length) return;
+  const i = A.c1 ? pal.findIndex(c => hex(c) === hex(A.c1)) : -1;
+  A.c1 = pal[((i < 0 ? 0 : i + d) % pal.length + pal.length) % pal.length];
+  if (A.tool === 'eraser' || A.tool === 'pick') A.tool = 'pencil';
+  drawLeft(); drawEditor();
+  if (hover) { const x = V.cv.getContext('2d'); x.fillStyle = hex(A.c1); x.fillRect(hover[0] * zoomNow + 1, hover[1] * zoomNow + 1, zoomNow - 2, zoomNow - 2); }
 }
 const hit = ([x, y], r) => { const w = r.w ?? r.img.width, hh = r.h ?? r.img.height; return x >= r.x && y >= r.y && x < r.x + w && y < r.y + hh; };
 function liftSel() {
@@ -428,7 +471,7 @@ function keys(e) {
   const k = e.key.toLowerCase();
   if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); redo(); return; }
-  if ((e.ctrlKey || e.metaKey) && k === 'c') { const s = A.sel || { x: 0, y: 0, w: A.actor.w, h: A.actor.h }; clip = { img: cropImg(frame(), s), x: s.x, y: s.y }; toast('Copied'); return; }
+  if ((e.ctrlKey || e.metaKey) && k === 'c') { const s = A.sel || { x: 0, y: 0, w: frame().width, h: A.actor.h }; clip = { img: cropImg(frame(), s), x: s.x, y: s.y }; toast('Copied'); return; }
   if ((e.ctrlKey || e.metaKey) && k === 'v' && clip) { commitFloat(); pushUndo(); A.float = { img: cloneImg(clip.img), x: clip.x, y: clip.y }; A.tool = 'select'; drawLeft(); drawEditor(); e.preventDefault(); return; }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
   const tool = TOOLS.find(t => t[1].toLowerCase() === k);
@@ -473,7 +516,10 @@ function drawTimeline() {
     check('loop', n.loop !== false, v => { n.loop = v; changed(); }),
     h('i', { class: 'sep' }),
     h('button', { class: 'btn sm', title: 'Duplicate frame (N)', onclick: dupFrame }, icon('dup'), 'Copy frame'),
-    h('button', { class: 'btn sm', onclick: () => { pushUndo(); n.frames.splice(A.fi + 1, 0, newImg(a.w, a.h)); A.fi++; changed(true); } }, icon('plus'), 'Blank'),
+    h('button', { class: 'btn sm', onclick: () => { pushUndo(); n.frames.splice(A.fi + 1, 0, newImg(fw(n), a.h)); A.fi++; changed(true); } }, icon('plus'), 'Blank'),
+    h('i', { class: 'sep' }),
+    h('span', { class: 'lbl', title: 'How many boxes wide this animation\'s frames are. 2 gives a long swing or lunge room without cutting it off' }, 'Box'),
+    seg([[1, '1 wide'], [2, '2 wide']], n.span || 1, v => setSpan(n, +v)),
     h('button', { class: 'btn sm ghost', title: 'Move frame left', onclick: () => moveFrame(-1) }, '◂'),
     h('button', { class: 'btn sm ghost', title: 'Move frame right', onclick: () => moveFrame(1) }, '▸'),
     h('button', { class: 'btn sm ghost danger', onclick: delFrame }, 'Delete frame'),
@@ -483,7 +529,8 @@ function drawTimeline() {
   const th = Math.min(64, Math.max(32, a.h * 2)), z = th / a.h;
   let dragFrom = null;
   V.frames.replaceChildren(...n.frames.map((f, i) => {
-    const c = toCanvas(f); c.style.width = Math.round(a.w * z) + 'px'; c.style.height = th + 'px';
+    const c = toCanvas(f); c.style.width = Math.round(f.width * z) + 'px'; c.style.height = th + 'px';
+    if (touches(f).length) c.style.boxShadow = 'inset 0 0 0 2px #e5534b';
     c.style.background = 'repeating-conic-gradient(#2a2a28 0 25%, #313130 0 50%) 0 0/8px 8px';
     const el = h('div', { class: 'frame' + (i === A.fi ? ' on' : ''), draggable: true, onclick: () => { commitFloat(); A.fi = i; drawTimeline(); drawEditor(); } }, c, h('span', { class: 'n' }, i + 1));
     el.addEventListener('dragstart', () => { dragFrom = i; });
@@ -500,7 +547,7 @@ function updateThumb() {
   c.getContext('2d').putImageData(frame(), 0, 0);
 }
 function dupFrame() { pushUndo(); anim().frames.splice(A.fi + 1, 0, cloneImg(frame())); A.fi++; changed(true); }
-function delFrame() { const n = anim(); if (n.frames.length < 2) { pushUndo(); n.frames[0] = newImg(A.actor.w, A.actor.h); changed(true); return; } pushUndo(); n.frames.splice(A.fi, 1); changed(true); }
+function delFrame() { const n = anim(); if (n.frames.length < 2) { pushUndo(); n.frames[0] = newImg(fw(n), A.actor.h); changed(true); return; } pushUndo(); n.frames.splice(A.fi, 1); changed(true); }
 function moveFrame(d) { const n = anim(), j = A.fi + d; if (j < 0 || j >= n.frames.length) return; pushUndo(); [n.frames[A.fi], n.frames[j]] = [n.frames[j], n.frames[A.fi]]; A.fi = j; changed(true); }
 function addAnim() {
   const have = new Set(A.actor.anims.map(a => a.name));
@@ -542,13 +589,68 @@ function drawRight() {
     h('div', { class: 'sec', style: { padding: 0 } }, h('h3', { style: { padding: '12px 14px 0' } }, 'Preview', h('span', { class: 'grow' }), h('small', {}, 'live, as the game shows it')), player.el),
     identityBox(),
     h('div', { class: 'sec' }, h('h3', {}, 'Motions'), motionBox),
+    V.sheet = h('div', { class: 'sec' }),
     h('div', { class: 'sec' }, h('h3', {}, 'Import'),
       h('button', { class: 'btn', title: 'Or drop a sheet anywhere on this tab', onclick: () => pickFile((src, name) => sliceInto(src, name)) }, 'Cut a sprite sheet…'),
       h('p', { class: 'note' }, 'Or pick any image in Files and press "Animate from sheet".')),
     h('div', { class: 'sec' }, h('h3', {}, 'Save to asset folder'),
       h('p', { class: 'note', style: { marginTop: 0 } }, h('b', {}, `sprites/${A.actor.name}/`), ' gets one strip PNG per animation, manifest.json, a Godot SpriteFrames .tres, and a packed sheet + JSON for other engines.'),
       h('button', { class: 'btn go wide', onclick: exportActor }, 'Save ' + A.actor.name)));
+  drawSheet();
   feedPlayer();
+}
+// Animations & sheet: the breakdown of what this actor has, sets of animations to add,
+// and a box template to draw or generate into, read back by exact boxes.
+function drawSheet() {
+  if (!V.sheet?.isConnected) return;
+  const a = A.actor;
+  const setSel = select([['', 'Add an animation set…'], ...Object.entries(SETS).map(([k, v]) => [k, `${v.name} (${v.anims.length})`])], '', k => {
+    if (!k) return;
+    // a brand-new actor (one blank animation) takes the whole set; otherwise only what's missing is added
+    const blankOnly = a.anims.length === 1 && a.anims[0].frames.every(f => !bbox(f));
+    const S = SETS[k], have = new Set(blankOnly ? [] : a.anims.map(n => n.name)), add = S.anims.filter(([n]) => !have.has(n));
+    if (!add.length) return toast(`${a.name} already has every ${S.name} animation`);
+    if (!confirm(`Add ${add.length} animation${add.length > 1 ? 's' : ''} to ${a.name}?\n\n${add.map(([n, f, sp]) => `${n}: ${f} frames${sp > 1 ? ', 2 wide' : ''}`).join('\n')}\n\nExisting animations are not touched.`)) return drawSheet();
+    pushUndo();
+    if (blankOnly) a.anims = [];
+    for (const [name, n, span, fps, loop] of add) a.anims.push({ name, fps, loop, span, frames: Array.from({ length: n }, () => newImg(a.w * span, a.h)) });
+    A.ai = 0; A.fi = 0; changed(true);
+  });
+  const rows = a.anims.map((n, i) => {
+    const edge = n.frames.filter(f => touches(f).length).length, empty = n.frames.filter(f => !bbox(f)).length;
+    return h('tr', { class: i === A.ai ? 'on' : '', onclick: () => { commitFloat(); A.ai = i; A.fi = 0; drawTimeline(); drawEditor(); drawSheet(); feedPlayer(); } },
+      h('td', {}, n.name), h('td', {}, n.frames.length), h('td', {}, (n.span || 1) > 1 ? '2 wide' : '1'), h('td', {}, n.fps),
+      h('td', { class: edge ? 'warn' : empty ? 'faint' : 'ok' }, edge ? `${edge} at edge` : empty ? `${empty} empty` : '✓'));
+  });
+  V.sheet.replaceChildren(h('h3', {}, 'Animations & sheet'),
+    h('table', { class: 'breakdown' }, h('tr', {}, ...['Animation', 'Frames', 'Box', 'fps', ''].map(t => h('th', {}, t))), ...rows),
+    h('div', { style: { margin: '8px 0' } }, setSel),
+    h('div', { style: { display: 'flex', gap: '6px', flexWrap: 'wrap' } },
+      h('button', { class: 'btn sm', title: 'One white box per frame, labelled. Draw or generate inside the boxes, then read it back.', onclick: templateOut }, 'Box template'),
+      h('button', { class: 'btn sm', title: 'Read a filled template back into the frames, box by box', onclick: () => pickFile(templateIn) }, 'Read filled template…')),
+    h('p', { class: 'note' }, 'Keep each pose inside its box: frames marked red touch the box edge and may be cut off in the game. Use "2 wide" for long swings.'));
+}
+async function templateOut() {
+  const a = A.actor, scale = a.h <= 48 ? 4 : a.h <= 96 ? 2 : 1;
+  const { canvas, layout: L } = makeTemplate(a, { withArt: true, scale });
+  const one = makeTemplate(a, { withArt: true, scale: 1 }).canvas;
+  try {
+    await saveFiles(`sprites/${a.name}`, [{ name: 'template.png', b64: one.toDataURL('image/png') }, { name: `template_${scale}x.png`, b64: canvas.toDataURL('image/png') },
+      { name: 'template.json', text: JSON.stringify({ actor: a.name, w: a.w, h: a.h, layout: L }, null, 1) + '\n' }]);
+    toast(`Template saved: sprites/${a.name}/template.png (+ a ${scale}× copy to draw on)`, 'ok');
+  } catch (e) { toast('Could not save the template: ' + e.message, 'bad'); }
+  downloadSheet(canvas, `${a.name}_template_${scale}x.png`);
+}
+async function templateIn(src) {
+  let r;
+  try { r = readTemplate(await imgData(src), A.actor); } catch (e) { return toast(e.message, 'bad'); }
+  const got = r.frames.flat().filter(Boolean).length;
+  if (!got) return toast('No art found in the boxes', 'bad');
+  pushUndo();
+  A.actor.anims.forEach((n, ai) => r.frames[ai].forEach((f, i) => { if (f) n.frames[i] = f; }));
+  for (const n of A.actor.anims) for (const f of n.frames) for (const c of colorsOf(f)) if (A.actor.pal.length < 64 && !A.actor.pal.some(p => hex(p) === hex(c))) A.actor.pal.push(c);
+  changed(true);
+  toast(`Read ${got} frame${got > 1 ? 's' : ''}${r.scale !== 1 ? ` (image was ${r.scale.toFixed(2)}× the template)` : ''}${r.spill.length ? `. Art spills out of: ${r.spill.slice(0, 6).join(', ')}${r.spill.length > 6 ? '…' : ''}` : ''}`, r.spill.length ? 'bad' : 'ok');
 }
 function pickFile(cb) {
   const i = h('input', { type: 'file', accept: 'image/*' });
@@ -612,22 +714,23 @@ async function exportActor() {
   const a = A.actor, dir = `sprites/${a.name}`;
   const files = [], man = { w: a.w, h: a.h, source: 'kiln', anims: {} };
   for (const n of a.anims) {
-    const strip = newImg(a.w * n.frames.length, a.h);
-    n.frames.forEach((f, i) => blit(strip, f, i * a.w, 0));
+    const W = n.frames[0].width;
+    const strip = newImg(W * n.frames.length, a.h);
+    n.frames.forEach((f, i) => blit(strip, f, i * W, 0));
     files.push({ name: `${n.name}.png`, b64: toDataURL(strip) });
-    man.anims[n.name] = { file: `${n.name}.png`, frames: n.frames.length, fps: n.fps, loop: n.loop !== false };
+    man.anims[n.name] = { file: `${n.name}.png`, frames: n.frames.length, fps: n.fps, loop: n.loop !== false, ...(W !== a.w ? { w: W } : {}) };
   }
   files.push({ name: 'manifest.json', text: JSON.stringify(man, null, 2) + '\n' });
   // packed sheet: one row per animation, plus an Aseprite-style JSON (frames + frameTags)
-  const cols = Math.max(...a.anims.map(n => n.frames.length));
-  const sheet = newImg(cols * a.w, a.anims.length * a.h);
+  const sheet = newImg(Math.max(...a.anims.map(n => n.frames.length * n.frames[0].width)), a.anims.length * a.h);
   const sj = { frames: {}, meta: { app: 'kiln', image: 'sheet.png', size: { w: sheet.width, h: sheet.height }, frameTags: [] } };
   let idx = 0;
   a.anims.forEach((n, r) => {
     const from = idx;
     n.frames.forEach((f, i) => {
-      blit(sheet, f, i * a.w, r * a.h);
-      sj.frames[`${n.name}_${i}`] = { frame: { x: i * a.w, y: r * a.h, w: a.w, h: a.h }, duration: Math.round(1000 / n.fps) };
+      const W = f.width;
+      blit(sheet, f, i * W, r * a.h);
+      sj.frames[`${n.name}_${i}`] = { frame: { x: i * W, y: r * a.h, w: W, h: a.h }, duration: Math.round(1000 / n.fps) };
       idx++;
     });
     sj.meta.frameTags.push({ name: n.name, from, to: idx - 1, direction: 'forward' });
@@ -690,7 +793,7 @@ ${a.desc?.trim() || '_No description yet. Add one in Animate → Identity; it is
 
 ## Animations
 
-${a.anims.map(n => `- **${n.name}**: ${n.frames.length} frame${n.frames.length > 1 ? 's' : ''} at ${n.fps} fps${n.loop === false ? ', plays once' : ''} (\`${n.name}.png\`)`).join('\n')}
+${a.anims.map(n => `- **${n.name}**: ${n.frames.length} frame${n.frames.length > 1 ? 's' : ''} at ${n.fps} fps${n.loop === false ? ', plays once' : ''}${(n.span || 1) > 1 ? `, ${n.span} boxes wide (${n.frames[0].width}px)` : ''} (\`${n.name}.png\`)`).join('\n')}
 
 ## Making more of it (stay on-model)
 
@@ -716,7 +819,8 @@ function spriteFrames(a, res) {
     ext.push(`[ext_resource type="Texture2D" path="${res}/${n.name}.png" id="${ai + 1}"]`);
     const fr = n.frames.map((_, i) => {
       const id = `a${ai}_${i}`;
-      subs.push(`[sub_resource type="AtlasTexture" id="${id}"]\natlas = ExtResource("${ai + 1}")\nregion = Rect2(${i * a.w}, 0, ${a.w}, ${a.h})`);
+      const W = n.frames[0].width;
+      subs.push(`[sub_resource type="AtlasTexture" id="${id}"]\natlas = ExtResource("${ai + 1}")\nregion = Rect2(${i * W}, 0, ${W}, ${a.h})`);
       return `{\n"duration": 1.0,\n"texture": SubResource("${id}")\n}`;
     });
     animsOut.push(`{\n"frames": [${fr.join(', ')}],\n"loop": ${n.loop !== false},\n"name": &"${n.name}",\n"speed": ${n.fps.toFixed(1)}\n}`);
