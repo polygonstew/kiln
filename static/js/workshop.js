@@ -2,6 +2,7 @@
 // Opened from Animate (Workshop button) for the actor that is open. Simple by default: a role picks the
 // checklist; every item can still be done by hand in the editor.
 import { BRAINS, defaultBrain } from './brains.js';
+import { roll, sfxRow, play } from './sfx.js';
 import { h, toast, imgData, pixelize, toCanvas, toDataURL, rgb, hex, luma, newImg, blit, bbox, select, seg, range, check, field } from './core.js';
 import { enqueue } from './queue.js';
 import { SETS } from './sheets.js';
@@ -75,7 +76,7 @@ export function openWorkshop(host, api) {
             h('table', { class: 'wk-anims' }, ...rows),
             extra.length ? h('p', { class: 'note' }, 'Also has: ' + extra.join(', ')) : null,
             S.anims.some(([n]) => !have.has(n)) ? h('button', { class: 'btn sm', title: 'Add every missing animation of this role at once', onclick: () => { for (const r of S.anims) if (!have.has(r[0])) addAnim(...r); draw(); } }, 'Add all missing') : null),
-          reactCard(), brainCard(), projCard()),
+          reactCard(), brainCard(), soundCard(), projCard()),
         h('div', { class: 'wk-col' }, facesCard())));
   };
   /* ---- being hit ---- */
@@ -88,6 +89,19 @@ export function openWorkshop(host, api) {
       field('Health', range(R.health ?? 3, 1, 20, 1, v => set('health', v), v => v + (v == 1 ? ' hit' : ' hits')), 'Hits it takes before dying (the player\'s health drives the HUD)'),
       field('Safe for', range(R.iframes, 0, 2, .05, v => set('iframes', v), v => (+v).toFixed(2) + ' s'), 'Invulnerable (blinking) after a hit'),
       have('hurt') ? null : h('p', { class: 'note' }, 'Tip: add a "hurt" animation (enemy and player roles include one).'));
+  }
+  /* ---- sounds ---- */
+  // event → the preset it starts from; which events a role gets by default
+  const EVENTS = { jump: 'jump', attack: 'hit', hurt: 'hurt', shoot: 'shoot', die: 'die' };
+  const roleEvents = () => ({ hero: ['jump', 'attack', 'hurt', 'die'], boss: ['attack', 'hurt', 'die'] }[role()] || ['hurt', 'die']).concat((a.projectiles || []).length ? ['shoot'] : []);
+  function soundCard() {
+    const S = a.sounds || {}, set = (ev, p, redraw) => { a.sounds = { ...(a.sounds || {}), [ev]: p }; api.changed(); if (redraw) draw(); };
+    const missing = Object.keys(EVENTS).filter(ev => !S[ev]);
+    return h('div', { class: 'wk-card' }, h('h3', {}, 'Sounds', h('small', {}, 'retro, made here'), h('span', { class: 'grow' }),
+        Object.keys(S).length ? '' : h('button', { class: 'btn sm', title: 'A fitting sound for each thing this role does', onclick: () => { const n = {}; for (const ev of roleEvents()) n[ev] = roll(EVENTS[ev]); a.sounds = n; api.changed(); draw(); } }, 'Give it sounds')),
+      Object.keys(S).length ? '' : h('p', { class: 'note', style: { marginTop: 0 } }, 'Jump, attack, hurt, shoot and die sounds. In Godot the actor plays them by itself (its brain plays jump and attack); saved as sfx_<event>.wav.'),
+      ...Object.entries(S).map(([ev, p]) => sfxRow(ev, p, (n, redraw) => set(ev, n, redraw), () => { const { [ev]: _, ...rest } = a.sounds; a.sounds = rest; api.changed(); draw(); })),
+      Object.keys(S).length && missing.length ? h('div', { style: { display: 'flex', gap: '4px', marginTop: '6px' } }, ...missing.map(ev => h('button', { class: 'btn sm ghost', onclick: () => { const p = roll(EVENTS[ev]); set(ev, p, true); play(p); } }, '+ ' + ev))) : '');
   }
   /* ---- behaviour ---- */
   function brainCard() {

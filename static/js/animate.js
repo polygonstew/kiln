@@ -11,6 +11,7 @@ import { loadOwners, claim } from './owners.js';
 import { openWorkshop, facesFiles } from './workshop.js';
 import { actorScene, projectileScene, boxesOf, brainOf, JUICE_GD, PROJECTILE_GD, FLASH_SHADER } from './actor_godot.js';
 import { BRAIN_GD } from './brains.js';
+import { wav, synth } from './sfx.js';
 import { saveFiles, S as FS } from './files.js';
 
 const ANIM_NAMES = ['idle', 'walk', 'run', 'jump', 'fall', 'attack', 'hurt', 'death', 'crouch', 'cast', 'climb', 'dash', 'block', 'spin'];
@@ -870,6 +871,7 @@ async function exportActor() {
     files.push({ name: `${a.name}.tscn`, text: actorScene(a, res, man.hitbox) });
     await saveFiles('sprites/_kiln', [{ name: 'juice.gd', text: JUICE_GD }, { name: 'hit_flash.gdshader', text: FLASH_SHADER }, { name: 'projectile.gd', text: PROJECTILE_GD }]).catch(() => {});
     for (const pj of a.projectiles || []) files.push({ name: `projectile_${pj.name}.tscn`, text: projectileScene(a, res, pj) });
+    for (const [ev, p] of Object.entries(a.sounds || {})) files.push({ name: `sfx_${ev}.wav`, b64: wav(synth(p)) });
     // the actor's brain script: written once, then it is yours to edit (Logic) and never overwritten
     const br = brainOf(a);
     if (br) {

@@ -60,6 +60,7 @@ func _physics_process(delta: float) -> void:
 \t\tif Input.is_action_just_pressed("ui_accept") and (_coyote > 0.0 or here == "water"):
 \t\t\tactor.velocity.y = jump_velocity * (0.6 if here == "water" else 1.0)
 \t\t\t_coyote = 0.0
+\t\t\t_sound("jump")
 \t\tif Input.is_action_just_released("ui_accept") and actor.velocity.y < 0.0:
 \t\t\tactor.velocity.y *= 0.5   # let go early for a short hop
 \t\tactor.velocity.x = move_toward(actor.velocity.x, dir * speed, speed * 10.0 * delta)
@@ -68,6 +69,7 @@ func _physics_process(delta: float) -> void:
 \t\tsprite.flip_h = dir < 0.0
 \tif Input.is_action_just_pressed("attack"):
 \t\t_play("attack", true)
+\t\t_sound("attack")
 \tif Input.is_action_just_pressed("shoot") and actor.has_method("shoot"):
 \t\tactor.shoot(Vector2(-1.0 if sprite.flip_h else 1.0, 0.0))
 \t_animate(dir)
@@ -95,6 +97,10 @@ func _play(anim: String, restart := false) -> void:
 \t\tsprite.sprite_frames.set_animation_loop(anim, false)
 \tif restart or sprite.animation != anim:
 \t\tsprite.play(anim)
+
+func _sound(event: String) -> void:
+\tif actor.has_method("sfx"):
+\t\tactor.call("sfx", event)
 
 func _add_key(action: String, key: Key) -> void:
 \tif InputMap.has_action(action):

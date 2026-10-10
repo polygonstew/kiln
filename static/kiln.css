@@ -487,3 +487,9 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .lg-r code { display: block; color: #e3c06b; font: 11px var(--mono); white-space: pre-wrap; word-break: break-all; } .lg-r:hover { background: #1a1a19; }
 #kiln-updated { position: fixed; top: 7px; left: 50%; transform: translateX(-50%); z-index: 95; box-shadow: 0 4px 18px #000a; }
 .hist-k { font: 10px var(--mono); text-transform: uppercase; color: var(--faint); width: 52px; display: inline-block; }
+/* sound effects (sfx.js) */
+.sfx-row { border-top: 1px solid var(--line); padding: 8px 0; }
+.sfx-h { display: flex; align-items: center; gap: 6px; } .sfx-h b { min-width: 58px; font: 600 12px var(--sans); }
+.sfx-ks { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 6px; }
+.sfx-k { display: flex; flex-direction: column; gap: 2px; font-size: 10px; color: var(--faint); } .sfx-k input, .sfx-k select { width: 100%; }
+.sfx-presets { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }

@@ -127,6 +127,7 @@ func hurt(from_position: Vector2 = Vector2.INF, damage: int = 1) -> void:
 \tif health == 0:
 \t\tdie()
 \t\treturn
+\tsfx("hurt")
 \thurt_started.emit(from_position)
 \thit_flash()
 \tsquash(0.18)
@@ -149,6 +150,7 @@ func hurt(from_position: Vector2 = Vector2.INF, damage: int = 1) -> void:
 func die() -> void:
 \tdead = true
 \tdied.emit()
+\tsfx("die")
 \tvelocity = Vector2.ZERO
 \tif sprite.sprite_frames.has_animation("death"):
 \t\tsprite.sprite_frames.set_animation_loop("death", false)
@@ -158,6 +160,12 @@ func die() -> void:
 \t\tget_tree().reload_current_scene()
 \telse:
 \t\tqueue_free()
+
+## Play one of this actor's sounds (made in Kiln's Workshop): "jump", "attack", "hurt", "shoot", "die".
+func sfx(event: String) -> void:
+\tvar p := get_node_or_null("Sfx_" + event) as AudioStreamPlayer2D
+\tif p:
+\t\tp.play()
 
 ## Heal (or set) health; the player's HUD follows.
 func heal(amount: int = 1) -> void:
@@ -185,6 +193,7 @@ func shoot(direction := Vector2.RIGHT, scene: PackedScene = null) -> Node:
 \tp.global_position = sprite.global_position + Vector2(signf(direction.x) * 10.0, 0)
 \tif p.has_method("launch"):
 \t\tp.launch(direction, self)
+\tsfx("shoot")
 \treturn p
 `;
 // shared by every projectile scene Kiln writes
@@ -244,6 +253,7 @@ export function actorScene(a, res, hb) {
   return `[gd_scene load_steps=${pj ? 8 : 7} format=3]\n\n[ext_resource type="SpriteFrames" path="${res}/${a.name}.tres" id="1"]\n`
     + (pj ? `[ext_resource type="PackedScene" path="${res}/projectile_${pj.name}.tscn" id="4"]\n` : '')
     + (br ? `[ext_resource type="Script" path="${shared}/brains/${br}.gd" id="5"]\n` : '')
+    + Object.keys(a.sounds || {}).map(ev => `[ext_resource type="AudioStream" path="${res}/sfx_${ev}.wav" id="sfx_${ev}"]\n`).join('')
     + `[ext_resource type="Script" path="${shared}/juice.gd" id="2"]\n[ext_resource type="Shader" path="${shared}/hit_flash.gdshader" id="3"]\n\n`
     + `[sub_resource type="ShaderMaterial" id="flash"]\nshader = ExtResource("3")\nshader_parameter/flash = 0.0\nshader_parameter/flash_color = Color(1, 1, 1, 1)\n\n`
     + `[sub_resource type="RectangleShape2D" id="body"]\nsize = Vector2(${hb.w}, ${hb.h})\n\n`
@@ -254,6 +264,7 @@ export function actorScene(a, res, hb) {
     + `[node name="Body" type="CollisionShape2D" parent="."]\nposition = Vector2(${hb.x + hb.w / 2 - a.w / 2}, ${hb.y + hb.h / 2 - a.h})\nshape = SubResource("body")\n\n`
     + `[node name="Hurtbox" type="Area2D" parent="."]\n\n[node name="Shape" type="CollisionShape2D" parent="Hurtbox"]\nposition = Vector2(${hb.x + hb.w / 2 - a.w / 2}, ${hb.y + hb.h / 2 - a.h})\nshape = SubResource("hurt")\n\n`
     + `[node name="Hitbox" type="Area2D" parent="."]\n`
+    + Object.keys(a.sounds || {}).map(ev => `\n[node name="Sfx_${ev}" type="AudioStreamPlayer2D" parent="."]\nstream = ExtResource("sfx_${ev}")\n`).join('')
     + (br ? `\n[node name="Brain" type="Node" parent="."]\nscript = ExtResource("5")\n` + BRAINS[br].params.map(([k, , , , , d]) => {
       const v = (a.brainParams || {})[k] ?? d;
       return `${k} = ${k === 'turn_at_ledges' ? !!v : Number.isInteger(v) ? v.toFixed(1) : v}\n`;
