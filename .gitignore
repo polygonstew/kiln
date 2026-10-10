@@ -2,3 +2,5 @@ library/
 __pycache__/
 *.pyc
 .trash/
+fast/.venv/
+fast/models/

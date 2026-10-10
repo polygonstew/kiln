@@ -26,6 +26,12 @@ Last updated: 2026-10-10 (session 2: cloud engines, native pixel grid, sheet imp
   - `/api/status` -> `cloud: {free_left (fraction, from CF GraphQL analytics), left, cap, spent, account}`;
     shown next to every "Cloud" choice (`budgetTag()` in queue.js).
 
+## Fast engine (in progress, see LOOP.md)
+
+`fast/` holds a converted AllInOnePixel+LCM (diffusers + OpenVINO UNet), the venv `fast/.venv` (system site-packages
+from miniconda: torch 2.14, diffusers, openvino 2026.4, peft), `convert.py` and `bench.py`. Models and the venv
+are gitignored. Benchmark: OpenVINO 36 s at 384², torch 43 s; ComfyUI ~2 min because of `--cache-none`.
+
 ## Machine limits (important)
 
 - i5-7200U, **no GPU**, 11 GB RAM. SD1.5 is about **30 s per step at 512²** (≈17 s at 384²). A

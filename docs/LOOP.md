@@ -25,14 +25,18 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 
 ## Backlog (top first)
 
-- [ ] **Faster/better local generation.** This PC: i5-7200U, no GPU, 11 GB RAM, ~36 GB free disk. Today
-  ComfyUI torch-CPU takes ~30 s/step at 512². Try **FastSD CPU** (github.com/rupeshs/fastsdcpu: OpenVINO
-  + LCM/SDXS, made for Intel CPUs) or OpenVINO directly (`optimum-intel`), using a pixel-art SD1.5 checkpoint
-  (convert AllInOnePixel to diffusers/OpenVINO, or LCM-LoRA fused). Benchmark seconds per 512² image against
-  the current engine. If it's at least 3× faster, add it as a "Fast" local engine in server.py (its own port,
-  stdlib HTTP client). Also worth trying, if RAM allows: ComfyUI **IPAdapter_plus** (SD1.5 ip-adapter + CLIP
-  vision) for on-model local frames, and **ControlNet OpenPose** (SD1.5) for poses. Note results in
-  RESUME.md either way.
+- [x] **Local generation benchmark (slice 1).** `fast/convert.py` turns AllInOnePixel + fused LCM-LoRA into diffusers
+  (`fast/models/aiop-lcm`, 4 GB) plus an OpenVINO UNet (`fast/models/unet-ov`, fp16). `fast/bench.py` measures,
+  4 steps: torch diffusers 384² = 43 s; OpenVINO 384² = 36 s, 512² = 70 s; output is identical. OpenVINO alone is
+  only 1.2×. The real cost today is ComfyUI `--cache-none` reloading the model every job (1.5–2.5 min).
+- [ ] **"Fast" local engine (slice 2).** A small resident server in `fast/` (venv `fast/.venv`, reuses miniconda torch)
+  holding the OpenVINO pipeline warm (~2.5 GB RAM), with HTTP `/gen {prompt, neg, w, h, steps, seed, init?, denoise?}` →
+  PNG. A systemd user unit; Kiln `server.py` engine `fast` routed to it, with progress = step count. Expect ~35 s at
+  384 instead of ~2 min. Only run it while ComfyUI is idle (11 GB RAM). Then try nncf int8 weight compression
+  for speed, and img2img for identity frames.
+- [ ] **On-model local frames (slice 3).** IP-Adapter SD1.5 (diffusers `load_ip_adapter`, h94/IP-Adapter
+  `ip-adapter_sd15.safetensors` + its image encoder, ~2.5 GB) in the fast engine, and optionally ControlNet
+  OpenPose. Check RAM first.
 - [ ] **Tooltip and shortcut pass.** Every button and control in every tab gets a `title`. Press `?` for a
   shortcuts overlay (black-and-gold HUD style), generated from a shared registry.
 - [ ] **Quick switcher, Ctrl+K**: fuzzy search across actors, scenes, HUDs, files, tabs and wheel actions.
@@ -57,3 +61,5 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
   with the budget display, the self-reading sheet slicer, Godot colliders, CHARACTER.md, the guide image,
   the Downloads inbox, Kiln Studio, editor input (left adds, right removes, wheel rolls colours), 2-wide
   boxes, animation sets, box templates, and the Shift+A wheel with the right-click menu.
+- 2026-10-10 06:4x: run 1. Local generation benchmark: OpenVINO 1.2× over torch; a model kept loaded beats ComfyUI's
+  per-job reload by 2.5–4×. Next run: a resident "Fast" engine.
