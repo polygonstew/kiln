@@ -360,3 +360,21 @@ table.breakdown td.warn { color: var(--bad); } table.breakdown td.ok { color: va
 .dx-kcol { min-width: 240px; }
 .dx-krow { display: flex; gap: 12px; padding: 3px 0; font: 12px var(--cond, sans-serif); color: #e9d9b8; align-items: baseline; }
 .dx-krow kbd { min-width: 110px; font: 10px var(--mono, monospace); color: var(--dx); }
+/* Ctrl+K quick switcher */
+.qk { display: grid; justify-items: center; align-items: start; padding-top: 12vh; }
+.qk-box { width: min(640px, 92vw); background: var(--dxbg); border: 1px solid rgba(232,165,54,.6); animation: dxpop .14s ease-out;
+  clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px)); }
+.qk-top { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid rgba(232,165,54,.35); }
+.qk-k { font: 700 11px var(--cond, sans-serif); letter-spacing: .3em; color: var(--dx2); }
+.qk-top input { flex: 1; background: none; border: 0; outline: 0; color: #f3e6c8; font: 15px var(--cond, sans-serif); letter-spacing: .03em; }
+.qk-list { max-height: 52vh; overflow: auto; padding: 4px 0; }
+.qk-row { display: flex; align-items: center; gap: 10px; padding: 5px 14px; cursor: pointer; color: #e9d9b8; font: 13px var(--cond, sans-serif); }
+.qk-row img { width: 22px; height: 22px; object-fit: contain; image-rendering: pixelated; background: #1a1712; }
+.qk-dot { width: 22px; height: 22px; display: inline-block; background: linear-gradient(135deg, transparent 45%, rgba(232,165,54,.5) 46% 54%, transparent 55%); }
+.qk-l { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qk-h { flex: 1; font: 10px var(--mono, monospace); color: rgba(232,165,54,.5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.qk-kind { font: 9px var(--mono, monospace); letter-spacing: .2em; text-transform: uppercase; color: rgba(232,165,54,.7); }
+.qk-row.on { background: linear-gradient(90deg, rgba(232,165,54,.9), rgba(232,165,54,.45)); color: #120d04; }
+.qk-row.on .qk-h, .qk-row.on .qk-kind { color: #2a1d06; }
+.qk-none { padding: 14px; color: rgba(232,165,54,.5); font: 12px var(--mono, monospace); }
+.qk-foot { border-top: 1px solid rgba(232,165,54,.25); padding: 6px 14px; font: 10px var(--mono, monospace); letter-spacing: .2em; color: rgba(232,165,54,.6); }

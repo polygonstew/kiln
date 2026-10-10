@@ -5,6 +5,7 @@ import { initTray } from './queue.js';
 import { files, loadSettings } from './files.js';
 import { editStyle } from './style.js';
 import { initWheel, registerWheel } from './wheel.js';
+import './quick.js';
 
 const mods = [files];
 const optional = ['forge', 'animate', 'scenes', 'hud', 'stage'];

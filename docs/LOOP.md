@@ -45,7 +45,7 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
   and a shared `TIPS` table that titles plain buttons in every area. What remains untitled is self-labelled (size chips, presets).
   Original plan: Every button and control in every tab gets a `title`. Press `?` for a
   shortcuts overlay (black-and-gold HUD style), generated from a shared registry.
-- [ ] **Quick switcher, Ctrl+K**: fuzzy search across actors, scenes, HUDs, files, tabs and wheel actions.
+- [x] **Quick switcher, Ctrl+K** DONE (quick.js + `/api/index`; project list cached by mtime, 6 s → 2 ms).: fuzzy search across actors, scenes, HUDs, files, tabs and wheel actions.
 - [ ] **Fun tools in Animate**: a "juice" preview (hit flash, squash and stretch, screen shake) on the live
   player; a palette-cycle animation; a "dice" button that rolls a random enemy prompt from parts (body,
   weapon, mood, colours) and sends it to Forge.
@@ -72,3 +72,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: run 2. Fast engine live (127.0.0.1:8511, loads on first use, unloads after 15 min idle). Forge → Model → Fast: ~35 s at 384 vs ~2 min.
 - 2026-10-10: run 3. IP-Adapter tried and rejected (weak likeness on this model, 6.6 GB RAM); 2.4 GB download removed.
 - 2026-10-10: run 4. `?` controls overlay per area plus shared button tooltips (wheel.js).
+- 2026-10-10: run 5. Ctrl+K finds areas, actions, actors, scenes, files (path-order fuzzy); also in the right-click menu and the ? list.

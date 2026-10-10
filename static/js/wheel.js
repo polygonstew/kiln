@@ -11,6 +11,9 @@ let current = () => null;
 // item: { label, key?, on?: bool, run: fn, hint? }
 
 export function registerWheel(area, fn) { providers[area] = fn; }
+export const wheelActions = area => { const P = providers[area]?.() || {}; return [...(P.tools || []), ...(P.guides || [])]; };
+export const areaList = () => areas();
+export const currentArea = () => current();
 export function registerMenu(selector, fn) { menus.push([selector, fn]); }
 export function initWheel(getAreas, getCurrent) {
   areas = getAreas; current = getCurrent;
@@ -119,7 +122,7 @@ function showMenu(e) {
   const P = providers[current()]?.() || {};
   if (P.tools?.length) items.push({ head: 'Tools' }, ...P.tools.slice(0, 8), null);
   if (P.guides?.length) items.push({ head: 'Guides' }, ...P.guides.slice(0, 6), null);
-  items.push({ label: 'Controls and shortcuts', key: '?', run: showKeys }, null, { head: 'Go to' }, ...areas().filter(a => a.id !== current()).map(a => ({ label: a.label, key: a.key, run: () => emit('tab', a.id) })), null,
+  items.push({ label: 'Controls and shortcuts', key: '?', run: showKeys }, { label: 'Find anything', key: 'Ctrl+K', run: () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true })) }, null, { head: 'Go to' }, ...areas().filter(a => a.id !== current()).map(a => ({ label: a.label, key: a.key, run: () => emit('tab', a.id) })), null,
     { label: 'Command wheel', key: 'Shift+A', run: () => open(e.clientX, e.clientY, false) }, { head: 'Shift + right-click: browser menu' });
   while (items.length && items[items.length - 1] === null) items.pop();
   const box = h('div', { class: 'dx-menu' }, ...items.map(it => it === null ? h('i', { class: 'dx-sep' })
@@ -143,7 +146,7 @@ function closeMenu() {
 /* --------------------------------------------------------- shortcuts (?) ---- */
 // Press ? anywhere for the keys and mouse moves that work in the area you're in, plus the global ones.
 const KEYS = {
-  '*': [['1 – 6', 'Switch area'], ['Shift+A', 'Command wheel (area / tool / guide)'], ['Right-click', 'Kiln menu (Shift+right-click: browser menu)'], ['?', 'This list'], ['Esc', 'Close wheel, menu or this list']],
+  '*': [['1 – 6', 'Switch area'], ['Ctrl+K', 'Find anything: areas, actions, actors, scenes, files'], ['Shift+A', 'Command wheel (area / tool / guide)'], ['Right-click', 'Kiln menu (Shift+right-click: browser menu)'], ['?', 'This list'], ['Esc', 'Close wheel, menu or this list']],
   files: [['Enter', 'Open'], ['F2', 'Rename'], ['Delete', 'Move to trash'], ['Backspace', 'Up a folder'], ['Drop files', 'Copy them into this folder']],
   forge: [['Ctrl+V', 'Paste an image as the source'], ['Click source', 'Pick the background colour to remove'], ['Drop on guide box', 'Set a guide image'], ['Right-click a result', 'Use as source / as guide']],
   animate: [['Left click', 'Add pixels'], ['Right click', 'Remove pixels'], ['Mouse wheel', 'Roll through the palette'], ['Middle click', 'Pick the colour under the cursor'], ['Ctrl/Alt+wheel', 'Zoom'],

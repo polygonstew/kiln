@@ -507,6 +507,30 @@ def status():
     return s
 
 
+# ------------------------------------------------- quick switcher index ---
+_idx = {'t': 0, 'root': None, 'v': []}
+
+
+def file_index():
+    """Every file and folder in the asset folder (up to 4000; .trash skipped), cached 10 s, for Ctrl+K."""
+    root = Path(settings().get('root', ''))
+    if time.time() - _idx['t'] < 10 and _idx['root'] == root:
+        return _idx['v']
+    out = []
+    if root.is_dir():
+        for dp, dns, fns in os.walk(root):
+            dns[:] = sorted(d for d in dns if not d.startswith('.'))
+            for d in dns:
+                out.append({'name': d, 'path': os.path.join(dp, d), 'dir': True})
+            for f in sorted(fns):
+                if not f.startswith('.'):
+                    out.append({'name': f, 'path': os.path.join(dp, f), 'dir': False})
+            if len(out) > 4000:
+                break
+    _idx.update(t=time.time(), root=root, v=out[:4000])
+    return _idx['v']
+
+
 # ------------------------------------------------- downloads inbox ---
 INBOX = [HOME / 'Downloads']
 
@@ -705,15 +729,23 @@ def proj_dir():
     return in_home(settings()['root']) / 'kiln'
 
 
+_meta = {}   # path -> (mtime, meta): project files can be ~90 MB (scenes), so read each one once per change
+
+
 def list_projects():
     d = proj_dir()
     d.mkdir(parents=True, exist_ok=True)
     res = []
     for f in sorted(d.glob('*.json'), key=lambda f: -f.stat().st_mtime):
-        try:
-            meta = json.loads(f.read_text()).get('meta', {})
-        except Exception:
-            meta = {}
+        m = f.stat().st_mtime
+        if _meta.get(str(f), (None,))[0] == m:
+            meta = _meta[str(f)][1]
+        else:
+            try:
+                meta = json.loads(f.read_text()).get('meta', {})
+            except Exception:
+                meta = {}
+            _meta[str(f)] = (m, meta)
         res.append({'id': f.stem, 'kind': meta.get('kind', '?'), 'name': meta.get('name', f.stem),
                     'thumb': meta.get('thumb'), 'mtime': f.stat().st_mtime})
     return res
@@ -768,6 +800,8 @@ class H(BaseHTTPRequestHandler):
                 s['layout'] = LAYOUT
                 s['home'] = str(HOME)
                 return self.send(200, s)
+            if u.path == '/api/index':
+                return self.send(200, {'items': file_index()})
             if u.path == '/api/inbox':
                 return self.send(200, {'items': inbox(float(q.get('since') or 0))})
             if u.path == '/api/cloudimg':
@@ -828,5 +862,6 @@ if __name__ == '__main__':
     LIB.mkdir(exist_ok=True)
     scaffold(settings()['root'])
     threading.Thread(target=ws_listen, daemon=True).start()
+    threading.Thread(target=list_projects, daemon=True).start()   # warm the project list cache (big scene files)
     print(f'Kiln on http://{HOST}:{PORT}  (ComfyUI {COMFY})', flush=True)
     ThreadingHTTPServer((HOST, PORT), H).serve_forever()
