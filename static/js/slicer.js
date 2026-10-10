@@ -1,5 +1,5 @@
 // Sheet slicer: cut a sprite sheet (grid or loose poses) into uniform, baseline-aligned frames.
-import { h, $, toast, field, range, seg, check, imgData, keyBackground, crop, blit, newImg, toCanvas, pixelize, buildPalette, HARDWARE, clamp, bbox } from './core.js';
+import { h, $, toast, field, range, seg, check, imgData, keyBackground, crop, blit, newImg, toCanvas, pixelize, buildPalette, HARDWARE, clamp, bbox, cloneImg } from './core.js';
 
 export function components(im, gap, minFrac) {
   // pixels closer than `gap` belong together (capes, swords, loose bits): grow the opaque mask by
@@ -208,20 +208,26 @@ export async function openSlicer(src, opts = {}) {
     }
     st.mode = A.mode; if (A.cols) st.cols = A.cols; if (A.rows) st.rows = A.rows;
   }
-  let rows = [], keyed = im, tangle = null;
+  let rows = [], keyed = im, tangle = null, custom = null;
   const cv = h('canvas', { style: { maxWidth: '100%', maxHeight: '58vh', background: 'repeating-conic-gradient(#2a2a28 0 25%, #33322f 0 50%) 0 0/16px 16px' } });
   const info = h('div', { class: 'note' });
+  // tools for cleaning the sheet before cutting: erase brush, clear a rectangle, undo; double-click a box to work on one frame
+  const tools = h('div', { class: 'sltools' });
+  const W0 = im.width, H0 = im.height, erased = new Uint8Array(W0 * H0), undoMask = [], skip = new Set();
+  let VW = { x: 0, y: 0, w: W0, h: H0 }, focus = -1, brush = Math.max(3, Math.round(Math.max(W0, H0) / 120));
+  const skey = b => `${Math.round(b.x)},${Math.round(b.y)}`;
   const ctl = h('div');
   const m = h('div', { class: 'modal' }, h('div', { style: { width: 'min(1200px, 96vw)' } },
     h('header', {}, h('span', { class: 'grow' }, 'Cut a sheet into frames'), h('button', { class: 'ibtn', onclick: () => m.remove() }, '✕')),
     h('div', { style: { display: 'grid', gridTemplateColumns: '1fr 300px' } },
-      h('div', { style: { padding: '14px', display: 'grid', placeItems: 'center', borderRight: '1px solid var(--line)' } }, cv, info),
+      h('div', { style: { padding: '10px 14px 14px', display: 'grid', placeItems: 'center', alignContent: 'start', gap: '8px', borderRight: '1px solid var(--line)' } }, tools, cv, info),
       h('div', { style: { padding: '6px 14px' } }, ctl)),
     h('footer', {}, h('button', { class: 'btn ghost', onclick: () => m.remove() }, 'Cancel'), h('button', { class: 'btn go', onclick: () => finish() }, 'Make frames'))));
   document.body.append(m);
 
   function compute() {
-    keyed = st.key ? keyBackground(im, st.tol) : im;
+    keyed = st.key ? keyBackground(im, st.tol) : cloneImg(im);
+    for (let p = 0; p < erased.length; p++) if (erased[p]) keyed.data[p * 4 + 3] = 0;     // what you erased stays erased
     if (st.mode === 'grid') {
       // the grid: offset (gX, gY), cell size (gW, gH) and gap; until you size it by hand it fills the sheet evenly
       if (!st.gManual) { st.gX = 0; st.gY = 0; st.gapX = st.gapY = 0; st.gW = Math.floor(im.width / st.cols); st.gH = Math.floor(im.height / st.rows); }
@@ -235,15 +241,18 @@ export async function openSlicer(src, opts = {}) {
         const x = Math.round(A.x0 + c * A.pitch), x1 = Math.min(im.width, Math.round(A.x0 + (c + 1) * A.pitch));
         return { x, y: b.a, w: x1 - x, h: b.b - b.a };
       }).filter(b => b.w > 0));
-    } else rows = components(keyed, st.gap, st.minFrac);
+    } else if (st.mode === 'custom') rows = custom || [];
+    else rows = components(keyed, st.gap, st.minFrac);
     // empty cells (the end of a short last row) are not frames
-    rows = rows.map(r => r.filter(b => bbox(crop(keyed, b.x, b.y, b.w, b.h)))).filter(r => r.length);
+    if (st.mode !== 'custom') rows = rows.map(r => r.filter(b => bbox(crop(keyed, b.x, b.y, b.w, b.h)))).filter(r => r.length);
+    else custom = rows;
     tangle = st.untangle && st.mode !== 'auto' ? untangle(keyed, rows.flat()) : null;
     draw();
   }
+  const full = document.createElement('canvas');
   function draw() {
-    cv.width = im.width; cv.height = im.height;
-    const x = cv.getContext('2d');
+    full.width = im.width; full.height = im.height;
+    const x = full.getContext('2d');
     x.putImageData(keyed, 0, 0);
     x.lineWidth = Math.max(1, Math.round(im.width / 500));
     const colors = ['#ff5b2e', '#9cc76b', '#e3b04b', '#6fb3d9', '#d97ab3'];
@@ -267,14 +276,96 @@ export async function openSlicer(src, opts = {}) {
       // putImageData wiped the boxes: draw them again
       rows.forEach((r, ri) => r.forEach(b => { x.strokeStyle = colors[ri % colors.length]; x.strokeRect(b.x + .5, b.y + .5, b.w - 1, b.h - 1); }));
     }
-    const n = rows.reduce((s, r) => s + r.length, 0);
+    // skipped frames get a red cross
+    x.strokeStyle = '#e5534b'; x.lineWidth = Math.max(2, Math.round(im.width / 300));
+    for (const b of rows.flat()) if (skip.has(skey(b))) { x.beginPath(); x.moveTo(b.x, b.y); x.lineTo(b.x + b.w, b.y + b.h); x.moveTo(b.x + b.w, b.y); x.lineTo(b.x, b.y + b.h); x.stroke(); }
+    // the visible canvas shows the whole sheet, or one frame up close
+    cv.width = VW.w; cv.height = VW.h;
+    const v = cv.getContext('2d'); v.imageSmoothingEnabled = false; v.drawImage(full, VW.x, VW.y, VW.w, VW.h, 0, 0, VW.w, VW.h);
+    if (st.tool === 'erase' && cursor) { v.strokeStyle = '#fff'; v.beginPath(); v.arc(cursor[0] - VW.x, cursor[1] - VW.y, brush, 0, Math.PI * 2); v.stroke(); }
+    if (dragRect) { v.strokeStyle = '#e5534b'; v.setLineDash([4, 3]); v.strokeRect(dragRect.x - VW.x + .5, dragRect.y - VW.y + .5, dragRect.w, dragRect.h); v.setLineDash([]); }
+    cv.style.width = focus >= 0 ? '100%' : ''; cv.style.imageRendering = focus >= 0 ? 'pixelated' : '';
+    drawTools();
+    const n = rows.reduce((s, r) => s + r.length, 0) - rows.flat().filter(b => skip.has(skey(b))).length;
     info.textContent = `${im.width}×${im.height} · ${n} frame${n === 1 ? '' : 's'} in ${rows.length} row${rows.length === 1 ? '' : 's'}`
       + (st.mode === A.mode ? ` · found ${A.why}` : '') + (pixelArt ? ` · already pixel art${st.unscale > 1 ? `, blown up ${st.unscale}×` : ''}` : '');
   }
   /* ---- moving the grid / boxes by hand ---- */
   let hot = null, act = null;
   const handle = () => Math.max(6, Math.round(im.width / 120));
-  const at = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * im.width / r.width, (e.clientY - r.top) * im.height / r.height]; };
+  const at = e => { const r = cv.getBoundingClientRect(); return [VW.x + (e.clientX - r.left) * VW.w / r.width, VW.y + (e.clientY - r.top) * VW.h / r.height]; };
+  /* ---- erase / clear area / undo ---- */
+  let cursor = null, dragRect = null, painting = 0, rafT = 0;
+  const redraw = () => { if (!rafT) rafT = requestAnimationFrame(() => { rafT = 0; draw(); }); };
+  const pushMask = () => { undoMask.push(erased.slice()); if (undoMask.length > (W0 * H0 > 4e6 ? 4 : 12)) undoMask.shift(); };
+  function undoErase() { if (!undoMask.length) return toast('Nothing to undo'); erased.set(undoMask.pop()); compute(); }
+  function dab(px, py, val) {
+    const r = brush, r2 = r * r;
+    for (let y = Math.max(0, Math.floor(py - r)); y <= Math.min(H0 - 1, py + r); y++) for (let x = Math.max(0, Math.floor(px - r)); x <= Math.min(W0 - 1, px + r); x++) {
+      if ((x - px) ** 2 + (y - py) ** 2 > r2) continue;
+      const p = y * W0 + x; erased[p] = val; if (val) keyed.data[p * 4 + 3] = 0;
+    }
+  }
+  function clearRect(R, val = 1) {
+    for (let y = Math.max(0, R.y); y < Math.min(H0, R.y + R.h); y++) for (let x = Math.max(0, R.x); x < Math.min(W0, R.x + R.w); x++) { erased[y * W0 + x] = val; if (val) keyed.data[(y * W0 + x) * 4 + 3] = 0; }
+  }
+  // capture phase: when a cleaning tool is active it takes the mouse before the arrange handlers
+  cv.addEventListener('pointerdown', e => {
+    if (st.tool === 'arrange' || !st.tool) return;
+    e.stopImmediatePropagation(); e.preventDefault(); cv.setPointerCapture(e.pointerId);
+    const p = at(e).map(Math.round);
+    if (st.tool === 'erase') { pushMask(); painting = e.button === 2 ? 0 : 1; dab(p[0], p[1], painting); painting === 1 ? redraw() : null; painting = painting === 1 ? 1 : -1; }
+    else { pushMask(); dragRect = { x0: p[0], y0: p[1], x: p[0], y: p[1], w: 0, h: 0, val: e.button === 2 ? 0 : 1 }; }
+  }, true);
+  cv.addEventListener('pointermove', e => {
+    if (st.tool === 'arrange' || !st.tool) return;
+    e.stopImmediatePropagation();
+    const p = at(e).map(Math.round); cursor = p;
+    if (painting) dab(p[0], p[1], painting > 0 ? 1 : 0);
+    if (dragRect) Object.assign(dragRect, { x: Math.min(dragRect.x0, p[0]), y: Math.min(dragRect.y0, p[1]), w: Math.abs(p[0] - dragRect.x0), h: Math.abs(p[1] - dragRect.y0) });
+    redraw();
+  }, true);
+  cv.addEventListener('pointerup', e => {
+    if (st.tool === 'arrange' || !st.tool) return;
+    e.stopImmediatePropagation();
+    if (dragRect) { clearRect(dragRect, dragRect.val); dragRect = null; }
+    const restored = painting < 0 || (dragRect && !dragRect.val); painting = 0;
+    compute();          // re-cut with the cleaned sheet (and bring restored pixels back from the original)
+  }, true);
+  cv.addEventListener('pointerleave', () => { cursor = null; if (st.tool !== 'arrange') redraw(); });
+  cv.addEventListener('contextmenu', e => { if (st.tool !== 'arrange') { e.preventDefault(); e.stopImmediatePropagation(); } }, true);
+  /* ---- one frame at a time ---- */
+  function focusOn(i) {
+    const all = rows.flat(); if (!all.length) return;
+    focus = ((i % all.length) + all.length) % all.length;
+    const b = all[focus], mx = Math.round(b.w * .12), my = Math.round(b.h * .12);
+    VW = { x: Math.max(0, b.x - mx), y: Math.max(0, b.y - my), w: Math.min(W0, b.x + b.w + mx) - Math.max(0, b.x - mx), h: Math.min(H0, b.y + b.h + my) - Math.max(0, b.y - my) };
+    draw();
+  }
+  function wholeSheet() { focus = -1; VW = { x: 0, y: 0, w: W0, h: H0 }; draw(); }
+  cv.addEventListener('dblclick', e => { if (st.tool && st.tool !== 'arrange') return; const hh = hit(at(e)); if (hh) focusOn(rows.flat().indexOf(hh.b)); });
+  function drawTools() {
+    const b = focus >= 0 ? rows.flat()[focus] : null;
+    tools.replaceChildren(...[
+      seg([['arrange', 'Arrange'], ['erase', 'Erase'], ['clear', 'Clear area']], st.tool || 'arrange', v => { st.tool = v; draw(); }),
+      st.tool === 'erase' ? h('span', { class: 'rngw', title: 'Brush size (px of the sheet)' }, range(brush, 1, Math.max(8, Math.round(Math.max(W0, H0) / 20)), 1, v => { brush = v; })) : null,
+      h('button', { class: 'btn sm ghost', title: 'Undo the last erase or clear (Ctrl+Z)', onclick: undoErase, disabled: !undoMask.length }, 'Undo'),
+      h('span', { class: 'grow' }),
+      b ? [h('button', { class: 'btn sm ghost', title: 'Previous frame (,)', onclick: () => focusOn(focus - 1) }, '◀'),
+        h('span', { class: 'mono dim', style: { fontSize: '11px' } }, `frame ${focus + 1}/${rows.flat().length}`),
+        h('button', { class: 'btn sm ghost', title: 'Next frame (.)', onclick: () => focusOn(focus + 1) }, '▶'),
+        h('button', { class: 'btn sm ghost', title: 'Erase everything in this frame\'s box', onclick: () => { pushMask(); clearRect(b); compute(); } }, 'Clear frame'),
+        h('button', { class: 'btn sm' + (skip.has(skey(b)) ? ' go' : ' ghost'), title: 'Leave this frame out of the result', onclick: () => { const k = skey(b); skip.has(k) ? skip.delete(k) : skip.add(k); draw(); } }, skip.has(skey(b)) ? 'Skipped' : 'Skip frame'),
+        h('button', { class: 'btn sm', title: 'Back to the whole sheet (Esc)', onclick: wholeSheet }, 'Whole sheet')]
+        : h('span', { class: 'faint', style: { fontSize: '11px' } }, 'Double-click a frame to work on it up close')].flat().filter(Boolean));
+  }
+  m.addEventListener('keydown', e => {
+    if (e.target.matches('input,textarea,select')) return;
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undoErase(); }
+    else if (e.key === 'Escape' && focus >= 0) { e.preventDefault(); e.stopPropagation(); wholeSheet(); }
+    else if (focus >= 0 && (e.key === ',' || e.key === '.')) focusOn(focus + (e.key === '.' ? 1 : -1));
+    else if (!e.ctrlKey && !e.altKey && ['a', 'e', 'c'].includes(e.key.toLowerCase())) { st.tool = { a: 'arrange', e: 'erase', c: 'clear' }[e.key.toLowerCase()]; draw(); }
+  });
   const hit = ([px, py]) => {
     const all = rows.flat(); const hs = handle() * 1.6;
     for (let i = all.length - 1; i >= 0; i--) { const b = all[i]; if (px >= b.x && py >= b.y && px < b.x + b.w && py < b.y + b.h) return { b, corner: px > b.x + b.w - hs && py > b.y + b.h - hs }; }
@@ -283,8 +374,8 @@ export async function openSlicer(src, opts = {}) {
   cv.style.cursor = 'crosshair'; cv.style.touchAction = 'none';
   cv.addEventListener('contextmenu', e => {
     e.preventDefault();
-    if (st.mode === 'grid') return;
     const hh = hit(at(e)); if (!hh) return;
+    if (st.mode === 'grid') { const k = skey(hh.b); skip.has(k) ? skip.delete(k) : skip.add(k); draw(); return; }     // grid: right click skips a frame
     rows = rows.map(r => r.filter(b => b !== hh.b)).filter(r => r.length); hot = null; draw();     // right click removes a box
   });
   cv.addEventListener('pointerdown', e => {
@@ -325,7 +416,15 @@ export async function openSlicer(src, opts = {}) {
   function drawCtl() {
     ctl.replaceChildren(
       h('div', { class: 'sec', style: { padding: '8px 0' } }, h('h3', {}, 'Find frames'),
-        field('How', seg([...(A.bands ? [['bands', 'Rows found']] : []), ['auto', 'Find figures'], ['grid', 'Even grid']], st.mode, v => { st.mode = v; drawCtl(); compute(); })),
+        field('How', seg([...(A.bands ? [['bands', 'Rows found']] : []), ['auto', 'Find figures'], ['grid', 'Even grid'], ['custom', 'Custom']], st.mode, v => {
+          // Custom starts from the boxes you see now and keeps them: nothing is re-found, you place every box
+          if (v === 'custom') custom = rows.map(r => r.map(b => ({ ...b })));
+          st.mode = v; drawCtl(); compute();
+        }), 'Custom: your own boxes. Drag to move, corner square to size, drag on empty space to add, right-click to remove'),
+        st.mode === 'custom' ? h('div', { style: { display: 'flex', gap: '6px', flexWrap: 'wrap', margin: '4px 0' } },
+          h('button', { class: 'btn sm', title: 'Make every box the size of the box under the mouse / the first box', onclick: () => { const all = rows.flat(), ref = hot || all[0]; if (!ref) return; for (const b of all) { b.w = ref.w; b.h = ref.h; } draw(); } }, 'Same size for all'),
+          h('button', { class: 'btn sm', title: 'Line every row up: same top edge within a row', onclick: () => { for (const r of rows) { const y = Math.min(...r.map(b => b.y)); for (const b of r) b.y = y; } draw(); } }, 'Align rows'),
+          h('button', { class: 'btn sm ghost', title: 'Remove every box and start drawing from scratch', onclick: () => { rows.length = 0; custom = rows; draw(); } }, 'Clear boxes')) : null,
         st.mode === 'grid' ? [field('Columns', range(st.cols, 1, 32, 1, v => { st.cols = v; compute(); })), field('Rows', range(st.rows, 1, 16, 1, v => { st.rows = v; compute(); })),
           h('div', { class: 'gridnums' }, num('gX', 'Left', 'Where the first cell starts (px). Or drag the grid'), num('gY', 'Top', 'Where the first row starts (px)'),
             num('gW', 'Cell W', 'Cell width (px). Or drag a corner handle'), num('gH', 'Cell H', 'Cell height (px)'),
@@ -351,6 +450,7 @@ export async function openSlicer(src, opts = {}) {
         field('Speed', range(st.fps, 2, 24, 1, v => st.fps = v, v => v + ' fps'))));
   }
   function finish() {
+    rows = rows.map(r => r.filter(b => !skip.has(skey(b)))).filter(r => r.length);
     const k = !st.pixel && st.unscale > 1 ? st.unscale : 1;
     if (k > 1) {   // line boxes up with the blown-up pixel grid so each k×k block is one pixel
       const sn = v => ps.off + Math.floor((v - ps.off) / k) * k;
