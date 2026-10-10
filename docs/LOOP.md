@@ -49,7 +49,8 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - [x] **SAFETY name guard** DONE: owners.js (`loadOwners`/`claim`) in Animate, Levels, HUD (saves + exports); tested from fresh
   browsers: hero → hero_2, hud → hud_2, zz_a → zz_a_2; the user's files unchanged. Was: same as Scenes: never save over another item's project/export by
   name (owner ids → `name_2`); a fresh browser must not save anything until the user edits.
-- [ ] **Scenes 5, review mode:** a safe-frame / HUD overlay toggle, the actor walking on the ground line (exists, check it), a
+- [x] **Scenes 5** DONE: Show = safe frame / HUD mock-up / both; Time of day slider (night exports as Godot CanvasModulate);
+  snapshot PNG (3×); Record pan = 4 s WebM at 3× (frame-count based, recording canvas must stay on screen). Was: a safe-frame / HUD overlay toggle, the actor walking on the ground line (exists, check it), a
   day/night palette shift slider, and PNG/GIF export of a short pan for sharing.
 
 - [x] **Local generation benchmark (slice 1).** `fast/convert.py` turns AllInOnePixel + fused LCM-LoRA into diffusers
@@ -119,3 +120,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: run 13. Scenes ↔ Levels bridge (scene as level background; cut layer tiles into a tileset). TODO next to it: Levels needs the same
   name-ownership guard as Scenes (a new level named like an existing one would save over it).
 - 2026-10-10: run 14. Name guard everywhere (Animate, Levels, HUD use owners.js like Scenes).
+- 2026-10-10: run 15. Scenes review tools (overlays, time of day, snapshot, pan video). The Scenes push (1-5) is complete.

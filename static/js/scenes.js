@@ -29,6 +29,14 @@ function redo() { if (!redoS.length) return; undoS.push(snap()); const s = redoS
 // one undo step per control gesture (a slider drag, a colour pick)
 const edit = () => { if (!V.editing) { pushUndo(); V.editing = true; } };
 window.addEventListener('change', () => { V.editing = false; });
+let overlay = pref.get('scene.overlay', 'none'), hudImg = null;     // review overlays: safe frame and/or the latest HUD mock-up
+async function loadHud() {
+  hudImg = null;
+  const r = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/hud')).catch(() => ({ items: [] }));
+  const d = (r.items || []).find(i => i.dir);
+  if (d) try { hudImg = toCanvas(await imgData(rawURL(d.path + '/hud.png'))); } catch { }
+  drawPreview();
+}
 let solo = null;     // id of the only layer shown (Alt+click an eye), null = all
 let zoomPick = pref.get('scene.zoom', 0);
 let cam = 0, playing = true, speed = pref.get('scene.speed', 30), actor = null, actorX = 0;
@@ -360,6 +368,12 @@ function build(el) {
         h('i', { class: 'sep' }), h('span', { class: 'lbl' }, 'Actor'), V.actorSel,
         h('i', { class: 'sep' }), h('span', { class: 'lbl' }, 'Zoom'),
         select([[0, 'Auto'], [-2, 'Sharp'], [-1, 'Fill'], [1, '1×'], [2, '2×'], [3, '3×'], [4, '4×']], zoomPick, v => { zoomPick = +v; pref.set('scene.zoom', zoomPick); drawPreview(); }),
+        h('i', { class: 'sep' }), h('span', { class: 'lbl', title: 'Check the scene the way the game will show it' }, 'Show'),
+        select([['none', 'Scene only'], ['safe', 'Safe frame'], ['hud', 'HUD'], ['both', 'HUD + safe']], overlay, v => { overlay = v; pref.set('scene.overlay', v); if (v !== 'none' && v !== 'safe' && !hudImg) loadHud(); drawPreview(); }),
+        h('span', { class: 'lbl', title: 'Time of day: left is night, right is bright day. Night is also exported to Godot (CanvasModulate)' }, 'Time'),
+        V.tod = range(SC?.tod || 0, -1, 1, .05, v => { SC.tod = v; drawPreview(); save(); }, v => todLabel(v)),
+        h('button', { class: 'ibtn', title: 'Snapshot: download this frame as a PNG (3× size)', onclick: () => snapshot() }, icon('export')),
+        h('button', { class: 'btn sm', title: 'Record a 4-second camera pan (3× size, WebM video) to share', onclick: () => recordPan(4) }, 'Record pan'),
         h('span', { class: 'grow' }), V.info),
       V.vp,
       h('div', { class: 'bar bot' }, h('span', { class: 'lbl' }, 'Look'), V.looks = h('span', { style: { display: 'flex', gap: '6px' } }), h('span', { class: 'grow' }),
@@ -389,7 +403,10 @@ function build(el) {
   refreshActors();
   loadOwners();
 }
-function drawAll() { if (!V.left) return; drawLeft(); drawLayers(); drawRight(); drawLooks(); drawPreview(); }
+const todLabel = v => v < -.02 ? 'night ' + Math.round(-v * 100) + '%' : v > .02 ? 'day ' + Math.round(v * 100) + '%' : 'as made';
+function drawAll() { if (!V.left) return;
+  // show this scene's time of day on the slider (setting it directly: opening a scene must not save it)
+  const t = V.tod?.querySelector('input'), o = V.tod?.querySelector('output'); if (t) { t.value = SC.tod || 0; if (o) o.textContent = todLabel(SC.tod || 0); } drawLeft(); drawLayers(); drawRight(); drawLooks(); drawPreview(); }
 function drawLooks() {
   V.looks.replaceChildren(...Object.entries(LOOKS).map(([k, l]) => h('button', { class: 'btn sm' + (SC.look === k ? ' go' : ''), title: l.note, onclick: () => { SC.look = k; drawLooks(); drawLeft(); process(); } }, l.name)));
 }
@@ -423,10 +440,53 @@ function drawPreview() {
     if (actor && L === groundLayer()) drawActor(x);
   }
   if (actor && !groundLayer()) drawActor(x);
+  // time of day: night multiplies toward moonlit blue, day screens toward warm light (preview grade)
+  const tod = SC.tod || 0;
+  if (tod < -.02) { x.globalCompositeOperation = 'multiply'; x.fillStyle = nightColour(-tod); x.fillRect(0, 0, w, hh); }
+  else if (tod > .02) { x.globalCompositeOperation = 'screen'; x.globalAlpha = tod * .35; x.fillStyle = '#ffd9a0'; x.fillRect(0, 0, w, hh); }
+  x.globalCompositeOperation = 'source-over'; x.globalAlpha = 1;
+  if ((overlay === 'hud' || overlay === 'both') && hudImg) x.drawImage(hudImg, 0, 0);
+  if (overlay === 'safe' || overlay === 'both') {
+    const box = (k, c) => { x.strokeStyle = c; x.setLineDash([3, 3]); x.strokeRect(Math.round(w * (1 - k) / 2) + .5, Math.round(hh * (1 - k) / 2) + .5, Math.round(w * k) - 1, Math.round(hh * k) - 1); };
+    box(.95, 'rgba(232,165,54,.9)'); box(.9, 'rgba(255,255,255,.55)'); x.setLineDash([]);
+    x.fillStyle = 'rgba(232,165,54,.9)'; x.fillRect(w / 2 - 3, hh / 2, 7, 1); x.fillRect(w / 2, hh / 2 - 3, 1, 7);
+  }
   const sel0 = SC.layers[sel];
   V.info.textContent = `${w}×${hh} · ${+zoomNow.toFixed(2)}× · camera ${Math.round(cam)}px${sel0?.tiles ? ` · ${sel0.name}: ${sel0.tiles} unique 8×8 tiles` : ''}`;
 }
 const groundLayer = () => SC.layers.filter(l => l.visible !== false && l.scroll >= 1 && l.scroll < 1.1).pop();
+// night tint as a multiply colour: white at 0 (no change) to a deep moonlit blue at 1
+function nightColour(t) { const c = mix([255, 255, 255], [70, 84, 150], Math.min(1, t)); return `rgb(${c[0]},${c[1]},${c[2]})`; }
+function snapshot() {
+  const k = 3, c = document.createElement('canvas'); c.width = V.cv.width * k; c.height = V.cv.height * k;
+  const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(V.cv, 0, 0, c.width, c.height);
+  const a = h('a', { href: c.toDataURL('image/png'), download: `${SC.name}_snapshot.png` }); document.body.append(a); a.click(); a.remove();
+  toast('Snapshot downloaded');
+}
+// Record a 4 s pan of the preview at 3× as WebM (the browser's own recorder), then download it.
+async function recordPan(secs = 4) {
+  if (V.rec) return;
+  const k = 3, c = document.createElement('canvas'); c.width = V.cv.width * k; c.height = V.cv.height * k;
+  const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+  let rec;
+  // the recorder only gets frames from a canvas the page actually composites: keep it on screen at 1 css px (full resolution inside)
+  c.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:.01;pointer-events:none'; document.body.append(c);
+  try { rec = new MediaRecorder(c.captureStream(30), { mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8' : 'video/webm' }); }
+  catch (e) { c.remove(); return toast('This browser cannot record video: ' + e.message, 'bad'); }
+  const chunks = []; rec.ondataavailable = e => e.data.size && chunks.push(e.data);
+  const wasPlaying = playing; playing = true; V.rec = true; toast(`Recording ${secs} s…`);
+  // stop after enough frames for the length, not after wall time: a busy page (layers still generating) would
+  // otherwise give a clip of 3 frames. Capped at 3× the length in case the page stays busy.
+  let n = 0; const t0 = performance.now(), want = secs * 30;
+  const copy = () => { x.drawImage(V.cv, 0, 0, c.width, c.height); n++; if (n < want && performance.now() - t0 < secs * 3000) requestAnimationFrame(copy); else rec.stop(); };
+  rec.onstop = () => {
+    playing = wasPlaying; V.rec = false; c.remove();
+    const url = URL.createObjectURL(new Blob(chunks, { type: 'video/webm' }));
+    const a = h('a', { href: url, download: `${SC.name}_pan.webm` }); document.body.append(a); a.click(); a.remove();
+    toast('Pan video downloaded', 'ok');
+  };
+  rec.start(250); copy();
+}
 function drawActor(x) {
   const a = actor.anim, f = a.frames[Math.floor(actorX * a.fps) % a.frames.length];
   const ground = groundLayer();
@@ -612,7 +672,7 @@ async function exportScene() {
   if (free !== SC.name) { toast(`"${SC.name}" belongs to another scene, so this one is saved as "${free}"`); SC.name = free; drawAll(); }
   owners.set(SC.name, SC.id);
   const dir = `backgrounds/${SC.name}`, files = [];
-  const sj = { view: SC.view, look: SC.look, source: 'kiln', layers: [] };
+  const sj = { view: SC.view, look: SC.look, tod: SC.tod || 0, source: 'kiln', layers: [] };
   const used = new Map();
   for (const L of SC.layers) {
     if (L.kind === 'weather') {
@@ -663,7 +723,8 @@ function godotScene(sj, res) {
     for (let c = 0; c < copies; c++) l.collision.forEach((poly, i) => out.push(`[node name="shape_${c}_${i}" type="CollisionPolygon2D" parent="${l.name}_solid"]\npolygon = PackedVector2Array(${poly.map(([x, y]) => `${x + c * l.w}, ${y}`).join(', ')})\n`));
     return out.join('\n');
   });
-  return `[gd_scene load_steps=${ext.length + subs.length + wsub.length + 1} format=3]\n\n${ext.join('\n')}\n\n${subs.length ? subs.join('\n') + '\n' : ''}${wsub.length ? wsub.join('\n') + '\n' : ''}[node name="${SC.name}" type="Node2D"]\n\n${nodes.join('\n')}${bodies.length ? '\n' + bodies.join('\n') : ''}`;
+  const tod = sj.tod || 0, nightNode = tod < -.02 ? (() => { const c = mix([255, 255, 255], [70, 84, 150], Math.min(1, -tod)).map(v => (v / 255).toFixed(3)); return `\n[node name="TimeOfDay" type="CanvasModulate" parent="."]\ncolor = Color(${c.join(', ')}, 1)\n`; })() : '';
+  return `[gd_scene load_steps=${ext.length + subs.length + wsub.length + 1} format=3]\n\n${ext.join('\n')}\n\n${subs.length ? subs.join('\n') + '\n' : ''}${wsub.length ? wsub.join('\n') + '\n' : ''}[node name="${SC.name}" type="Node2D"]\n\n${nodes.join('\n')}${bodies.length ? '\n' + bodies.join('\n') : ''}${nightNode}`;
 }
 
 /* ------------------------------------------------- command wheel & keys ---- */
