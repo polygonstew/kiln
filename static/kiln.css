@@ -493,3 +493,7 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .sfx-ks { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-top: 6px; }
 .sfx-k { display: flex; flex-direction: column; gap: 2px; font-size: 10px; color: var(--faint); } .sfx-k input, .sfx-k select { width: 100%; }
 .sfx-presets { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+/* effects (vfx.js) */
+.vfx-row { display: flex; gap: 10px; align-items: center; border-top: 1px solid var(--line); padding: 8px 0; }
+.vfx-pv { image-rendering: pixelated; background: repeating-conic-gradient(#1c1c1b 0 25%, #222221 0 50%) 0 0/8px 8px; border: 1px solid var(--line2); flex: none; }
+.vfx-c { flex: 1; } .vfx-c b { font: 600 12px var(--sans); } .vfx-s { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }

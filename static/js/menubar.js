@@ -4,6 +4,7 @@ import { $, h, emit, toast } from './core.js';
 import { areaList, currentArea } from './wheel.js';
 import { openHistory } from './history.js';
 import { openSfxDesigner } from './sfx.js';
+import { openVfxDesigner } from './vfx.js';
 
 const view = () => document.querySelector('.view.on');
 const visibleButton = (re, root = view()) => [...(root?.querySelectorAll('button') || [])].find(b => b.offsetParent && re.test(b.textContent.trim()));
@@ -42,6 +43,7 @@ const MENUS = () => [
     ['Forge: roll an enemy idea', 'A random grim enemy description', () => { go('forge'); setTimeout(() => press(/Roll$/, 'Roll'), 300); }],
     null,
     ['Desk (your apps)', 'Your home apps as windows', () => window.open('/desk', '_blank')],
+    ['Effects…', 'Make effect sprites (sparks, slashes, dust, explosions, sparkles) as one-shot Godot scenes', openVfxDesigner],
     ['Sound effects…', 'Make retro sound effects (coin, jump, explosion…) and save them as .wav', openSfxDesigner],
     ['Godot plugin…', 'Install the Kiln dock into your Godot project (or download it)', godotPlugin],
   ]],

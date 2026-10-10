@@ -12,6 +12,7 @@ import { openWorkshop, facesFiles } from './workshop.js';
 import { actorScene, projectileScene, boxesOf, brainOf, JUICE_GD, PROJECTILE_GD, FLASH_SHADER } from './actor_godot.js';
 import { BRAIN_GD } from './brains.js';
 import { wav, synth } from './sfx.js';
+import { vfxFiles, VFX_GD } from './vfx.js';
 import { saveFiles, S as FS } from './files.js';
 
 const ANIM_NAMES = ['idle', 'walk', 'run', 'jump', 'fall', 'attack', 'hurt', 'death', 'crouch', 'cast', 'climb', 'dash', 'block', 'spin'];
@@ -872,6 +873,11 @@ async function exportActor() {
     await saveFiles('sprites/_kiln', [{ name: 'juice.gd', text: JUICE_GD }, { name: 'hit_flash.gdshader', text: FLASH_SHADER }, { name: 'projectile.gd', text: PROJECTILE_GD }]).catch(() => {});
     for (const pj of a.projectiles || []) files.push({ name: `projectile_${pj.name}.tscn`, text: projectileScene(a, res, pj) });
     for (const [ev, p] of Object.entries(a.sounds || {})) files.push({ name: `sfx_${ev}.wav`, b64: wav(synth(p)) });
+    // effects: the hit effect and each projectile's impact, as one-shot scenes next to the actor
+    const shared = res.replace(/\/[^/]+$/, '') + '/_kiln';
+    if (a.vfx?.hit) files.push(...vfxFiles('vfx_hit', a.vfx.hit, res, shared));
+    for (const pj of a.projectiles || []) if (pj.impact) files.push(...vfxFiles(`vfx_${pj.name}_impact`, pj.impact, res, shared));
+    if (a.vfx?.hit || (a.projectiles || []).some(pj => pj.impact)) await saveFiles('sprites/_kiln', [{ name: 'vfx.gd', text: VFX_GD }]).catch(() => {});
     // the actor's brain script: written once, then it is yours to edit (Logic) and never overwritten
     const br = brainOf(a);
     if (br) {

@@ -87,7 +87,7 @@ override everything; each gets a Help section and a Godot export):**
 - [ ] **Toolsets (user asked 2026-10-10 "have you considered toolsets?"), in this order:**
   1. [x] DONE **Snapshots**: every save keeps earlier versions (kiln/history/, throttled, size-capped); "History…" to restore. (A test once lost the user's scene.)
   2. [x] DONE **Retro sound effects**: sfxr-style generator (jump, coin, hit, explosion, shoot) → .wav; actors play them on hurt/shoot/jump/die.
-  3. **VFX sprites**: procedural hit sparks, slashes, dust, explosions, pickups sparkle → SpriteFrames; used by hurt/projectile impact.
+  3. [x] DONE **VFX sprites**: procedural hit sparks, slashes, dust, explosions, pickups sparkle → SpriteFrames; used by hurt/projectile impact.
   4. **Autotile / terrains**: from 1–3 tiles build a Godot terrain set (edges, corners) so Levels paints walls that join up.
   5. **Doctor**: check the asset folder (oversized sprites, too many colours, missing files/refs, unused files) with one-click fixes.
   6. **Items database**: items with icon, stats, text → Godot Resources, feeding HUD inventory and pickups.
@@ -247,4 +247,5 @@ override everything; each gets a Help section and a Godot export):**
 - 2026-10-10: user screenshot: still cut off. Cause: their tab was open from before the fix (a page keeps the code it loaded). Added /api/status build id + "Kiln updated · Reload" chip (queue.js). Preview zoom label shows %.
 - 2026-10-10: Toolset 1 Snapshots: server keeps the replaced version on each project save (history/<id>/, 10 min gap, 5 each, 1 GB cap, unchanged skipped); File → History… (history.js) restores as a new copy. Tested via API + UI. Restarted kiln only after the user's generation queue emptied (do that every time).
 - 2026-10-10: Toolset 2 Sounds: sfx.js (sfxr-style synth, 9 presets, WAV), Workshop Sounds card → sfx_<event>.wav + AudioStreamPlayer2D nodes, juice.gd sfx() on hurt/die/shoot, player brain on jump/attack; Tools → Sound effects… designer → sfx/. Verified in Godot (wav imports, hurt + jump play).
+- 2026-10-10: Toolset 3 Effects: vfx.js (spark, slash, dust, explosion, sparkle, ring × 6 colour sets, Bayer fades) → strip + one-shot AnimatedSprite2D scene (_kiln/vfx.gd); Workshop hit effect (juice.gd hit_effect) + projectile impact_effect; Tools → Effects…. Verified in Godot.
 

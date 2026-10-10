@@ -109,6 +109,7 @@ func shake(strength: float = 4.0, duration: float = 0.3) -> void:
 @export var knockback := 60.0              ## how far a hit pushes this actor (px/s)
 @export var invulnerable_time := 0.6       ## seconds of blinking safety after a hit
 @export var projectile: PackedScene        ## what shoot() fires (a Kiln projectile scene)
+@export var hit_effect: PackedScene        ## spawned where a hit lands (Kiln Workshop → Effects)
 @export var max_health := 3                ## hits it takes; the player's health also drives a Kiln HUD
 var health := -1
 var invulnerable := false
@@ -128,6 +129,8 @@ func hurt(from_position: Vector2 = Vector2.INF, damage: int = 1) -> void:
 \t\tdie()
 \t\treturn
 \tsfx("hurt")
+\tvar c := sprite.global_position
+\t_effect(hit_effect, c if from_position == Vector2.INF else c + (from_position - c).limit_length(6.0))
 \thurt_started.emit(from_position)
 \thit_flash()
 \tsquash(0.18)
@@ -160,6 +163,14 @@ func die() -> void:
 \t\tget_tree().reload_current_scene()
 \telse:
 \t\tqueue_free()
+
+## Spawn a Kiln effect scene (plays once, removes itself) at a point in the world.
+func _effect(scene: PackedScene, at: Vector2) -> void:
+\tif scene == null:
+\t\treturn
+\tvar e := scene.instantiate() as Node2D
+\tget_parent().add_child(e)
+\te.global_position = at
 
 ## Play one of this actor's sounds (made in Kiln's Workshop): "jump", "attack", "hurt", "shoot", "die".
 func sfx(event: String) -> void:
@@ -205,6 +216,7 @@ export const PROJECTILE_GD = `extends Area2D
 @export var lifetime := 2.0
 @export var damage := 1
 @export var pierce := false
+@export var impact_effect: PackedScene   ## spawned where it hits (Kiln Workshop → Projectiles)
 var velocity := Vector2.ZERO
 var shooter: Node = null
 signal hit(target: Node)
@@ -234,6 +246,10 @@ func _on_hit(other: Node) -> void:
 \thit.emit(t)
 \tif t.has_method("hurt"):
 \t\tt.hurt(global_position, damage)
+\tif impact_effect:
+\t\tvar e := impact_effect.instantiate() as Node2D
+\t\tget_parent().add_child(e)
+\t\te.global_position = global_position
 \tif not pierce:
 \t\tqueue_free()
 `;
@@ -254,11 +270,12 @@ export function actorScene(a, res, hb) {
     + (pj ? `[ext_resource type="PackedScene" path="${res}/projectile_${pj.name}.tscn" id="4"]\n` : '')
     + (br ? `[ext_resource type="Script" path="${shared}/brains/${br}.gd" id="5"]\n` : '')
     + Object.keys(a.sounds || {}).map(ev => `[ext_resource type="AudioStream" path="${res}/sfx_${ev}.wav" id="sfx_${ev}"]\n`).join('')
+    + (a.vfx?.hit ? `[ext_resource type="PackedScene" path="${res}/vfx_hit.tscn" id="vfx_hit"]\n` : '')
     + `[ext_resource type="Script" path="${shared}/juice.gd" id="2"]\n[ext_resource type="Shader" path="${shared}/hit_flash.gdshader" id="3"]\n\n`
     + `[sub_resource type="ShaderMaterial" id="flash"]\nshader = ExtResource("3")\nshader_parameter/flash = 0.0\nshader_parameter/flash_color = Color(1, 1, 1, 1)\n\n`
     + `[sub_resource type="RectangleShape2D" id="body"]\nsize = Vector2(${hb.w}, ${hb.h})\n\n`
     + `[sub_resource type="RectangleShape2D" id="hurt"]\nsize = Vector2(${hb.w}, ${hb.h})\n\n`
-    + `[node name="${a.name}" type="CharacterBody2D"${(a.role || (a.kind === 'creature' ? 'enemy' : 'hero')) === 'hero' ? ' groups=["player"]' : ''}]\nscript = ExtResource("2")\nknockback = ${R.knockback ?? 60}.0\ninvulnerable_time = ${R.iframes ?? 0.6}\nmax_health = ${R.health ?? 3}\n${pj ? 'projectile = ExtResource("4")\n' : ''}`
+    + `[node name="${a.name}" type="CharacterBody2D"${(a.role || (a.kind === 'creature' ? 'enemy' : 'hero')) === 'hero' ? ' groups=["player"]' : ''}]\nscript = ExtResource("2")\nknockback = ${R.knockback ?? 60}.0\ninvulnerable_time = ${R.iframes ?? 0.6}\nmax_health = ${R.health ?? 3}\n${a.vfx?.hit ? 'hit_effect = ExtResource("vfx_hit")\n' : ''}${pj ? 'projectile = ExtResource("4")\n' : ''}`
     + (Object.keys(boxesOf(a)).length ? `metadata/boxes = ${JSON.stringify(boxesOf(a))}\n` : '') + '\n'
     + `[node name="Sprite" type="AnimatedSprite2D" parent="."]\nmaterial = SubResource("flash")\ntexture_filter = 1\nposition = Vector2(0, ${-a.h / 2})\nsprite_frames = ExtResource("1")\nanimation = &"${start}"\nautoplay = "${start}"\n\n`
     + `[node name="Body" type="CollisionShape2D" parent="."]\nposition = Vector2(${hb.x + hb.w / 2 - a.w / 2}, ${hb.y + hb.h / 2 - a.h})\nshape = SubResource("body")\n\n`
@@ -286,9 +303,10 @@ export function projectileScene(a, res, pj) {
   const shared = res.replace(/\/[^/]+$/, '') + '/_kiln', n = a.anims.find(x => x.name === pj.anim);
   const b = n && bbox(n.frames[0]), r = b ? Math.max(2, Math.round(Math.max(b.w, b.h) / 2)) : 4;
   const off = b ? `position = Vector2(${b.x + b.w / 2 - n.frames[0].width / 2}, ${b.y + b.h / 2 - n.frames[0].height / 2})\n` : '';
-  return `[gd_scene load_steps=4 format=3]\n\n[ext_resource type="SpriteFrames" path="${res}/${a.name}.tres" id="1"]\n[ext_resource type="Script" path="${shared}/projectile.gd" id="2"]\n\n`
+  return `[gd_scene load_steps=4 format=3]\n\n[ext_resource type="SpriteFrames" path="${res}/${a.name}.tres" id="1"]\n[ext_resource type="Script" path="${shared}/projectile.gd" id="2"]\n`
+    + (pj.impact ? `[ext_resource type="PackedScene" path="${res}/vfx_${pj.name}_impact.tscn" id="3"]\n` : '') + '\n'
     + `[sub_resource type="CircleShape2D" id="c"]\nradius = ${r}.0\n\n`
-    + `[node name="${pj.name}" type="Area2D"]\nscript = ExtResource("2")\nspeed = ${pj.speed}.0\ngravity_scale = ${pj.gravity}\nlifetime = ${pj.lifetime}\ndamage = ${pj.damage}\npierce = ${!!pj.pierce}\n\n`
+    + `[node name="${pj.name}" type="Area2D"]\nscript = ExtResource("2")\nspeed = ${pj.speed}.0\ngravity_scale = ${pj.gravity}\nlifetime = ${pj.lifetime}\ndamage = ${pj.damage}\npierce = ${!!pj.pierce}\n${pj.impact ? 'impact_effect = ExtResource("3")\n' : ''}\n`
     + `[node name="Sprite" type="AnimatedSprite2D" parent="."]\ntexture_filter = 1\nsprite_frames = ExtResource("1")\nanimation = &"${pj.anim}"\nautoplay = "${pj.anim}"\n\n`
     + `[node name="Hit" type="CollisionShape2D" parent="."]\n${off}shape = SubResource("c")\n`;
 }

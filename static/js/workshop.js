@@ -3,6 +3,7 @@
 // checklist; every item can still be done by hand in the editor.
 import { BRAINS, defaultBrain } from './brains.js';
 import { roll, sfxRow, play } from './sfx.js';
+import { vfxRow, newVfx } from './vfx.js';
 import { h, toast, imgData, pixelize, toCanvas, toDataURL, rgb, hex, luma, newImg, blit, bbox, select, seg, range, check, field } from './core.js';
 import { enqueue } from './queue.js';
 import { SETS } from './sheets.js';
@@ -76,7 +77,7 @@ export function openWorkshop(host, api) {
             h('table', { class: 'wk-anims' }, ...rows),
             extra.length ? h('p', { class: 'note' }, 'Also has: ' + extra.join(', ')) : null,
             S.anims.some(([n]) => !have.has(n)) ? h('button', { class: 'btn sm', title: 'Add every missing animation of this role at once', onclick: () => { for (const r of S.anims) if (!have.has(r[0])) addAnim(...r); draw(); } }, 'Add all missing') : null),
-          reactCard(), brainCard(), soundCard(), projCard()),
+          reactCard(), brainCard(), soundCard(), fxCard(), projCard()),
         h('div', { class: 'wk-col' }, facesCard())));
   };
   /* ---- being hit ---- */
@@ -89,6 +90,14 @@ export function openWorkshop(host, api) {
       field('Health', range(R.health ?? 3, 1, 20, 1, v => set('health', v), v => v + (v == 1 ? ' hit' : ' hits')), 'Hits it takes before dying (the player\'s health drives the HUD)'),
       field('Safe for', range(R.iframes, 0, 2, .05, v => set('iframes', v), v => (+v).toFixed(2) + ' s'), 'Invulnerable (blinking) after a hit'),
       have('hurt') ? null : h('p', { class: 'note' }, 'Tip: add a "hurt" animation (enemy and player roles include one).'));
+  }
+  /* ---- effects ---- */
+  function fxCard() {
+    const V = a.vfx || {};
+    return h('div', { class: 'wk-card' }, h('h3', {}, 'Effects', h('small', {}, 'drawn by code')),
+      V.hit ? vfxRow('When hit', V.hit, n => { a.vfx = { ...V, hit: n }; api.changed(); draw(); }, () => { a.vfx = { ...V, hit: null }; api.changed(); draw(); })
+        : h('div', {}, h('p', { class: 'note', style: { marginTop: 0 } }, 'A spark, slash or splash where a hit lands (vfx_hit.tscn; spawned by hurt()). Projectile impacts are set under Projectiles.'),
+          h('button', { class: 'btn sm', onclick: () => { a.vfx = { ...V, hit: newVfx(role() === 'hero' ? 'spark' : 'spark', 'blood') }; api.changed(); draw(); } }, '+ Hit effect')));
   }
   /* ---- sounds ---- */
   // event → the preset it starts from; which events a role gets by default
@@ -126,7 +135,9 @@ export function openWorkshop(host, api) {
         field('Gravity', range(pj.gravity, 0, 2, .05, v => { pj.gravity = v; api.changed(); }, v => v ? (+v).toFixed(2) + '×' : 'none'), 'An arrow arcs, a fireball flies straight'),
         field('Lifetime', range(pj.lifetime, .2, 6, .1, v => { pj.lifetime = v; api.changed(); }, v => (+v).toFixed(1) + ' s')),
         field('Damage', range(pj.damage, 1, 10, 1, v => { pj.damage = v; api.changed(); })),
-        field('Pierce', check('goes through what it hits', pj.pierce, v => { pj.pierce = v; api.changed(); })))));
+        field('Pierce', check('goes through what it hits', pj.pierce, v => { pj.pierce = v; api.changed(); })),
+        pj.impact ? vfxRow('Impact', pj.impact, n => { pj.impact = n; api.changed(); draw(); }, () => { pj.impact = null; api.changed(); draw(); })
+          : h('button', { class: 'btn sm ghost', onclick: () => { pj.impact = newVfx('explosion', 'fire', 24); api.changed(); draw(); } }, '+ Impact effect'))));
   }
   function addProjectile() {
     const name = (prompt('Name for the projectile', 'fireball') || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
