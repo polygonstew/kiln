@@ -364,15 +364,17 @@ function drawPreview() {
     else x.drawImage(c, Math.round(ox), y);
     // the actor walks on the layer that scrolls at camera speed (the ground)
     x.globalAlpha = 1; x.globalCompositeOperation = 'source-over';
-    if (actor && L.scroll >= 1 && L === SC.layers.filter(l => l.scroll >= 1).pop()) drawActor(x);
+    // the actor walks on the ground (the last layer moving at camera speed); foreground (scroll > 1.1) passes in front
+    if (actor && L === groundLayer()) drawActor(x);
   }
-  if (actor && !SC.layers.some(l => l.scroll >= 1)) drawActor(x);
+  if (actor && !groundLayer()) drawActor(x);
   const sel0 = SC.layers[sel];
   V.info.textContent = `${w}×${hh} · ${+zoomNow.toFixed(2)}× · camera ${Math.round(cam)}px${sel0?.tiles ? ` · ${sel0.name}: ${sel0.tiles} unique 8×8 tiles` : ''}`;
 }
+const groundLayer = () => SC.layers.filter(l => l.visible !== false && l.scroll >= 1 && l.scroll < 1.1).pop();
 function drawActor(x) {
   const a = actor.anim, f = a.frames[Math.floor(actorX * a.fps) % a.frames.length];
-  const ground = SC.layers.filter(l => l.scroll >= 1).pop();
+  const ground = groundLayer();
   const gy = ground ? SC.view.h - Math.round(ground.h * (ground.params?.height ?? .14)) : SC.view.h - 4;
   x.drawImage(toCanvas(f), Math.round(SC.view.w / 2 - f.width / 2), gy - f.height + 1);
 }

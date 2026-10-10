@@ -36,7 +36,10 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - [x] **Scenes 2, layer look** DONE: opacity, blend (Glow/Light/Shade → Godot CanvasItemMaterial), tint, own haze, depth ruler,
   reroll ◀ ▶ history, Reset; verified in Godot 4.7. Was: per-layer opacity, tint, blend (normal / add for glows), and haze override; a depth ruler showing the
   scroll speeds side by side; regenerate keeps the seed history (back/forward through rolls). Every new control needs undo.
-- [ ] **Scenes 3, better generators:** ground with a surface edge and detail (cobbles, roots, puddles), foreground silhouettes
+- [x] **Scenes 3a** DONE: Ground (bumps, lit lip + shadow, texture cobbles/soil+roots/rubble, puddles; old ground layers render as before),
+  Foreground generator (grass, railings, pillars, chains; scroll 1.3, the actor walks behind it).
+- [ ] **Scenes 3b, weather:** rain, snow, embers, drifting fog as animated layers in the preview; export as a Godot
+  GPUParticles2D (or an animated strip). Was: **Scenes 3, better generators:** ground with a surface edge and detail (cobbles, roots, puddles), foreground silhouettes
   (scroll > 1, darkened), weather layers (rain, snow, embers, drifting fog) that animate in the preview and export as a Godot
   GPUParticles2D or an animated strip.
 - [ ] **Scenes 4, Scenes to Levels bridge:** "Use as level background" (the parallax layers go behind a Levels map, exported together)
@@ -106,3 +109,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: run 9. Levels tab (tile painting, solid tiles, Godot TileSet + TileMapLayer export with collision, tested in Godot).
 - 2026-10-10: user asked to double down on Scenes. Scenes 1 done (undo, solo, drag reorder, duplicate, depth sort, zoom modes); Scenes 2-5 queued at the top.
 - 2026-10-10: run 10. Scenes 2 (layer look). Found and fixed scene-overwrite bugs (my tests had overwritten the user's "night" scene; not recoverable, no /home snapshots).
+- 2026-10-10: run 11. Scenes 3a: richer Ground and a new Foreground generator. User files checked unchanged before and after.

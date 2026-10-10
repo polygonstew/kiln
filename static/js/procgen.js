@@ -145,12 +145,66 @@ export const GENS = {
     },
   },
   ground: {
-    name: 'Ground', note: 'Walkable strip with a lit top edge', scroll: 1,
-    params: [['color', 'Earth', '#221c1a', 'color'], ['light', 'Top', '#4a3a32', 'color'], ['height', 'Height', .14, .03, .5, .01], ['seed', 'Seed', 19, 1, 9999, 1]],
+    name: 'Ground', note: 'Walkable ground: uneven top with a lit lip, cobbles, soil and roots, or rubble, and puddles', scroll: 1,
+    params: [['color', 'Earth', '#221c1a', 'color'], ['light', 'Top', '#4a3a32', 'color'], ['height', 'Height', .14, .03, .5, .01],
+      ['bumps', 'Bumps', .25, 0, 1, .05], ['texture', 'Texture (0 none, 1 cobbles, 2 soil, 3 rubble)', 1, 0, 3, 1], ['puddles', 'Puddles', .2, 0, 1, .05], ['seed', 'Seed', 19, 1, 9999, 1]],
     make(w, h, p) {
-      const im = newImg(w, h), r = rng(p.seed), c = rgb(p.color), l = rgb(p.light), top = h - Math.floor(h * p.height);
-      rect(im, 0, top, w, h - top, c);
-      for (let x = 0; x < w; x++) { put(im, x, top, l); if (r() < .3) put(im, x, top + 1, l); if (r() < .05) put(im, x, top + 2 + Math.floor(r() * (h - top - 2)), l); }
+      if (p.texture === undefined) {   // ground layers made before these options: draw exactly as they always looked
+        const im = newImg(w, h), r = rng(p.seed), c = rgb(p.color), l = rgb(p.light), top = h - Math.floor(h * p.height);
+        rect(im, 0, top, w, h - top, c);
+        for (let x = 0; x < w; x++) { put(im, x, top, l); if (r() < .3) put(im, x, top + 1, l); if (r() < .05) put(im, x, top + 2 + Math.floor(r() * (h - top - 2)), l); }
+        return im;
+      }
+      const im = newImg(w, h), r = rng(p.seed), c = rgb(p.color), l = rgb(p.light), dk = mix(c, [0, 0, 0], .45), md = mix(c, l, .35);
+      const base = h - Math.floor(h * p.height), amp = Math.max(0, Math.round(p.bumps * Math.min(6, h * p.height * .4)));
+      const n = ridge(w, r, 4, .5), top = Array.from({ length: w }, (_, x) => base + Math.round(n[x] * amp));
+      for (let x = 0; x < w; x++) {
+        col(im, x, top[x], h, c);
+        put(im, x, top[x], l);                                           // lit lip
+        if (top[x + 1 < w ? x + 1 : 0] > top[x] || r() < .35) put(im, x, top[x] + 1, mix(l, c, .5));
+        put(im, x, top[x] + 2, dk);                                      // a thin shadow under the lip
+      }
+      const tex = Math.round(p.texture);
+      if (tex === 1) {        // cobbles: rows of rounded stones, offset every row
+        const ch = 4, cw = 7;
+        for (let y0 = base + 4, row = 0; y0 < h; y0 += ch, row++) for (let x0 = (row % 2) * 3 - 3; x0 < w; x0 += cw + Math.floor(r() * 2)) {
+          for (let x = x0; x < x0 + cw; x++) { put(im, x, y0, dk); if (r() < .5) put(im, x, y0 + 1, md); }
+          col(im, x0, y0, y0 + ch, dk);
+        }
+      } else if (tex === 2) { // soil with roots and stones
+        for (let i = 0; i < w / 6; i++) { let x = Math.floor(r() * w), y = base + 3 + Math.floor(r() * (h - base)); const len = 4 + Math.floor(r() * 10); for (let k = 0; k < len; k++) { put(im, x, y, dk); x += r() < .5 ? 1 : -1; y += r() < .6 ? 1 : 0; } }
+        for (let i = 0; i < w / 10; i++) { const x = Math.floor(r() * w), y = base + 4 + Math.floor(r() * (h - base)); rect(im, x, y, 2, 1, md); put(im, x, y + 1, dk); }
+      } else if (tex === 3) { // rubble: broken blocks with lit tops
+        for (let i = 0; i < w / 8; i++) { const x = Math.floor(r() * w), y = base + 3 + Math.floor(r() * (h - base)), bw = 2 + Math.floor(r() * 4), bh = 1 + Math.floor(r() * 3); rect(im, x, y, bw, bh, md); for (let k = 0; k < bw; k++) put(im, x + k, y, l); for (let k = 0; k < bw; k++) put(im, x + k, y + bh, dk); }
+      }
+      // puddles: flat dark pools on the surface with a reflected light streak
+      const pc = mix(dk, [40, 60, 90], .25), shine = mix(l, [200, 220, 255], .4);
+      for (let i = 0; i < Math.round(p.puddles * w / 60); i++) {
+        const x0 = Math.floor(r() * w), pw = 6 + Math.floor(r() * 14), y = top[x0] + 1;
+        for (let x = x0; x < x0 + pw; x++) { put(im, x, y, pc); put(im, x, y + 1, pc); if ((x - x0) % 5 === 2) put(im, x, y, shine); }
+      }
+      return im;
+    },
+  },
+  fore: {
+    name: 'Foreground', note: 'Dark silhouettes in front of the play area: grass, railings, pillars or hanging chains', scroll: 1.3,
+    params: [['color', 'Silhouette', '#050406', 'color'], ['kind', 'Kind (0 grass, 1 railings, 2 pillars, 3 chains)', 0, 0, 3, 1], ['density', 'Density', .4, .05, 1, .05],
+      ['height', 'Height', .25, .05, .8, .01], ['seed', 'Seed', 41, 1, 9999, 1]],
+    make(w, h, p) {
+      const im = newImg(w, h), r = rng(p.seed), c = rgb(p.color), edge = mix(c, [255, 255, 255], .22), k = Math.round(p.kind), H = Math.round(h * p.height);
+      if (k === 0) {          // tufts of tall grass and weeds along the bottom
+        for (let x = 0; x < w; x++) if (r() < p.density) { const t = Math.round(H * (.3 + r() * .7)); let xx = x; for (let y = h - 1; y > h - t; y--) { put(im, xx, y, c); if (r() < .25) xx += r() < .5 ? 1 : -1; } }
+        for (let x = 0; x < w; x++) col(im, x, h - 3, h, c);
+      } else if (k === 1) {   // iron railings with spear tips and a top bar
+        const gap = Math.max(4, Math.round(10 - p.density * 6)), y0 = h - H;
+        for (let x = 0; x < w; x += gap) { col(im, x, y0, h, c); put(im, x, y0 - 1, c); put(im, x - 1, y0, c); put(im, x + 1, y0, c); put(im, x, y0 - 2, edge); }
+        for (let x = 0; x < w; x++) { put(im, x, y0 + 3, c); put(im, x, h - 6, c); }
+      } else if (k === 2) {   // thick pillars / tree trunks passing close to the camera
+        const n = Math.max(1, Math.round(p.density * 4));
+        for (let i = 0; i < n; i++) { const x0 = Math.floor(i * w / n + r() * w / n * .5), pw = 10 + Math.floor(r() * 18); for (let x = x0; x < x0 + pw; x++) col(im, x, 0, h, c); col(im, x0 + pw - 1, 0, h, edge); }
+      } else {                // chains and vines hanging from the top
+        for (let x = 2; x < w; x += 2) if (r() < p.density * .5) { const len = Math.round(H * (.4 + r() * .9)); for (let y = 0; y < len; y++) put(im, x, y, (y % 3 === 0) ? edge : c); if (r() < .3) { put(im, x - 1, len, c); put(im, x + 1, len, c); put(im, x, len + 1, c); } }
+      }
       return im;
     },
   },
