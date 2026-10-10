@@ -455,10 +455,14 @@ INBOX = [HOME / 'Downloads']
 
 
 def inbox(since):
-    """Images saved to ~/Downloads after `since` (unix time), newest first: pick up anything the user saves
+    """Images saved to ~/Downloads (or <asset folder>/concepts/<session>/) after `since` (unix time), newest first: pick up anything the user saves
     from a website (no scraping: they generate and save, Kiln notices)."""
     out = []
-    for d in INBOX:
+    dirs = list(INBOX)
+    croot = Path(settings().get('root', '')) / 'concepts'     # Kiln Studio saves concept images here, per session
+    if croot.is_dir():
+        dirs += [d for d in croot.iterdir() if d.is_dir()]
+    for d in dirs:
         try:
             for f in d.iterdir():
                 if f.suffix.lower() in ('.png', '.jpg', '.jpeg', '.webp', '.gif') and f.is_file():

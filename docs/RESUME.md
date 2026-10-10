@@ -73,6 +73,17 @@ Interior background gaps (between legs) are keyed too. Test images live in `libr
   Generated tray tagged "new" (works with meta.ai or any site: user generates + saves, Kiln picks it up;
   deliberately no scraping/automation of other sites).
 
+## Kiln Studio (desktop window)
+
+`tools/studio.py` (PyQt6 WebEngine, `python-pyqt6-webengine` installed via pacman; run with /usr/bin/python3),
+launcher `~/.local/bin/kiln-studio [session]` + app-menu entry. Two panes of tabs: Kiln left, meta.ai right
+(+ Tab: Gemini, ChatGPT, Bing Image Creator, OpenGameArt, itch, Lospec, Notes, any address); Split toggle
+Ctrl+\. Named concept sessions (tabs, layout, notes) in `~/.local/share/kiln-studio/sessions/`, autosaved
+every 20 s and on close; logins persist in `~/.local/share/kiln-studio/profile`. Right-click > Save image saves
+into `<asset folder>/concepts/<session>/` (+ `notes.md`), which `/api/inbox` watches, so it shows up in
+Forge as "new". Nothing on the sites is automated. A plain iframe can't host meta.ai (Meta blocks framing),
+hence the desktop window. Self-test: `QT_QPA_PLATFORM=offscreen KILN_STUDIO_SHOT=/path.png kiln-studio test`.
+
 ## Next ideas (not started)
 
 - Pose prompts: klein-9b sometimes changes the pose too little (strike looked like idle). Try stronger
