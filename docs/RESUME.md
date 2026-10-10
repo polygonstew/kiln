@@ -1,6 +1,6 @@
 # RESUME: Kiln state of build
 
-Last updated: 2026-10-10 (session 2: cloud engines + native pixel grid).
+Last updated: 2026-10-10 (session 2: cloud engines, native pixel grid, sheet import, Godot colliders, guide image, Downloads inbox).
 
 ## Where things are
 
@@ -52,6 +52,26 @@ per cell -> the art's own pixels. Then `centreDown` (not majority vote) if a sma
 1-px eyes/staffs survive; despeckle is skipped for grid art. Forge Size **Auto** (default) keeps the
 native size. Actor identity stores `cell` (per 1024 px); later frames search near it (`cellHint`).
 Interior background gaps (between legs) are keyed too. Test images live in `library/cloud/`.
+
+## Session 2 additions
+
+- **Sheet import** (slicer.js `analyzeSheet`): filename `RxC` (+ anim words -> row names, actor name cleaned),
+  else evenly spaced rows of frames ("Rows found"), else loose figures grouped by pixel distance (dilate +
+  label; join gap = 8% of typical figure height), caption filter, blown-up pixel art detected (k×k blocks)
+  and shrunk to 1×, background removal decided from the border. Keeps exact pixels by default. Drop a sheet
+  anywhere on the Animate tab. Tested on ~/.jcodes/pallidmask/concept (hero/enemy 4×8, ripped Simon /
+  Splatterhouse / red-background sheets).
+- **Godot colliders**: Scenes layer "Solid" (auto on for scroll≈1 layers named ground/floor/platform…)
+  -> `tracePolys` (core.js: hole-filled pixel-edge contour + Douglas-Peucker) -> `StaticBody2D` +
+  `CollisionPolygon2D` per shape in the .tscn (3 copies for repeating layers) and `collision` in scene.json.
+  Actor save writes `<name>.tscn` (CharacterBody2D, origin at feet, AnimatedSprite2D, body RectangleShape2D
+  from the idle frames, 60% of figure width), `manifest.hitbox`, `palette.hex`, `reference.png`, and
+  `CHARACTER.md` (recreation guide for people/agents; its `## Notes` section is preserved on rewrite).
+- **Forge guide image**: drop/pick/"Use source" an image; it is sent as the reference (klein-9b) with "use only
+  as a guide to shape and design". Links to OpenGameArt / itch.io free assets / image search for the prompt.
+- **Downloads inbox** (`/api/inbox`): images saved to ~/Downloads in the last 30 min appear in Forge's
+  Generated tray tagged "new" (works with meta.ai or any site: user generates + saves, Kiln picks it up;
+  deliberately no scraping/automation of other sites).
 
 ## Next ideas (not started)
 

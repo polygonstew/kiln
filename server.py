@@ -450,6 +450,26 @@ def status():
     return s
 
 
+# ------------------------------------------------- downloads inbox ---
+INBOX = [HOME / 'Downloads']
+
+
+def inbox(since):
+    """Images saved to ~/Downloads after `since` (unix time), newest first: pick up anything the user saves
+    from a website (no scraping: they generate and save, Kiln notices)."""
+    out = []
+    for d in INBOX:
+        try:
+            for f in d.iterdir():
+                if f.suffix.lower() in ('.png', '.jpg', '.jpeg', '.webp', '.gif') and f.is_file():
+                    m = f.stat().st_mtime
+                    if m > since:
+                        out.append({'name': f.name, 't': m, 'url': '/api/fs/raw?path=' + urllib.parse.quote(str(f)) + f'&t={int(m)}'})
+        except Exception:
+            pass
+    return sorted(out, key=lambda x: -x['t'])[:12]
+
+
 # ----------------------------------------------------------------- filesystem ---
 def safe_dest(p):
     """Absolute export dir must live under the home dir; relative ones go in library/."""
@@ -687,6 +707,8 @@ class H(BaseHTTPRequestHandler):
                 s['layout'] = LAYOUT
                 s['home'] = str(HOME)
                 return self.send(200, s)
+            if u.path == '/api/inbox':
+                return self.send(200, {'items': inbox(float(q.get('since') or 0))})
             if u.path == '/api/cloudimg':
                 f = CLOUD_DIR / Path(q.get('f', '')).name
                 return self.send(200, f.read_bytes(), 'image/png') if f.exists() else self.send(404, {'err': 'gone'})

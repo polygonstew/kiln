@@ -4,7 +4,8 @@
 
 ```
 <asset folder>/
-  sprites/<actor>/      <anim>.png strips, manifest.json, <actor>.tres, sheet.png, sheet.json, icon.png?
+  sprites/<actor>/      <anim>.png strips, manifest.json (+hitbox), <actor>.tres, <actor>.tscn, sheet.png, sheet.json,
+                        palette.hex, reference.png?, CHARACTER.md, icon.png?
   backgrounds/<scene>/  <layer>.png, scene.json, <scene>.tscn
   hud/<hud>/            hud.png, hud.json, <widget>_*.png parts
   fonts/                kiln_<font>[_outline|_shadow].png + .fnt
@@ -38,7 +39,8 @@ Each `<anim>.png` is a horizontal strip of `frames × w` by `h`, feet on the bot
 ```
 `scroll` is the parallax factor (0 = fixed, 1 = moves with the camera). `y` is the top of the
 layer on screen. `<scene>.tscn` is a Godot 4 scene: one `Parallax2D` per layer
-(`scroll_scale`, `repeat_size`) with a `Sprite2D` child.
+(`scroll_scale`, `repeat_size`) with a `Sprite2D` child. Solid layers also get `"collision": [[[x,y],…],…]`
+(polygons in layer pixels) and a `<layer>_solid` StaticBody2D of CollisionPolygon2D nodes in the .tscn.
 
 ## hud/<hud>/hud.json
 

@@ -37,6 +37,8 @@ const save = () => pref.set('forge', st);
 let results = pref.get('forge.results', []);     // [{url, seed, prompt, engine, for, w}]
 let srcURL = null, src = null, out = null, outPal = [], outInfo = null, customPal = null, mounted = false, V = {};
 let pending = null;
+let guide = null;   // optional guide image (data URL, ≤512, on white): shape/design reference for a NEW thing
+let inbox = [];    // images just saved to ~/Downloads (from any site), newest first
 let ID = null;   // identity of the actor being extended: {name, desc, kind, ref, refW, refH, refSprite, pal, w, h, scale, seed}
 
 on('forge-image', p => { pending = { path: p }; if (mounted) takePending(); });
@@ -168,6 +170,7 @@ function drawLeft() {
         h('div', { style: { marginTop: '8px' } }, chips(MOODS.map(m => [m, m]), 'moods', true)),
         field('Leave out', neg),
         h('p', { class: 'note' }, 'The style bible (top bar) is added to every prompt so new things match the rest of the game.')),
+      guideSec(),
       gen,
       local ? h('div', { class: 'sec' }, h('h3', {}, 'Rework the source'),
         field('Change', range(st.denoise, .2, .85, .05, v => { st.denoise = v; save(); }, v => Math.round(v * 100) + '%'), 'Low keeps the layout, high reinvents it'),
@@ -175,10 +178,37 @@ function drawLeft() {
   }
   est();
 }
+function guideSec() {
+  const q = encodeURIComponent((st.prompt.trim() || KINDS.find(k => k[0] === st.kind)?.[1] || 'sprite').split(/[,.]/)[0]);
+  const take = async url => { const im = await imgData(url).catch(() => null); if (!im) return toast('Could not read that image', 'bad'); guide = flatSmall(im); drawLeft(); };
+  const pick = h('input', { type: 'file', accept: 'image/*', style: { display: 'none' }, onchange: e => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = () => take(r.result); r.readAsDataURL(f); } } });
+  const zone = h('div', { class: 'guide' + (guide ? ' on' : ''), title: 'Drop an image here', onclick: () => pick.click() },
+    guide ? h('img', { src: guide }) : h('span', {}, 'Drop, or click to pick, an image whose shape or design the new thing should follow (a crate, a chest, a texture, a pose)'));
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('hot'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('hot'));
+  zone.addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); const f = [...e.dataTransfer.files].find(f => f.type.startsWith('image/')); if (f) { const r = new FileReader(); r.onload = () => take(r.result); r.readAsDataURL(f); } });
+  const link = (label, url) => h('a', { href: url, target: '_blank', rel: 'noopener', class: 'reflink' }, label);
+  return h('div', { class: 'sec' }, h('h3', {}, 'Guide image', h('span', { class: 'grow' }),
+      h('button', { class: 'btn sm ghost', title: 'Use the image in the Source pane as the guide', onclick: () => { if (!src) return toast('Nothing in the Source pane yet'); guide = flatSmall(src); drawLeft(); } }, 'Use source'),
+      guide ? h('button', { class: 'btn sm ghost', onclick: () => { guide = null; drawLeft(); } }, 'Clear') : null),
+    zone, pick,
+    h('p', { class: 'note' }, guide ? 'The generator follows this image\'s shape and design but draws it new, in your style. (Uses the larger free model: about 7 a day.)' : 'Optional. Find one:',
+      guide ? null : [' ', link('OpenGameArt', `https://opengameart.org/art-search-advanced?keys=${q}&field_art_type_tid%5B%5D=9`), ' · ', link('itch.io free assets', `https://itch.io/game-assets/free/tag-pixel-art?q=${q}`), ' · ', link('image search', `https://www.google.com/search?tbm=isch&q=${q}+pixel+art+sprite`)]));
+}
+function flatSmall(im) {
+  const k = Math.min(1, 512 / Math.max(im.width, im.height)), cv = document.createElement('canvas');
+  cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k);
+  const x = cv.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, cv.width, cv.height); x.imageSmoothingEnabled = k < 1; x.drawImage(toCanvas(im), 0, 0, cv.width, cv.height);
+  return cv.toDataURL('image/png');
+}
 function genReq(init) {
   const r = { engine: st.engine, prompt: fullPrompt(), neg: [st.neg, styleAvoid()].filter(Boolean).join(', '), w: st.size, h: st.size, batch: st.batch, steps: st.steps, fast: true, seed: st.lockSeed ? st.seed : -1 };
   if (st.engine === 'cloud') { r.w = r.h = 512; delete r.steps; if (!st.auto) r.px = st.h; }
   if (init) { r.init = init; r.denoise = st.denoise; }
+  if (init && init === guide && !ID) {
+    if (st.engine === 'cloud') r.prompt = `Use the attached image only as a guide to the shape and design; draw a new, original version of it: ${r.prompt}`;
+    else r.denoise = Math.max(st.denoise, 0.65);
+  }
   return r;
 }
 function track(j, label) { j.forge = true; j.forId = ID?.name || null; pendingTiles.push(j); drawResults(); }
@@ -202,7 +232,7 @@ function generate() {
     return;
   }
   if (!st.prompt.trim()) return toast('Describe what to make first');
-  track(enqueue(genReq(), st.prompt.trim().slice(0, 60)));
+  track(enqueue(genReq(guide || undefined), st.prompt.trim().slice(0, 60)));
 }
 function variations() {
   if (!src) return toast('Pick a source image first');
@@ -229,12 +259,23 @@ function drawResults() {
       tiles.push(h('div', { class: 'r' }, h('div', { class: 'pend' }, j.state === 'running' ? (j.req.engine === 'cloud' ? 'drawing' : `${j.step}/${j.steps}`) : 'queued', bar)));
     }
   }
+  if (!ID) tiles.push(...inbox.slice(0, 6).map(it => h('div', { class: 'r inbox' + (srcURL === it.url ? ' on' : ''), title: `${it.name} (just saved to Downloads)`, onclick: () => { setSource(it.url, it.name); drawResults(); } }, h('img', { src: it.url, loading: 'lazy' }), h('b', {}, 'new'))));
   tiles.push(...results.filter(mine).map(r => h('div', { class: 'r' + (srcURL === r.url ? ' on' : ''), title: r.prompt, onclick: () => useResult(r) }, h('img', { src: r.url, loading: 'lazy' }))));
   if (!tiles.length) tiles.push(h('div', { class: 'faint', style: { gridColumn: '1/-1', fontSize: '12px' } },
     ID ? `Nothing for ${ID.name} yet. Pick poses on the left and generate.` : 'Nothing generated yet. Describe a thing on the left and press Generate, or open / paste an existing image.'));
   V.results.replaceChildren(...tiles);
 }
 setInterval(() => { if (mounted && pendingTiles.some(j => j.state === 'running')) drawResults(); }, 1500);
+// Images you save from any site (meta.ai, a search, a sprite site) to ~/Downloads show up in the
+// Generated tray for 30 minutes, ready to pixelize or use as a guide.
+const T0 = Date.now() / 1000 - 1800;
+setInterval(async () => {
+  if (!mounted || document.hidden) return;
+  const r = await api('/api/inbox?since=' + Math.max(T0, Date.now() / 1000 - 1800)).catch(() => null);
+  if (!r) return;
+  const sig = r.items.map(i => i.url).join();
+  if (sig !== inbox.map(i => i.url).join()) { const fresh = r.items.filter(i => !inbox.some(o => o.url === i.url)); inbox = r.items; drawResults(); if (fresh.length && inbox.length) toast(`New image from Downloads: ${fresh[0].name}`); }
+}, 4000);
 async function useResult(r) { await setSource(r.url, r.prompt); drawResults(); }
 async function setSource(url, label) {
   try { src = await imgData(url); srcURL = url; keyAt = null; run(); } catch { toast('Could not load that image', 'bad'); }
