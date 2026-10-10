@@ -422,6 +422,10 @@ export function gridOf(src, hint = 0) {
 }
 export function pixelize(src, o) {
   let im = o.key ? keyBackground(src, o.tol ?? 40, o.keyGlobal) : cloneImg(src);
+  // painted mask (Uint8Array, one per source pixel): 1 = always keep (undo the background removal there), 2 = always remove
+  if (o.mask && o.mask.length === src.width * src.height) for (let p = 0; p < o.mask.length; p++) {
+    if (o.mask[p] === 1) im.data.set(src.data.subarray(p * 4, p * 4 + 4), p * 4); else if (o.mask[p] === 2) im.data[p * 4 + 3] = 0;
+  }
   // work on the art's own pixels when it has a grid: 1 cell = 1 sprite pixel, nothing smeared
   const g = o.grid !== false && o.fit !== 'stretch' ? gridOf(src, o.cellHint ? o.cellHint * src.width / 1024 : 0) : null;
   const unit = g ? g.cell : 1;          // source px per working px

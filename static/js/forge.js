@@ -76,7 +76,10 @@ export const forge = {
     V.fits = h('span', { class: 'mono dim', style: { fontSize: '12px' } });
     const srcBox = h('div', {}, h('div', { class: 'cap' }, 'Source'), V.srcCap, h('div', { class: 'viewport' }, V.srcCv));
     const outBox = h('div', {}, h('div', { class: 'cap' }, 'Sprite'), V.outCap, h('div', { class: 'viewport' }, V.outCv));
-    V.srcCv.addEventListener('click', e => pickKey(e));
+    V.srcCv.addEventListener('click', e => { if (!maskTool) pickKey(e); });
+    V.srcCv.addEventListener('pointerdown', e => { if (!maskTool || !src) return; if (e.shiftKey) return maskRegion(e); maskDown = true; V.srcCv.setPointerCapture(e.pointerId); maskPaint(e); });
+    V.srcCv.addEventListener('pointermove', e => { if (maskDown) maskPaint(e); });
+    V.srcCv.addEventListener('pointerup', () => { if (maskDown) { maskDown = false; run(); } });
     V.srcCv.title = 'Click a colour to make it the background that gets removed';
     el.append(V.left,
       h('section', { class: 'stage' },
@@ -322,10 +325,35 @@ function countPoses(im) {
   return components(im2, 3, .15).flat().length;
 }
 async function setSource(url, label) {
-  try { src = await imgData(url); srcURL = url; srcLabel = (label || '').replace(/\.\w+$/, '').slice(0, 24); keyAt = null; run(); } catch { toast('Could not load that image', 'bad'); }
+  try { src = await imgData(url); srcURL = url; srcLabel = (label || '').replace(/\.\w+$/, '').slice(0, 24); keyAt = null; mask = null; run(); } catch { toast('Could not load that image', 'bad'); }
 }
 function loadLocal(f) { const r = new FileReader(); r.onload = () => setSource(r.result, f.name); r.readAsDataURL(f); }
 let keyAt = null;
+// the painted mask over the source: 1 keep (never background), 2 remove (always background); brush tool or null
+let mask = null, maskTool = null, maskR = 8, maskDown = false;
+// Shift+click with a mask tool: the whole connected area of that colour (like a magic wand) goes into the mask
+function maskRegion(e) {
+  const r = V.srcCv.getBoundingClientRect(), w = src.width, hh = src.height, d = src.data;
+  const x0 = Math.floor((e.clientX - r.left) / r.width * w), y0 = Math.floor((e.clientY - r.top) / r.height * hh);
+  if (x0 < 0 || y0 < 0 || x0 >= w || y0 >= hh) return;
+  const v = maskTool === 'keep' ? 1 : maskTool === 'remove' ? 2 : 0, i0 = (y0 * w + x0) * 4, T = st.tol * st.tol * 3;
+  const near = p => { const i = p * 4; return (d[i] - d[i0]) ** 2 + (d[i + 1] - d[i0 + 1]) ** 2 + (d[i + 2] - d[i0 + 2]) ** 2 <= T; };
+  mask ||= new Uint8Array(w * hh);
+  const seen = new Uint8Array(w * hh), stack = [y0 * w + x0]; seen[stack[0]] = 1;
+  while (stack.length) {
+    const p = stack.pop(), x = p % w, y = (p / w) | 0; mask[p] = v;
+    for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < hh - 1 ? p + w : -1]) if (q >= 0 && !seen[q] && near(q)) { seen[q] = 1; stack.push(q); }
+  }
+  paint(); run();
+}
+function maskPaint(e) {
+  const r = V.srcCv.getBoundingClientRect(), k = src.width / r.width;
+  const cx = (e.clientX - r.left) * k, cy = (e.clientY - r.top) * k, R = maskR * k, v = maskTool === 'keep' ? 1 : maskTool === 'remove' ? 2 : 0;
+  mask ||= new Uint8Array(src.width * src.height);
+  for (let y = Math.max(0, Math.floor(cy - R)); y <= Math.min(src.height - 1, cy + R); y++)
+    for (let x = Math.max(0, Math.floor(cx - R)); x <= Math.min(src.width - 1, cx + R); x++) if ((x - cx) ** 2 + (y - cy) ** 2 <= R * R) mask[y * src.width + x] = v;
+  paint();
+}
 function pickKey(e) {
   if (!src) return;
   const r = V.srcCv.getBoundingClientRect();
@@ -346,7 +374,7 @@ function run() {
   runT = setTimeout(() => {
     if (!src) { out = null; paint(); return; }
     const s = keyAt ? floodFrom(src, keyAt, st.tol) : src;
-    const common = { key: st.key && !keyAt, tol: st.tol, keyGlobal: st.keyGlobal, outline: st.outline === 'none' ? false : st.outline, despeckle: st.despeckle, dither: st.dither, ditherAmt: st.ditherAmt, anchor: 'bottom' };
+    const common = { mask, key: st.key && !keyAt, tol: st.tol, keyGlobal: st.keyGlobal, outline: st.outline === 'none' ? false : st.outline, despeckle: st.despeckle, dither: st.dither, ditherAmt: st.ditherAmt, anchor: 'bottom' };
     let r;
     if (ID) {
       // same palette, same frame, same pixels-per-source-pixel as the reference
@@ -395,6 +423,13 @@ function paint() {
     cv.style.background = isOut ? `repeating-conic-gradient(#2a2a28 0 25%, #33322f 0 50%) 0 0/${t}px ${t}px` : '';
   };
   fit(V.srcCv, src, V.srcCv.parentElement, false);
+  if (mask && src) {            // the mask over the source: green = keep, red = remove
+    const o = new ImageData(src.width, src.height);
+    for (let p = 0; p < mask.length; p++) if (mask[p]) o.data.set(mask[p] === 1 ? [80, 220, 120, 110] : [240, 70, 60, 120], p * 4);
+    const t = document.createElement('canvas'); t.width = src.width; t.height = src.height; t.getContext('2d').putImageData(o, 0, 0);
+    V.srcCv.getContext('2d').drawImage(t, 0, 0);
+  }
+  V.srcCv.style.cursor = maskTool ? 'crosshair' : '';
   fit(V.outCv, out, V.outCv.parentElement, true);
   V.srcCap.textContent = src ? `${src.width}×${src.height}` : '';
   V.outCap.textContent = out ? `${out.width}×${out.height} · ${outPal.length} colours${out.native ? ` · art drawn ${out.native[0]}×${out.native[1]}` : ''}` : '';
@@ -419,6 +454,11 @@ function drawRight() {
   V.palBox = h('div', { class: 'sw big' });
   const clean = h('div', { class: 'sec' }, h('h3', {}, 'Clean-up'),
     field('Background', h('span', {}, check('remove', st.key, v => { st.key = v; keyAt = null; save(); run(); }), check('also inside', st.keyGlobal, v => { st.keyGlobal = v; save(); run(); }))),
+    field('Mask', h('span', { style: { display: 'flex', gap: '4px', flexWrap: 'wrap', alignItems: 'center' } },
+      ...[['keep', 'Keep'], ['remove', 'Remove'], ['erase', 'Erase']].map(([k, l]) => h('button', { class: 'btn sm' + (maskTool === k ? ' on' : ' ghost'), title: { keep: 'Paint parts that must stay (white eyes, a shirt the same colour as the background); Shift+click keeps a whole area', remove: 'Paint spots that are background but stayed', erase: 'Rub out mask paint' }[k], onclick: () => { maskTool = maskTool === k ? null : k; drawRight(); paint(); } }, l)),
+      h('input', { type: 'range', min: 2, max: 40, value: maskR, title: 'Brush size', style: { width: '70px' }, oninput: e => { maskR = +e.target.value; } }),
+      mask ? h('button', { class: 'ibtn', title: 'Clear the mask', onclick: () => { mask = null; paint(); run(); } }, '✕') : ''),
+      'Paint on the source: green is never removed as background, red always is. Shift+click fills a whole area of one colour'),
     field('Tolerance', range(st.tol, 5, 120, 1, v => { st.tol = v; save(); run(); }), 'Or click the source to pick the background colour'),
     field('Outline', seg([['none', 'None'], ['outer', '1px'], ['thick', 'Round']], st.outline, v => { st.outline = v; save(); run(); })),
     field('Lone pixels', check('tidy', st.despeckle, v => { st.despeckle = v; save(); run(); })));
