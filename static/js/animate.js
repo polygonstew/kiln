@@ -7,6 +7,7 @@ import { MOTIONS } from './motion.js';
 import { openSlicer } from './slicer.js';
 import { SETS, makeTemplate, readTemplate, download as downloadSheet } from './sheets.js';
 import { registerWheel, registerMenu } from './wheel.js';
+import { loadOwners, claim } from './owners.js';
 import { saveFiles, S as FS } from './files.js';
 
 const ANIM_NAMES = ['idle', 'walk', 'run', 'jump', 'fall', 'attack', 'hurt', 'death', 'crouch', 'cast', 'climb', 'dash', 'block', 'spin'];
@@ -83,7 +84,9 @@ function changed(structure = false) {
   clearTimeout(saveT);
   saveT = setTimeout(autosave, 1500);
 }
-function autosave() {
+async function autosave() {
+  await loadOwners('actor');
+  if (claim('actor', A.actor, slug)) drawLeft();
   try { localStorage.setItem('kiln.anim.cur', JSON.stringify(serialize())); } catch { }
   api('/api/project', { id: 'actor-' + slug(A.actor.name), data: serialize() }).catch(() => { });
 }
@@ -747,6 +750,8 @@ async function makeMore() {
 /* --------------------------------------------------------------- export ---- */
 async function exportActor() {
   commitFloat();
+  await loadOwners('actor');
+  if (claim('actor', A.actor, slug)) { drawLeft(); if (V.saveBtn) V.saveBtn.textContent = 'Save ' + A.actor.name; }
   const a = A.actor, dir = `sprites/${a.name}`;
   const files = [], man = { w: a.w, h: a.h, source: 'kiln', anims: {} };
   for (const n of a.anims) {

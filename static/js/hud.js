@@ -4,6 +4,7 @@ import { $, h, api, toast, on, pref, clamp, uid, field, range, select, check, se
   newImg, toCanvas, toDataURL, imgData, rawURL, PALETTES } from './core.js';
 import { drawText, measure, buildBMFont, FONTS } from './text.js';
 import { icon } from './icons.js';
+import { loadOwners, claim } from './owners.js';
 import { saveFiles, S as FS } from './files.js';
 import { STYLE } from './style.js';
 
@@ -43,9 +44,10 @@ function defaults(type) {
     case 'portrait': return { ...base, size: 36, style: 'double', fill: P.dark, edge: P.light, edge2: P.mid, img: '' };
   }
 }
-let HUD = pref.get('hud.cur', null) || { name: 'hud', view: { w: 480, h: 270 }, bg: 'checker', widgets: [] };
+let HUD = pref.get('hud.cur', null) || { id: uid(), name: 'hud', view: { w: 480, h: 270 }, bg: 'checker', widgets: [] };
 let sel = null, V = {}, mounted = false, demo = false, demoT = 0, bgImg = null;
-const save = () => { pref.set('hud.cur', HUD); clearTimeout(save.t); save.t = setTimeout(() => api('/api/project', { id: 'hud-' + HUD.name, data: { meta: { kind: 'hud', name: HUD.name }, hud: HUD } }).catch(() => { }), 1200); };
+const hslug = s => (s || 'hud').toLowerCase().replace(/[^a-z0-9_-]+/g, '_') || 'hud';
+const save = () => { pref.set('hud.cur', HUD); clearTimeout(save.t); save.t = setTimeout(async () => { await loadOwners('hud'); if (claim('hud', HUD, hslug)) { pref.set('hud.cur', HUD); drawLeft?.(); } api('/api/project', { id: 'hud-' + HUD.name, data: { meta: { kind: 'hud', name: HUD.name }, hud: HUD } }).catch(() => { }); }, 1200); };
 
 /* ------------------------------------------------------------ drawing ---- */
 // A tiny pixel context: integer fills only, so exports are crisp.
@@ -407,6 +409,8 @@ function cropIm(im, x0, y0, w, hh) { const o = newImg(w, hh); for (let y = 0; y 
 
 /* ------------------------------------------------------------- export ---- */
 async function exportHud() {
+  await loadOwners('hud');
+  if (claim('hud', HUD, hslug)) { pref.set('hud.cur', HUD); drawLeft(); }
   const dir = `hud/${HUD.name}`, files = [], states = pref.get('hud.states', 11);
   const json = { view: HUD.view, source: 'kiln', widgets: [] };
   // full mock-up, transparent

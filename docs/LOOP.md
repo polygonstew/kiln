@@ -46,7 +46,8 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - [x] **Scenes 4** DONE: Levels → Background (a saved scene drawn behind the map, instanced behind the TileMapLayer in Godot);
   Scenes layer → "Tiles for Levels (16/8)" cuts unique tiles into a Levels tileset. Verified in Godot 4.7. Was: "Use as level background" (the parallax layers go behind a Levels map, exported together)
   and cutting 8/16 px tiles from a layer into a Levels tileset.
-- [ ] **SAFETY first: Levels (and Animate/HUD New) name guard,** same as Scenes: never save over another item's project/export by
+- [x] **SAFETY name guard** DONE: owners.js (`loadOwners`/`claim`) in Animate, Levels, HUD (saves + exports); tested from fresh
+  browsers: hero → hero_2, hud → hud_2, zz_a → zz_a_2; the user's files unchanged. Was: same as Scenes: never save over another item's project/export by
   name (owner ids → `name_2`); a fresh browser must not save anything until the user edits.
 - [ ] **Scenes 5, review mode:** a safe-frame / HUD overlay toggle, the actor walking on the ground line (exists, check it), a
   day/night palette shift slider, and PNG/GIF export of a short pan for sharing.
@@ -117,3 +118,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: run 12. Scenes weather layers (rain, snow, embers, mist) animated in preview, exported as Godot particles.
 - 2026-10-10: run 13. Scenes ↔ Levels bridge (scene as level background; cut layer tiles into a tileset). TODO next to it: Levels needs the same
   name-ownership guard as Scenes (a new level named like an existing one would save over it).
+- 2026-10-10: run 14. Name guard everywhere (Animate, Levels, HUD use owners.js like Scenes).

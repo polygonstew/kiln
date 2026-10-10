@@ -4,6 +4,7 @@ import { h, api, toast, on, pref, clamp, field, range, select, seg, check, imgDa
 import { saveFiles, S as FS } from './files.js';
 import { registerWheel } from './wheel.js';
 import { registerKeys } from './wheel.js';
+import { loadOwners, claim } from './owners.js';
 
 let bgLayers = null;     // the background scene's layers, drawn behind the map: [{cv, y, scroll}]
 let L = null, V = {}, mounted = false, tsImg = null, zoom = 0, hover = null, drag = null, saveT;
@@ -92,7 +93,11 @@ async function loadTiles() {
 const tileCount = () => tsImg ? L.tsCols * Math.max(1, Math.floor(tsImg.height / L.tile)) : 0;
 function changed() {
   pref.set('level.cur', L);
-  clearTimeout(saveT); saveT = setTimeout(() => api('/api/project', { id: 'level-' + slug(L.name), data: { meta: { kind: 'level', name: L.name }, level: L } }).catch(() => {}), 1500);
+  clearTimeout(saveT); saveT = setTimeout(async () => {
+    await loadOwners('level');
+    if (claim('level', L, slug)) { drawLeft(); drawRight(); pref.set('level.cur', L); }
+    api('/api/project', { id: 'level-' + slug(L.name), data: { meta: { kind: 'level', name: L.name }, level: L } }).catch(() => {});
+  }, 1500);
 }
 
 /* ------------------------------------------------------------- drawing ---- */
@@ -221,6 +226,8 @@ function tileMapData() {
   return [...new Uint8Array(b.buffer)].join(', ');
 }
 async function exportLevel() {
+  await loadOwners('level');
+  if (claim('level', L, slug)) { drawLeft(); drawRight(); }
   const dir = `levels/${L.name}`, T = L.tile, hT = T / 2;
   const g = await api('/api/godot?path=' + encodeURIComponent(FS.root)).catch(() => ({}));
   const res = g.root ? 'res://' + (FS.root + '/' + dir).slice(g.root.length + 1) : dir;
