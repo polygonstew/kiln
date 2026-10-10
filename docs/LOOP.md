@@ -160,7 +160,9 @@ override everything; each gets a Help section and a Godot export):**
 
 ## Bugs (found by the hunt)
 
-- (none logged yet)
+- 2026-10-10 Files: Backspace/Delete/F2/Enter stopped working after a confirm()/prompt() (focus left the view). Fixed: page-level
+  listener while Files is showing. Test-harness note: Playwright `has-text("Folder")` also matches "Bookmark this folder"
+  (case-insensitive substring); use `get_by_role('button', name=..., exact=True)`. (A test bookmark was added and removed.)
 
 ## Log
 
@@ -200,3 +202,4 @@ override everything; each gets a Help section and a Godot export):**
 - 2026-10-10: timer changed to every 45 min; each run now opens with a bug hunt (rotation starts at Files).
 - 2026-10-10: HUD inventory/dialogue/prompt + Godot HUD scene + hud.gd; Godot plugin (dock, zip, one-click install). Queued: actor
   workshop, colliders, systems/logic, dialogue+lore, cutscenes, menus/music, asset library.
+- 2026-10-10: loop run 21 (bug hunt: Files). Next hunt: Forge. Backlog top: Actor workshop.

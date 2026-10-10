@@ -63,8 +63,10 @@ export const files = {
     main.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); });
     main.addEventListener('drop', e => { e.preventDefault(); depth = 0; V.drop.classList.remove('on'); importFiles([...e.dataTransfer.files]); });
     el.tabIndex = -1;
-    el.addEventListener('keydown', e => {
-      if (e.target.matches('input,textarea,select')) return;
+    // listen on the page while Files is showing: after a confirm()/prompt() the focus is on <body>, not this view
+    document.addEventListener('keydown', e => {
+      if (!el.classList.contains('on') || document.querySelector('.modal, .dx-veil') || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.target.matches('input,textarea,select,[contenteditable]')) return;
       if (e.key === 'Backspace') { e.preventDefault(); up(); }
       if (e.key === 'Delete' && S.sel) trash(S.sel);
       if (e.key === 'F2' && S.sel) rename(S.sel);
