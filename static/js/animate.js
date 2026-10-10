@@ -581,7 +581,7 @@ function setReference() {
   const ox = Math.floor((S - A.actor.w * z) / 2), oy = S - A.actor.h * z - Math.floor(S * .05);
   x.drawImage(toCanvas(f), ox, oy, A.actor.w * z, A.actor.h * z);
   pushUndo();
-  A.actor.identity = { ref: card.toDataURL('image/png'), refW: S, scale: 1 / z, figH: bb.h, refSprite: toDataURL(f), seed: -1 };
+  A.actor.identity = { ref: card.toDataURL('image/png'), refW: S, scale: 1 / z, cell: z * 1024 / S, figH: bb.h, refSprite: toDataURL(f), seed: -1 };
   A.actor.pal = colorsOf(f).sort((p, q) => luma(p) - luma(q));
   changed(true);
   toast('Reference set. Its palette is now the actor palette', 'ok');
@@ -591,7 +591,7 @@ async function makeMore() {
   const id = A.actor.identity;
   if (!id) return;
   if (!A.actor.desc?.trim()) { const d = prompt('Describe this actor in a few words (it keeps the generator on-model)', A.actor.name.replace(/_/g, ' ')); if (!d) return; A.actor.desc = d; changed(); }
-  emit('forge-for', { name: A.actor.name, desc: A.actor.desc, kind: A.actor.kind || 'character', ref: id.ref, refW: id.refW, scale: id.scale, figH: id.figH,
+  emit('forge-for', { name: A.actor.name, desc: A.actor.desc, kind: A.actor.kind || 'character', ref: id.ref, refW: id.refW, scale: id.scale, cell: id.cell || 0, figH: id.figH,
     refSprite: await imgData(id.refSprite), pal: A.actor.pal.slice(), w: A.actor.w, h: A.actor.h, seed: id.seed });
 }
 

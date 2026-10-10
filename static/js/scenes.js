@@ -3,7 +3,7 @@
 import { $, h, api, toast, emit, on, pref, clamp, uid, field, range, select, check, seg, hex, rgb, mix, luma,
   newImg, cloneImg, toCanvas, toDataURL, imgData, keyBackground, buildPalette, applyPalette, PALETTES, HARDWARE, snapDepth, nearest, BAYER4, checker, rawURL, crop, blit } from './core.js';
 import { GENS, PRESETS } from './procgen.js';
-import { enqueue } from './queue.js';
+import { enqueue, budgetTag } from './queue.js';
 import { icon } from './icons.js';
 import { saveFiles, S as FS } from './files.js';
 import { STYLE, stylePrompt, styleAvoid } from './style.js';
@@ -406,7 +406,7 @@ function drawRight() {
       const pr = h('textarea', { id: 'layerPrompt', rows: 3, value: L.prompt || '', placeholder: 'what this layer shows, e.g. "ruined gothic towers and broken bridges"', oninput: e => { L.prompt = e.target.value; save(); } });
       insp.append(h('div', { class: 'sec' }, h('h3', {}, L.kind === 'image' ? 'Image' : 'Described layer'),
         L.kind !== 'image' ? [h('div', { class: 'fld wide' }, h('span', { class: 'fl' }, 'Shows'), pr),
-          field('Drawn by', seg([['cloud', 'Cloud'], ['local', 'This PC']], L.engine || 'cloud', v => { L.engine = v; save(); })),
+          field('Drawn by', seg([['cloud', h('span', {}, 'Cloud', budgetTag())], ['local', 'This PC']], L.engine || 'cloud', v => { L.engine = v; save(); })),
           (L.engine || 'cloud') === 'cloud' ? field('Match', check('style of the layers behind it', L.matchRef !== false, v => { L.matchRef = v; save(); })) : null,
           h('button', { class: 'btn go', style: { marginTop: '8px' }, disabled: L.busy, onclick: () => genAI(L) }, L.srcURL ? 'Draw again' : 'Draw this layer')] : null,
         field('Cut out sky', check('remove the background colour', L.key, v => { L.key = v; process(L); })),

@@ -1,14 +1,31 @@
 // Generation queue: submits to the server, polls progress, shows the tray in the top bar.
-import { $, h, api, toast, pref, emit } from './core.js';
+import { $, h, api, toast, pref, emit, on } from './core.js';
 
 export const Q = { jobs: [], health: null };
+// Cloud budget shown next to every "Cloud" choice; refreshed with the status ping and after each cloud job.
+const tags = new Set();
+const resetAt = () => { const d = new Date(); d.setUTCHours(24, 0, 0, 0); return d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); };
+const money = v => '$' + (+v).toFixed(2);
+function fillTag(s) {
+  const c = Q.health?.cloud;
+  if (!c) { s.textContent = ''; return; }
+  s.textContent = s.long
+    ? `Free quota today: ${c.free_left == null ? `${c.free_today} used` : `${Math.round(c.free_left * 100)}% left (resets ${resetAt()})`}. Then the paid backup: ${money(c.left)} left of the ${money(c.cap)} cap${c.account != null ? ` · account ${money(c.account)}` : ''}.`
+    : (c.free_left > 0.02 ? 'free · ' : '') + `${money(c.left)} left`;
+  s.title = `Free daily quota first; paid backup spent ${money(c.spent)} of ${money(c.cap)}`;
+}
+export function budgetTag(long = false) {
+  const s = h('span', { class: long ? 'budget long' : 'budget' }); s.long = long;
+  tags.add(s); fillTag(s); return s;
+}
+function fillTags() { for (const s of tags) { if (!s.isConnected && s.seen) tags.delete(s); else { s.seen = s.isConnected; fillTag(s); } } }
 const ENGINE_LABEL = { sprite: 'Sprite model', scene: 'Scene model', painted: 'Painted model', cloud: 'Cloud' };
 
 // Seconds per diffusion step at 512×512 on this machine, learnt from finished jobs.
 function perStep() { return pref.get('perStep', 30); }
 function overhead() { return pref.get('overhead', 30); }
 export function estimate(req) {
-  if (req.engine === 'cloud') return 20 * (req.batch || 1);
+  if (req.engine === 'cloud') return 12 * (req.batch || 1);
   const px = (req.w || 512) * (req.h || 512) / (512 * 512);
   const steps = req.steps || (req.fast === false ? 22 : 4);
   const batch = req.batch || 1;
@@ -101,7 +118,8 @@ export function initTray() {
   document.body.append(panel);
   $('#jobs').onclick = e => { e.stopPropagation(); panel.classList.toggle('open'); render(); };
   document.addEventListener('click', e => { if (!panel.contains(e.target)) panel.classList.remove('open'); });
-  const ping = () => api('/api/status').then(s => { Q.health = s; render(); emit('health', s); }).catch(() => { Q.health = { comfy: false }; render(); });
+  const ping = () => api('/api/status').then(s => { Q.health = s; render(); fillTags(); emit('health', s); }).catch(() => { Q.health = { comfy: false }; render(); });
+  on('job-done', j => { if (j.req?.engine === 'cloud') ping(); });
   ping(); setInterval(ping, 15000);
   setInterval(() => { if (Q.jobs.some(j => j.state === 'running')) render(); }, 1000);
 }

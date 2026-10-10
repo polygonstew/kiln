@@ -3,7 +3,7 @@
 // where the reference, palette, frame size and pixel scale are locked so it stays on-model.
 import { $, h, api, toast, emit, on, pref, clamp, field, range, select, check, seg, imgData, toCanvas, toDataURL, hex, rgb, luma,
   PALETTES, HARDWARE, pixelize, rawURL, bbox, newImg, resizeNN } from './core.js';
-import { enqueue, estimate, fmtSecs, Q } from './queue.js';
+import { enqueue, estimate, fmtSecs, Q, budgetTag } from './queue.js';
 import { icon } from './icons.js';
 import { saveFiles } from './files.js';
 import { STYLE, stylePrompt, styleAvoid } from './style.js';
@@ -28,7 +28,7 @@ export const POSES = [
 
 const st = Object.assign({
   prompt: '', neg: '', engine: 'cloud', kind: 'character', view: 'side', moods: [],
-  size: 384, batch: 2, seed: -1, lockSeed: false, steps: 4, denoise: 0.5,
+  size: 384, batch: 2, auto: true, seed: -1, lockSeed: false, steps: 4, denoise: 0.5,
   hw: 'snes', count: 12, palMode: 'auto', palName: 'pico8', w: 48, h: 48, fit: 'contain', anchor: 'bottom',
   key: true, tol: 38, keyGlobal: false, outline: 'outer', despeckle: true, dither: 'none', ditherAmt: 0.5, zoom: 0,
   change: '', poses: [],
@@ -126,13 +126,14 @@ function drawLeft() {
     V.est.textContent = `~${fmtSecs(s * (ID && st.engine === 'cloud' ? Math.max(1, st.poses.length) : 1))}${ahead ? ` · ${ahead} ahead in queue` : ''}`;
   };
   V.est = h('div', { class: 'note' });
-  const engineSeg = seg([['cloud', 'Cloud', 'Detailed and best at keeping a character on-model. Free quota first, then a few cents from the capped budget'],
+  const engineSeg = seg([['cloud', h('span', {}, 'Cloud', budgetTag()), 'Detailed and best at keeping a character on-model. Free daily quota first, then a few cents from the capped budget'],
     ['sprite', 'Sprite', 'Local pixel model tuned for game sprites (free, a minute or two)'], ['painted', 'Painted', 'Local DreamShaper + pixel-art LoRA: richer shading'], ['scene', 'Scene', 'Local pixel model for 16-bit scenes']],
     st.engine, v => { st.engine = v; save(); drawLeft(); });
   const seedIn = h('input', { type: 'number', value: st.seed, style: { width: '84px' }, onchange: () => { st.seed = +seedIn.value; save(); } });
   const local = st.engine !== 'cloud';
   const gen = h('div', { class: 'sec' }, h('h3', {}, 'Generator'),
     field('Model', engineSeg),
+    st.engine === 'cloud' ? h('p', { class: 'note' }, budgetTag(true)) : null,
     local ? [field('Canvas', seg([[384, '384'], [512, '512']], st.size, v => { st.size = v; save(); est(); }), '384 is about twice as fast'),
       field('Steps', range(st.steps, 3, 8, 1, v => { st.steps = v; save(); est(); })),
       field('Seed', h('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, seedIn,
@@ -176,7 +177,7 @@ function drawLeft() {
 }
 function genReq(init) {
   const r = { engine: st.engine, prompt: fullPrompt(), neg: [st.neg, styleAvoid()].filter(Boolean).join(', '), w: st.size, h: st.size, batch: st.batch, steps: st.steps, fast: true, seed: st.lockSeed ? st.seed : -1 };
-  if (st.engine === 'cloud') { r.w = r.h = 512; delete r.steps; }
+  if (st.engine === 'cloud') { r.w = r.h = 512; delete r.steps; if (!st.auto) r.px = st.h; }
   if (init) { r.init = init; r.denoise = st.denoise; }
   return r;
 }
@@ -265,15 +266,15 @@ function run() {
     if (ID) {
       // same palette, same frame, same pixels-per-source-pixel as the reference
       const scale = ID.scale * ID.refW / s.width;
-      r = pixelize(s, { ...common, w: ID.w, h: ID.h, lock: ID.pal, scale, fit: 'contain' });
+      r = pixelize(s, { ...common, w: ID.w, h: ID.h, lock: ID.pal, scale, cellHint: ID.cell || 0, fit: 'contain' });
       const bb = bbox(r.img);
       outInfo = { figH: bb ? bb.h : 0, match: similarity(ID.refSprite, r.img) };
     } else {
       const H = HARDWARE[st.hw];
-      r = pixelize(s, { ...common, w: st.w, h: st.h, hw: st.hw, count: Math.min(st.count, H.sprite), master: palMaster(), fit: st.fit, anchor: st.anchor });
+      r = pixelize(s, { ...common, w: st.w, h: st.h, auto: st.auto, hw: st.hw, count: Math.min(st.count, H.sprite), master: palMaster(), fit: st.fit, anchor: st.anchor });
       outInfo = null;
     }
-    out = r.img; outPal = r.pal; out.scale = r.scale; out.srcW = s.width;
+    out = r.img; outPal = r.pal; out.scale = r.scale; out.srcW = s.width; out.native = r.native; out.cell1024 = r.cell1024;
     paint(); drawPal();
   }, 60);
 }
@@ -311,7 +312,7 @@ function paint() {
   fit(V.srcCv, src, V.srcCv.parentElement, false);
   fit(V.outCv, out, V.outCv.parentElement, true);
   V.srcCap.textContent = src ? `${src.width}×${src.height}` : '';
-  V.outCap.textContent = out ? `${out.width}×${out.height} · ${outPal.length} colours` : '';
+  V.outCap.textContent = out ? `${out.width}×${out.height} · ${outPal.length} colours${out.native ? ` · art drawn ${out.native[0]}×${out.native[1]}` : ''}` : '';
   if (out && ID && outInfo) {
     const hOk = Math.abs(outInfo.figH - ID.figH) <= Math.max(2, ID.figH * .12), mOk = outInfo.match >= .6;
     V.fits.replaceChildren(
@@ -350,16 +351,18 @@ function drawRight() {
     onclick: () => { st.hw = k; st.count = Math.min(Math.max(st.count, 3), H.sprite); if (k === 'nes' || k === 'gb') st.count = 3; save(); drawRight(); run(); },
   }, H.name, h('small', {}, `${H.sprite}+1 col`))));
   const H = HARDWARE[st.hw];
-  const wIn = h('input', { type: 'number', value: st.w, min: 8, max: 256, style: { width: '64px' }, onchange: () => { st.w = clamp(+wIn.value, 8, 256); save(); run(); } });
-  const hIn = h('input', { type: 'number', value: st.h, min: 8, max: 256, style: { width: '64px' }, onchange: () => { st.h = clamp(+hIn.value, 8, 256); save(); run(); } });
+  const wIn = h('input', { type: 'number', value: st.w, min: 8, max: 256, style: { width: '64px' }, onchange: () => { st.auto = false; st.w = clamp(+wIn.value, 8, 256); save(); drawRight(); run(); } });
+  const hIn = h('input', { type: 'number', value: st.h, min: 8, max: 256, style: { width: '64px' }, onchange: () => { st.auto = false; st.h = clamp(+hIn.value, 8, 256); save(); drawRight(); run(); } });
   const palRows = h('div', { style: { display: st.palMode === 'named' ? '' : 'none', marginTop: '6px' } }, ...Object.entries(PALETTES).map(([k, p]) => h('div', {
     class: 'palrow' + (st.palName === k ? ' on' : ''), onclick: () => { st.palName = k; save(); drawRight(); run(); },
   }, h('span', { class: 'nm' }, p.name), h('div', { class: 'sw' }, ...p.colors.slice(0, 20).map(c => h('i', { style: { background: hex(c) } }))))));
   V.right.replaceChildren(
     h('div', { class: 'sec' }, h('h3', {}, 'Hardware'), hwBtns, h('p', { class: 'note' }, H.note)),
     h('div', { class: 'sec' }, h('h3', {}, 'Size'),
-      h('div', { class: 'chips' }, ...[16, 24, 32, 48, 64, 96, 128].map(s => h('button', { class: st.w === s && st.h === s ? 'on' : '', onclick: () => { st.w = st.h = s; save(); drawRight(); run(); } }, s))),
-      field('Frame', h('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, wIn, '×', hIn)),
+      h('div', { class: 'chips' }, h('button', { class: st.auto ? 'on' : '', title: 'Keep the size the art was drawn at: one art pixel = one sprite pixel', onclick: () => { st.auto = true; save(); drawRight(); run(); } }, 'Auto'),
+        ...[16, 24, 32, 48, 64, 96, 128].map(s => h('button', { class: !st.auto && st.w === s && st.h === s ? 'on' : '', onclick: () => { st.auto = false; st.w = st.h = s; save(); drawRight(); run(); } }, s))),
+      st.auto ? h('p', { class: 'note' }, 'Auto keeps every pixel the art was drawn with. Pick a size to shrink it to a fixed frame.') : null,
+      st.auto ? null : field('Frame', h('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, wIn, '×', hIn)),
       field('Fit', seg([['contain', 'Keep shape'], ['stretch', 'Fill frame']], st.fit, v => { st.fit = v; save(); run(); })),
       field('Stand on', seg([['bottom', 'Floor'], ['center', 'Middle']], st.anchor, v => { st.anchor = v; save(); run(); }), 'Floor keeps feet on the bottom row, so frames line up')),
     h('div', { class: 'sec' }, h('h3', {}, 'Colour'),
@@ -400,7 +403,7 @@ function sendToAnimate(mode) {
   const bb = bbox(out);
   const identity = mode === 'new' ? (() => {
     const ref = refImage();
-    return { desc: st.prompt.trim(), kind: st.kind, ref: ref.url, refW: ref.w, scale: (out.scale || 1) * out.srcW / ref.w, figH: bb ? bb.h : out.height, seed: results.find(r => r.url === srcURL)?.seed ?? -1 };
+    return { desc: st.prompt.trim(), kind: st.kind, ref: ref.url, refW: ref.w, scale: (out.scale || 1) * out.srcW / ref.w, figH: bb ? bb.h : out.height, cell: out.cell1024 || 0, seed: results.find(r => r.url === srcURL)?.seed ?? -1 };
   })() : null;
   emit('to-animate', { mode, img: out, pal: outPal, name: ID ? ID.name : nameFromPrompt(), identity, forName: ID?.name });
 }

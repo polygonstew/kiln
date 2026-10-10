@@ -1,6 +1,6 @@
 # RESUME: Kiln state of build
 
-Last updated: 2026-10-10 (first build session).
+Last updated: 2026-10-10 (session 2: cloud engines + native pixel grid).
 
 ## Where things are
 
@@ -15,8 +15,16 @@ Last updated: 2026-10-10 (first build session).
     tokens `pixelsprite` for sprites, `16bitscene` for scenes)
   - `loras/lcm-lora-sdv1-5.safetensors` (4–6 step sampling, `lcm` + `sgm_uniform`, cfg ~1.6)
   - `loras/PixelArtRedmond15V.safetensors` (trigger `PixArFK`, used by the "Painted" engine with DreamShaper 8)
-- Cloud engine: Gemini free key first, then OpenRouter `google/gemini-2.5-flash-image` (~4¢/image).
-  Capped by `KILN_CLOUD_CAP` (default $2.00) against `cloud_spent` in settings.json. About 9 s per image.
+- Cloud engine (`cloud_image` in server.py):
+  1. **Cloudflare Workers AI** (free, 10,000 neurons/day, resets 00:00 UTC; creds in
+     `~/.config/uwf-apps/cloudflare.env`). New things -> `flux-2-klein-4b` (~110 neurons, ~90/day),
+     frames from a reference -> `flux-2-klein-9b` (~1,390 neurons, ~7/day; it is the one that redraws a
+     reference in a new pose and stays on-model; 4b just copies the reference). Multipart API, 1024 long side.
+  2. **OpenRouter** `google/gemini-2.5-flash-image` (paid, ~4¢) when the free quota is gone or a prompt is
+     filtered. Capped by `KILN_CLOUD_CAP` (default $2.00) against `cloud_spent` in settings.json.
+  - The direct Gemini key is NOT used: its free tier has zero image quota (always 429). Groq has no image models.
+  - `/api/status` -> `cloud: {free_left (fraction, from CF GraphQL analytics), left, cap, spent, account}`;
+    shown next to every "Cloud" choice (`budgetTag()` in queue.js).
 
 ## Machine limits (important)
 
@@ -36,7 +44,19 @@ identity card, export) · Scenes (9 generators, 4 presets, 3 looks, described la
 layers behind them, export + Godot tscn) · HUD (8 widget types, parts export, BMFont) · Stage ·
 Style bible · cloud budget cap · Panel registration (both editions) · LAN service.
 
+## Pixelize: native grid (session 2)
+
+AI "pixel art" is a 1024 image drawn on fake ~8-11 px cells. `detectGrid` (core.js) finds the cell size
+from a Fourier peak of the edge profiles, snaps each cut line to real edges, `snapGrid` takes one colour
+per cell -> the art's own pixels. Then `centreDown` (not majority vote) if a smaller frame is wanted, so
+1-px eyes/staffs survive; despeckle is skipped for grid art. Forge Size **Auto** (default) keeps the
+native size. Actor identity stores `cell` (per 1024 px); later frames search near it (`cellHint`).
+Interior background gaps (between legs) are keyed too. Test images live in `library/cloud/`.
+
 ## Next ideas (not started)
+
+- Pose prompts: klein-9b sometimes changes the pose too little (strike looked like idle). Try stronger
+  pose wording, or a pose sketch as a 2nd input image (`input_image_1`).
 
 - Forge identity mode: choose which animation the new frame goes into (it currently goes after
   the current frame in Animate).

@@ -267,6 +267,19 @@ export function keyBackground(im, tol = 40, global = false) {
     d[p * 4 + 3] = 0;
     if (x > 0) push(x - 1, y); if (x < w - 1) push(x + 1, y); if (y > 0) push(x, y - 1); if (y < hh - 1) push(x, y + 1);
   }
+  // gaps the figure closes in (between legs, inside a lantern handle): same flat background colour,
+  // tighter tolerance, and big enough to be a gap rather than a highlight
+  const T2 = T / 4, minA = Math.max(4, w * hh / 2500);
+  for (let p0 = 0; p0 < w * hh; p0++) {
+    if (seen[p0] || d[p0 * 4 + 3] === 0 || dist([d[p0 * 4], d[p0 * 4 + 1], d[p0 * 4 + 2]], bg) > T2) continue;
+    const comp = [p0]; seen[p0] = 1;
+    for (let k = 0; k < comp.length; k++) {
+      const p = comp[k], x = p % w, y = (p / w) | 0;
+      for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < hh - 1 ? p + w : -1])
+        if (q >= 0 && !seen[q] && dist([d[q * 4], d[q * 4 + 1], d[q * 4 + 2]], bg) <= T2) { seen[q] = 1; comp.push(q); }
+    }
+    if (comp.length >= minA) for (const p of comp) d[p * 4 + 3] = 0;
+  }
   return o;
 }
 // Reduce to (tw, th) by majority vote per block of an already palette-mapped image.
@@ -322,26 +335,118 @@ export function despeckle(im) {
   }
   return o;
 }
+/* ----------------------------------------------- native pixel grid ---- */
+// AI "pixel art" is a big image drawn on a coarse grid of fake pixels (often 10-20 px each,
+// not perfectly even). Resampling it on any other grid smears features, so find the real grid:
+// colour edges line up on the cell boundaries. Returns {cell, xs, ys} (cut lines) or null.
+export function detectGrid(im, hint = 0) {
+  const { width: w, height: hh, data: d } = im;
+  if (w < 96 || hh < 96) return null;
+  const prof = (n, m, at) => {          // edge strength at each boundary along one axis
+    const p = new Float64Array(n);
+    for (let a = 1; a < n; a++) { let s = 0; for (let b = 0; b < m; b += 2) { const i = at(a, b), j = at(a - 1, b); s += Math.abs(d[i] - d[j]) + Math.abs(d[i + 1] - d[j + 1]) + Math.abs(d[i + 2] - d[j + 2]); } p[a] = s; }
+    const pm = new Float64Array(n);     // max-filter radius 1: tolerates uneven cells
+    for (let a = 1; a < n - 1; a++) pm[a] = Math.max(p[a - 1], p[a], p[a + 1]);
+    let base = 0; for (let a = 0; a < n; a++) base += pm[a]; base = base / n || 1;
+    return { p, pm, base, n };
+  };
+  const X = prof(w, hh, (x, y) => (y * w + x) * 4), Y = prof(hh, w, (y, x) => (y * w + x) * 4);
+  // the cell size is the strongest period in the edge profiles (a Fourier peak, both axes summed)
+  const ft = (P, s) => { let re = 0, im2 = 0; const k = 2 * Math.PI / s; for (let a = 0; a < P.n; a++) { const v = P.pm[a] - P.base; re += v * Math.cos(k * a); im2 -= v * Math.sin(k * a); } return [re, im2]; };
+  const mag = s => { const [a, b] = ft(X, s), [c, e] = ft(Y, s); return Math.hypot(a, b) + Math.hypot(c, e); };
+  // real cells are small next to the picture (>= ~40 across); a hint (the reference's cell, for an
+  // actor's later frames) narrows the search so every frame is read on the same kind of grid
+  const lo = hint ? Math.max(4, hint * 0.6) : 4, hi = hint ? Math.min(Math.min(w, hh) / 24, hint * 1.6) : Math.min(w, hh) / 40, ms = [];
+  for (let s = lo; s <= hi; s += 0.04) ms.push([s, mag(s)]);
+  if (!ms.length) return null;
+  const sorted = ms.map(m => m[1]).sort((a, b) => a - b), med = sorted[sorted.length >> 1] || 1;
+  let bi = 0; for (let i = 1; i < ms.length; i++) if (ms[i][1] > ms[bi][1]) bi = i;
+  if (ms[bi][1] / med < 2.2) return null;   // no clear grid (photo, painting, already-small sprite)
+  const c = { s: ms[bi][0] };
+  // phase of the peak = where the cut lines sit
+  const phase = P => { const [re, im2] = ft(P, c.s); return ((-Math.atan2(im2, re) / (2 * Math.PI) * c.s) % c.s + c.s) % c.s; };
+  c.px = phase(X); c.py = phase(Y);
+  const lines = (P, ph) => {
+    const out = [], win = Math.max(1, Math.floor(c.s * 0.3)), strong = P.base * 1.5;
+    const snap = e => {
+      let bi = Math.round(e), bv = -1;
+      for (let a = Math.max(1, Math.round(e) - win); a <= Math.min(P.n - 1, Math.round(e) + win); a++) if (P.p[a] > bv) { bv = P.p[a]; bi = a; }
+      return bv > strong ? bi : Math.round(e);
+    };
+    let first = snap(ph); while (first - c.s > 0) first = Math.round(first - c.s);
+    for (let pos = first; pos < P.n - 1;) { if (pos > 0 && (!out.length || pos - out[out.length - 1] >= c.s * 0.5)) out.push(pos); pos = snap(pos + c.s); if (pos <= out[out.length - 1]) pos = out[out.length - 1] + Math.round(c.s); }
+    if (out[0] > 0) out.unshift(0);
+    if (P.n - out[out.length - 1] >= c.s * 0.5) out.push(P.n); else out[out.length - 1] = P.n;
+    return out;
+  };
+  return { cell: c.s, xs: lines(X, c.px), ys: lines(Y, c.py) };
+}
+// One pixel per grid cell: the dominant colour of the cell's middle (edges blur between cells).
+export function snapGrid(im, g) {
+  const { xs, ys } = g, o = newImg(xs.length - 1, ys.length - 1), W = im.width;
+  for (let cy = 0; cy < ys.length - 1; cy++) for (let cx = 0; cx < xs.length - 1; cx++) {
+    const x0 = xs[cx], x1 = xs[cx + 1], y0 = ys[cy], y1 = ys[cy + 1];
+    const mx = Math.floor((x1 - x0) * 0.25), my = Math.floor((y1 - y0) * 0.25);
+    const m = new Map(); let clear = 0, tot = 0;
+    for (let y = y0 + my; y < Math.max(y0 + my + 1, y1 - my); y++) for (let x = x0 + mx; x < Math.max(x0 + mx + 1, x1 - mx); x++) {
+      const i = (y * W + x) * 4; tot++;
+      if (im.data[i + 3] < 128) { clear++; continue; }
+      const k = (im.data[i] >> 3) << 10 | (im.data[i + 1] >> 3) << 5 | im.data[i + 2] >> 3;
+      let e = m.get(k); if (!e) m.set(k, e = [0, 0, 0, 0]);
+      e[0] += im.data[i]; e[1] += im.data[i + 1]; e[2] += im.data[i + 2]; e[3]++;
+    }
+    if (clear * 2 > tot || !m.size) continue;
+    let b = null; for (const e of m.values()) if (!b || e[3] > b[3]) b = e;
+    const j = (cy * o.width + cx) * 4;
+    o.data[j] = Math.round(b[0] / b[3]); o.data[j + 1] = Math.round(b[1] / b[3]); o.data[j + 2] = Math.round(b[2] / b[3]); o.data[j + 3] = 255;
+  }
+  return o;
+}
+
 /* The whole sprite pipeline: AI image -> transparent, paletted, sized sprite.
    opts: {w, h, hw, count, lock, key, tol, outline, outlineColor, despeckle, dither, fit:'contain'|'stretch', anchor:'bottom'|'center', pad} */
+function centreDown(im, w, h) {
+  const o = newImg(w, h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const s = (Math.floor((y + 0.5) * im.height / h) * im.width + Math.floor((x + 0.5) * im.width / w)) * 4, d = (y * w + x) * 4;
+    for (let k = 0; k < 4; k++) o.data[d + k] = im.data[s + k];
+  }
+  return o;
+}
+const GRIDS = new WeakMap();
+export function gridOf(src, hint = 0) {
+  const k = 'g' + (hint ? hint.toFixed(1) : '');
+  let m = GRIDS.get(src); if (!m) GRIDS.set(src, m = {});
+  if (!(k in m)) m[k] = detectGrid(src, hint);
+  return m[k];
+}
 export function pixelize(src, o) {
   let im = o.key ? keyBackground(src, o.tol ?? 40, o.keyGlobal) : cloneImg(src);
+  // work on the art's own pixels when it has a grid: 1 cell = 1 sprite pixel, nothing smeared
+  const g = o.grid !== false && o.fit !== 'stretch' ? gridOf(src, o.cellHint ? o.cellHint * src.width / 1024 : 0) : null;
+  const unit = g ? g.cell : 1;          // source px per working px
+  if (g) im = snapGrid(im, g);
   const bb = o.fit === 'stretch' ? { x: 0, y: 0, w: im.width, h: im.height } : bbox(im);
   if (!bb) return { img: newImg(o.w, o.h), pal: [] };
   const pad = (o.outline ? 1 : 0) + (o.pad || 0);
-  const pal = buildPalette(im, { hw: o.hw, count: o.count, lock: o.lock, master: o.master });
+  const pal = buildPalette(g ? crop(im, bb.x, bb.y, bb.w, bb.h) : im, { hw: o.hw, count: o.count, lock: o.lock, master: o.master });
   const mapped = applyPalette(crop(im, bb.x, bb.y, bb.w, bb.h), pal, { dither: o.dither || 'none', amount: o.ditherAmt ?? 0.5 });
   let tw = o.w - pad * 2, th = o.h - pad * 2, scale = null;
   if (o.fit !== 'stretch') {
     // a fixed scale (sprite px per source px) keeps every pose of an actor the same size
-    scale = o.scale || Math.min(tw / bb.w, th / bb.h);
+    scale = o.scale ? o.scale * unit : Math.min(tw / bb.w, th / bb.h);
+    if (g && (o.scale ? Math.abs(scale - 1) < 0.1 : scale >= 1)) scale = 1;   // native art: never resample by a hair, never blow up
     tw = Math.max(1, Math.round(bb.w * scale)); th = Math.max(1, Math.round(bb.h * scale));
     if (!o.scale) { tw = Math.min(tw, o.w - pad * 2); th = Math.min(th, o.h - pad * 2); }
+    if (o.auto && g) { scale = 1; tw = bb.w; th = bb.h; }   // the art's own size, every pixel kept
   }
   // with a fixed scale a wide pose (a lunge, a swing) is never squashed: the canvas grows instead
-  const W = Math.max(o.w, tw + pad * 2), H = Math.max(o.h, th + pad * 2);
-  let small = majorityDown(mapped, tw, th);
-  if (o.despeckle) small = despeckle(small);
+  const up8 = v => Math.ceil(v / 8) * 8;
+  const W = o.auto && g ? up8(tw + pad * 2) : Math.max(o.w, tw + pad * 2), H = o.auto && g ? up8(th + pad * 2) : Math.max(o.h, th + pad * 2);
+  const same = tw === bb.w && th === bb.h;
+  // from native art, sampling each block's centre keeps 1-px features (eyes, a staff) that a vote would drop
+  let small = same ? mapped : g ? centreDown(mapped, tw, th) : majorityDown(mapped, tw, th);
+  if (o.despeckle && !g) small = despeckle(small);
   let out = newImg(W, H);
   const ox = Math.floor((W - tw) / 2), oy = o.anchor === 'center' ? Math.floor((H - th) / 2) : H - pad - th;
   blit(out, small, ox, oy);
@@ -349,7 +454,7 @@ export function pixelize(src, o) {
     const oc = o.outlineColor ? rgb(o.outlineColor) : pal[0] || [0, 0, 0];
     out = outline(out, oc, o.outline === 'thick');
   }
-  return { img: out, pal: colorsOf(out).sort((a, b) => luma(a) - luma(b)), scale, srcBox: bb };
+  return { img: out, pal: colorsOf(out).sort((a, b) => luma(a) - luma(b)), scale: scale == null ? null : scale / unit, grid: g, cell1024: g ? g.cell * 1024 / src.width : 0, native: g ? [bb.w, bb.h] : null };
 }
 
 /* ---------------------------------------------------------- file save ---- */

@@ -36,10 +36,12 @@ frame as reference** (an upscaled card of the frame, so any drawn or sliced acto
 
 Animate → **Make more frames** sends the identity to Forge. Then:
 
-- **Cloud:** reference image + "Redraw this exact … Keep the identical design, costume,
+- **Cloud:** Cloudflare FLUX.2-klein-9b (free, ~7/day) then OpenRouter Gemini. Reference image + "Redraw this exact … Keep the identical design, costume,
   proportions, colours, line weight and facing direction; only the pose or action changes."
   One request per pose. This is the most consistent option.
 - **Local:** img2img from the reference with a *Freedom* (denoise) slider.
+- The art's pixel grid is read near the reference's cell size (`identity.cell`, `cellHint`), so every frame
+  is sampled one-art-pixel-per-sprite-pixel the same way.
 - Pixelize is **locked**: `lock: actor.pal` (exact palette), `scale = id.scale * id.refW / src.width`
   (the same pixel scale, so a crouch is shorter instead of blown up), anchor bottom. A wide pose
   grows the canvas instead of being squashed, and Animate offers to widen every frame.
