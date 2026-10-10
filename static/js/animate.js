@@ -32,6 +32,15 @@ export const animate = {
     mounted = true;
     A.actor = restore() || blankActor();
     build(el);
+    // drop a sprite sheet (or a single image) anywhere on this tab: it goes straight to the slicer
+    el.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); el.classList.add('dropping'); } });
+    el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) el.classList.remove('dropping'); });
+    el.addEventListener('drop', e => {
+      e.preventDefault(); el.classList.remove('dropping');
+      const f = [...e.dataTransfer.files].find(f => f.type.startsWith('image/'));
+      if (!f) return toast('Drop an image (PNG, GIF, WebP, JPG)', 'bad');
+      const r = new FileReader(); r.onload = () => sliceInto(r.result, f.name.replace(/\.\w+$/, '')); r.readAsDataURL(f);
+    });
     drain();
   },
   show() { refreshAll(); },
@@ -258,8 +267,10 @@ function fromForge(d) {
 }
 const isBlank = () => A.actor.anims.length === 1 && A.actor.anims[0].frames.length === 1 && !bbox(A.actor.anims[0].frames[0]);
 function sliceInto(src, name) {
+  const file = name;   // "enemy02_4x8_idle_walk_run_attack_anims" -> actor "enemy02"; the rest tells the slicer the layout
+  name = name.replace(/(^|[_\-\s])\d{1,2}\s*x\s*\d{1,2}(?=$|[_\-\s]).*$/i, '').replace(/[_\-\s](idle|walk|run|attack|jump|dash|roll|anims?|sheet|sprites?)([_\-\s].*)?$/i, '') || name;
   openSlicer(src, {
-    name: slug(name), target: { h: isBlank() ? 64 : A.actor.h, hw: A.hw, count: HARDWARE[A.hw].sprite },
+    name: slug(name), file, target: { h: isBlank() ? 64 : A.actor.h, hw: A.hw, count: HARDWARE[A.hw].sprite },
     onDone: ({ anims, w, h: hh, pal }) => {
       const empty = isBlank();
       pushUndo();
@@ -532,7 +543,7 @@ function drawRight() {
     identityBox(),
     h('div', { class: 'sec' }, h('h3', {}, 'Motions'), motionBox),
     h('div', { class: 'sec' }, h('h3', {}, 'Import'),
-      h('button', { class: 'btn', onclick: () => pickFile((src, name) => sliceInto(src, name)) }, 'Cut a sprite sheet…'),
+      h('button', { class: 'btn', title: 'Or drop a sheet anywhere on this tab', onclick: () => pickFile((src, name) => sliceInto(src, name)) }, 'Cut a sprite sheet…'),
       h('p', { class: 'note' }, 'Or pick any image in Files and press "Animate from sheet".')),
     h('div', { class: 'sec' }, h('h3', {}, 'Save to asset folder'),
       h('p', { class: 'note', style: { marginTop: 0 } }, h('b', {}, `sprites/${A.actor.name}/`), ' gets one strip PNG per animation, manifest.json, a Godot SpriteFrames .tres, and a packed sheet + JSON for other engines.'),

@@ -302,3 +302,4 @@ input[type=color] { width: 28px; height: 22px; padding: 0; border: 1px solid var
 /* cloud budget next to "Cloud" choices */
 .budget:not(.long) { margin-left: 6px; font: 10px var(--mono, monospace); color: var(--ok, #8fbf6a); opacity: .85; }
 .budget:empty { display: none; }
+.view.dropping { outline: 2px dashed var(--ember); outline-offset: -6px; }
