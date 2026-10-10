@@ -7,6 +7,7 @@ import { enqueue, estimate, fmtSecs, Q, budgetTag } from './queue.js';
 import { icon } from './icons.js';
 import { saveFiles } from './files.js';
 import { STYLE, stylePrompt, styleAvoid } from './style.js';
+import { registerWheel, registerMenu } from './wheel.js';
 
 const KINDS = [
   ['character', 'Character', 'full body character, standing, whole figure visible'],
@@ -465,3 +466,29 @@ async function savePalette() {
   await saveFiles('palettes', [{ name: n + '.hex', text: outPal.map(c => hex(c).slice(1)).join('\n') + '\n' }, { name: n + '.png', b64: cv.toDataURL() }]);
   toast('Saved palettes/' + n + '.hex', 'ok');
 }
+
+/* ------------------------------------------------- command wheel & menu ---- */
+registerWheel('forge', () => ({
+  tools: [
+    { label: 'Generate', hint: ID ? 'for ' + ID.name : st.engine, run: generate },
+    { label: 'Open image', run: () => V.file?.click() },
+    { label: 'Use as guide', hint: 'source to guide', run: () => { if (!src) return toast('Nothing in the Source pane yet'); guide = flatSmall(src); drawLeft(); } },
+    { label: 'New actor', hint: 'to Animate', run: () => sendToAnimate('new') },
+    { label: 'Cloud', on: st.engine === 'cloud', run: () => { st.engine = 'cloud'; save(); drawLeft(); } },
+    { label: 'This PC', on: st.engine === 'sprite', hint: 'local model', run: () => { st.engine = 'sprite'; save(); drawLeft(); } },
+  ],
+  guides: [
+    { label: 'Auto size', on: st.auto, hint: 'art pixels kept', run: () => { st.auto = !st.auto; save(); drawRight(); run(); } },
+    { label: 'Outline', on: st.outline !== 'none', run: () => { st.outline = st.outline === 'none' ? 'outer' : 'none'; save(); drawRight(); run(); } },
+    { label: 'Zoom fit', on: !st.zoom, run: () => { st.zoom = 0; save(); paint(); } },
+    { label: 'Zoom 4×', on: st.zoom === 4, run: () => { st.zoom = 4; save(); paint(); } },
+  ],
+}));
+registerMenu('#v-forge .results .r', el => {
+  const img = el.querySelector('img'); if (!img) return [];
+  const url = img.getAttribute('src');
+  return [{ head: 'Image' },
+    { label: 'Use as source', run: () => { setSource(url, ''); drawResults(); } },
+    { label: 'Use as guide', run: async () => { const im = await imgData(url).catch(() => null); if (im) { guide = flatSmall(im); drawLeft(); } } },
+    { label: 'Open in new tab', run: () => window.open(url, '_blank') }];
+});

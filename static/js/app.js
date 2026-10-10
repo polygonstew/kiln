@@ -4,6 +4,7 @@ import { drawText } from './text.js';
 import { initTray } from './queue.js';
 import { files, loadSettings } from './files.js';
 import { editStyle } from './style.js';
+import { initWheel, registerWheel } from './wheel.js';
 
 const mods = [files];
 const optional = ['forge', 'animate', 'scenes', 'hud', 'stage'];
@@ -49,6 +50,12 @@ async function boot() {
     const m = mods.find(m => m.key === e.key);
     if (m) { show(m.id); e.preventDefault(); }
   });
+  initWheel(() => mods.map(m => ({ id: m.id, label: m.title, key: m.key })), () => cur);
+  // workspaces without their own wheel entries still get their main buttons as tools
+  for (const m of mods) if (!['animate', 'forge'].includes(m.id)) registerWheel(m.id, () => ({
+    tools: [...(views[m.id]?.querySelectorAll('button.btn.go, button.btn:not(.ghost):not(.sm)') || [])].filter(b => b.offsetParent && b.textContent.trim()).slice(0, 10)
+      .map(b => ({ label: b.textContent.trim().slice(0, 24), hint: b.title, run: () => b.click() })),
+  }));
   show(location.hash.slice(1) || pref.get('tab', 'files'));
 }
 boot();

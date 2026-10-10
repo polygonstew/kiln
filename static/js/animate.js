@@ -6,6 +6,7 @@ import { Player, loadActor } from './player.js';
 import { MOTIONS } from './motion.js';
 import { openSlicer } from './slicer.js';
 import { SETS, makeTemplate, readTemplate, download as downloadSheet } from './sheets.js';
+import { registerWheel, registerMenu } from './wheel.js';
 import { saveFiles, S as FS } from './files.js';
 
 const ANIM_NAMES = ['idle', 'walk', 'run', 'jump', 'fall', 'attack', 'hurt', 'death', 'crouch', 'cast', 'climb', 'dash', 'block', 'spin'];
@@ -827,3 +828,27 @@ function spriteFrames(a, res) {
   });
   return `[gd_resource type="SpriteFrames" load_steps=${ext.length + subs.length + 1} format=3]\n\n${ext.join('\n')}\n\n${subs.join('\n\n')}\n\n[resource]\nanimations = [${animsOut.join(', ')}]\n`;
 }
+
+/* ------------------------------------------------- command wheel & menu ---- */
+registerWheel('animate', () => ({
+  tools: TOOLS.map(([t, k, title]) => ({ label: title, key: k, on: A.tool === t, run: () => setTool(t) })).concat(
+    [{ label: 'Copy frame', key: 'N', run: dupFrame }, { label: 'Flip frame', key: 'H', run: () => { pushUndo(); setFrame(flipX(frame())); } }]),
+  guides: [
+    { label: 'Onion skin', key: 'O', on: !!A.onion, run: () => { A.onion = !A.onion; drawEditor(); } },
+    { label: 'Pixel grid', on: !!A.grid, run: () => { A.grid = !A.grid; drawEditor(); } },
+    { label: 'Mirror draw', on: !!A.mirror, hint: 'draw both sides', run: () => { A.mirror = !A.mirror; drawEditor(); } },
+    { label: '2-wide box', on: (anim().span || 1) > 1, hint: 'room for long swings', run: () => setSpan(anim(), (anim().span || 1) > 1 ? 1 : 2) },
+    { label: 'Box template', hint: 'draw into boxes', run: templateOut },
+    { label: 'Save actor', run: exportActor },
+  ],
+}));
+registerMenu('#v-animate .frame:not(.add)', el => {
+  const i = [...el.parentElement.children].indexOf(el);
+  const go = fn => () => { commitFloat(); A.fi = i; fn(); };
+  return [{ head: `Frame ${i + 1}` },
+    { label: 'Copy frame', key: 'N', run: go(dupFrame) },
+    { label: 'Move left', run: go(() => moveFrame(-1)) }, { label: 'Move right', run: go(() => moveFrame(1)) },
+    { label: 'Flip', key: 'H', run: go(() => { pushUndo(); setFrame(flipX(frame())); }) },
+    { label: 'Use as reference', hint: 'identity', run: go(setReference) },
+    { label: 'Delete frame', run: go(delFrame) }];
+});
