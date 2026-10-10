@@ -36,7 +36,8 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - [x] **Flow 1** DONE: Concepts card "Actor" and Forge "+ animations" (set chooser): pixelize → actor with identity → full set,
   every frame starting from the sprite. Event `make-actor` {path|url, name, set}. Was: On a Concepts/Forge image: "Make actor" = pixelize with the style settings, create
   the actor (identity, palette, scale), add the hero (or enemy) animation set, open Animate with the box template ready. One click.
-- [ ] **Flow 2: Batch pixelize.** Pick a concept session or a folder: every image → sprite with ONE shared palette, size and
+- [x] **Flow 2** DONE: Concepts "Batch → sprites": one shared palette (pooled from all images), one height (median default), outline,
+  hardware; tick + rename; saves sprites/<name>/<name>.png, never into an existing folder (name_2). Was: Pick a concept session or a folder: every image → sprite with ONE shared palette, size and
   outline (consistency), saved to sprites/<name>/. Preview grid first, then save the ticked ones.
 - [ ] **Flow 3: "Send to…" everywhere.** Every image (Concepts, Forge results, Files, Animate frames, scene layers) gets the same
   right-click "Send to": Forge source · Forge guide · Animate frame · new actor · Scene layer · Level tileset · Concept board.
@@ -148,3 +149,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: user is on SSH, so Kiln Studio (a desktop window) is no use remotely. Added the Concepts tab (meta.ai links + drop/paste/upload + notes).
 - 2026-10-10: slicer grids made movable (drag the grid, size cells by corner, gap/offset fields, arrows; boxes draggable, drawable, right-click delete). Flow tools queued first.
 - 2026-10-10: run 18. Flow 1: concept → actor with a full animation set in one click.
+- 2026-10-10: run 19. Batch pixelize a concept session into a consistent sprite set.

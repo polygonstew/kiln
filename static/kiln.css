@@ -410,3 +410,7 @@ table.breakdown td.warn { color: var(--bad); } table.breakdown td.ok { color: va
 @media (max-width: 800px) { #v-concepts.ws { grid-template-columns: 1fr; } #v-concepts aside.r { display: none; } }
 .gridnums { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; margin-top: 6px; }
 .gridnums .fld { grid-template-columns: 52px 1fr; }
+.bgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.bcard { background: #151514; border: 1px solid var(--line2); border-radius: 3px; padding: 8px; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  background-image: repeating-conic-gradient(#1c1c1b 0 25%, #222221 0 50%); background-size: 12px 12px; }
+.bcard.off { opacity: .35; } .bcard input[type=text] { width: 100%; }
