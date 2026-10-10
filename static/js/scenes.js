@@ -21,6 +21,9 @@ export const LOOKS = {
 const ROLE_WORDS = l => l.scroll <= .05 ? 'distant sky, far background' : l.scroll < .35 ? 'far background layer' : l.scroll < .75 ? 'middle-ground layer' : 'foreground layer';
 
 let SC = null, sel = 0, V = {}, mounted = false, pending = [];
+// scene files can be ~70 MB and take seconds to load: every load takes a ticket, and New / Open take a new one,
+// so a load that finishes after you started or opened something else is dropped instead of replacing it
+let loads = 0;
 let undoS = [], redoS = [];
 const snap = () => ({ layers: SC.layers.map(L => ({ ...L, params: L.params ? { ...L.params } : L.params })), sel });
 function pushUndo() { undoS.push(snap()); if (undoS.length > 60) undoS.shift(); redoS = []; }
@@ -54,7 +57,8 @@ export const scenes = {
     mounted = true;
     SC = blankScene();
     build(el);
-    restore().then(() => { if (!SC.layers.length) usePreset('pallid', true); drain(); });
+    const t = ++loads;
+    restore(t).then(() => { if (t === loads && !SC.layers.length) usePreset('pallid', true); drain(); });
   },
   show() { drawAll(); },
 };
@@ -334,19 +338,20 @@ function save() {
     api('/api/project', { id: 'scene-' + slug(SC.name), data: serial() }).catch(() => { });
   }, 1200);
 }
-async function restore() {
+async function restore(t) {
   try { const d = JSON.parse(localStorage.getItem('kiln.scene.cur') || 'null'); if (d) { SC = d.scene; sel = 0; drawAll(); process(null, true); return; } } catch { }
   // a browser that has never opened Scenes: open the most recent saved scene rather than starting a new one
   // (a new one used to take a preset's name and could land on top of an existing scene)
   const latest = (await api('/api/projects').catch(() => [])).find(p => p.kind === 'scene');
   if (latest) {
-    try { const d = await (await fetch('/api/project?id=' + encodeURIComponent(latest.id))).json(); SC = d.scene; sel = 0; drawAll(); process(null, true); } catch { }
+    try { const d = await (await fetch('/api/project?id=' + encodeURIComponent(latest.id))).json(); if (t !== loads) return; SC = d.scene; sel = 0; drawAll(); process(null, true); } catch { }
   }
 }
 const slug = s => (s || 'scene').toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_|_$/g, '') || 'scene';
 async function openSceneDir(dir) {
-  const name = dir.split('/').pop();
+  const name = dir.split('/').pop(), t = ++loads;
   const proj = await fetch('/api/project?id=scene-' + slug(name)).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (t !== loads) return;
   if (proj) { SC = proj.scene; sel = 0; drawAll(); process(null, true); toast('Opened ' + name); return; }
   try {
     const sj = await (await fetch(rawURL(dir + '/scene.json'))).json();
@@ -460,7 +465,7 @@ function drawPreview() {
   const sel0 = SC.layers[sel];
   V.info.textContent = `${w}×${hh} · ${+zoomNow.toFixed(2)}× · camera ${Math.round(cam)}px${sel0?.tiles ? ` · ${sel0.name}: ${sel0.tiles} unique 8×8 tiles` : ''}`;
 }
-const groundLayer = () => SC.layers.filter(l => l.visible !== false && l.scroll >= 1 && l.scroll < 1.1).pop();
+const groundLayer = () => SC.layers.filter(l => l.visible !== false && l.kind !== 'weather' && l.scroll >= 1 && l.scroll < 1.1).pop();   // weather is never the ground
 // night tint as a multiply colour: white at 0 (no change) to a deep moonlit blue at 1
 function nightColour(t) { const c = mix([255, 255, 255], [70, 84, 150], Math.min(1, t)); return `rgb(${c[0]},${c[1]},${c[2]})`; }
 function snapshot() {
@@ -506,10 +511,11 @@ async function refreshActors() {
 }
 on('saved', () => { if (V.actorSel) refreshActors(); });
 async function pickActor(path) {
-  if (!path) { actor = null; return; }
+  if (!path) { actor = null; drawPreview(); return; }
   const a = await loadActor(path);
   const an = a.anims.find(n => /walk|run/i.test(n.name)) || a.anims.find(n => /idle/i.test(n.name)) || a.anims[0];
   actor = an ? { anim: an } : null;
+  drawPreview();          // show it now, even while the preview is paused
 }
 
 /* ---------------------------------------------------------- left panel ---- */
@@ -524,7 +530,7 @@ function drawLeft() {
   const L0 = LOOKS[SC.look];
   V.left.replaceChildren(
     h('div', { class: 'sec' }, h('h3', {}, 'Scene', h('span', { class: 'grow' }),
-      h('button', { class: 'btn sm ghost', onclick: openMenu }, 'Open'), h('button', { class: 'btn sm ghost', title: 'Start a new empty scene (the current one is kept)', onclick: async () => { const n = prompt('Name for the new scene', 'scene'); if (!n) return; await loadOwners(); SC = blankScene(); SC.name = freeName(n, SC.id); sel = 0; undoS = []; redoS = []; drawAll(); save(); } }, 'New')),
+      h('button', { class: 'btn sm ghost', onclick: openMenu }, 'Open'), h('button', { class: 'btn sm ghost', title: 'Start a new empty scene (the current one is kept)', onclick: async () => { const n = prompt('Name for the new scene', 'scene'); if (!n) return; await loadOwners(); ++loads; SC = blankScene(); SC.name = freeName(n, SC.id); sel = 0; undoS = []; redoS = []; drawAll(); save(); } }, 'New')),
       field('Name', nm),
       field('Screen', select(VIEWS, `${SC.view.w}x${SC.view.h}`, v => { const [w, hh] = v.split('x').map(Number); SC.view = { w, h: hh }; for (const L of SC.layers) { L.w = L.gen === 'sky' && L.kind === 'gen' ? w : w * 2; L.h = hh; } drawAll(); process(); })),
       field('Haze', h('span', { style: { display: 'flex', gap: '8px', alignItems: 'center' } }, h('input', { type: 'color', value: SC.haze, oninput: e => { SC.haze = e.target.value; process(); } }),
@@ -544,7 +550,7 @@ async function openMenu() {
   const m = h('div', { class: 'modal', onclick: e => { if (e.target === m) m.remove(); } }, h('div', {},
     h('header', {}, h('span', { class: 'grow' }, 'Open a scene'), h('button', { class: 'ibtn', onclick: () => m.remove() }, '✕')),
     h('div', { class: 'body' }, list.length ? list.map(p => h('div', { class: 'palrow', onclick: async () => {
-      m.remove(); const d = await (await fetch('/api/project?id=' + encodeURIComponent(p.id))).json(); SC = d.scene; sel = 0; drawAll(); process(null, true);
+      m.remove(); const t = ++loads; const d = await (await fetch('/api/project?id=' + encodeURIComponent(p.id))).json(); if (t !== loads) return; SC = d.scene; sel = 0; drawAll(); process(null, true);
     } }, icon('folder'), h('span', {}, p.name))) : h('p', { class: 'note' }, 'No saved scenes yet. They save themselves as you work.'))));
   document.body.append(m);
 }
