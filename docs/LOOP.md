@@ -25,6 +25,20 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 
 ## Backlog (top first)
 
+**User, 2026-10-10: "tighten up the scenes section and double down the next few runs". Scenes slices come first.**
+
+- [x] **Scenes 1, layer control:** undo/redo (Ctrl+Z/Y), Delete with undo, Ctrl+D duplicate, drag to reorder, Alt+click eye = solo,
+  H hide, [ ] select; depth-order warning + "Sort by depth"; zoom Auto/Sharp/Fill/1–4×; the duplicate Look control removed; wheel + ? entries.
+- [ ] **Scenes 2, layer look:** per-layer opacity, tint, blend (normal / add for glows), and haze override; a depth ruler showing the
+  scroll speeds side by side; regenerate keeps the seed history (back/forward through rolls). Every new control needs undo.
+- [ ] **Scenes 3, better generators:** ground with a surface edge and detail (cobbles, roots, puddles), foreground silhouettes
+  (scroll > 1, darkened), weather layers (rain, snow, embers, drifting fog) that animate in the preview and export as a Godot
+  GPUParticles2D or an animated strip.
+- [ ] **Scenes 4, Scenes to Levels bridge:** "Use as level background" (the parallax layers go behind a Levels map, exported together)
+  and cutting 8/16 px tiles from a layer into a Levels tileset.
+- [ ] **Scenes 5, review mode:** a safe-frame / HUD overlay toggle, the actor walking on the ground line (exists, check it), a
+  day/night palette shift slider, and PNG/GIF export of a short pan for sharing.
+
 - [x] **Local generation benchmark (slice 1).** `fast/convert.py` turns AllInOnePixel + fused LCM-LoRA into diffusers
   (`fast/models/aiop-lcm`, 4 GB) plus an OpenVINO UNet (`fast/models/unet-ov`, fp16). `fast/bench.py` measures,
   4 steps: torch diffusers 384² = 43 s; OpenVINO 384² = 36 s, 512² = 70 s; output is identical. OpenVINO alone is
@@ -85,3 +99,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: run 7. Colour cycling in Animate (Shift+click colours, then Colour cycle).
 - 2026-10-10: run 8. Juice exported to Godot (script + shader wired into each actor .tscn, tested in Godot 4.7); fixed the stale Save button name after New.
 - 2026-10-10: run 9. Levels tab (tile painting, solid tiles, Godot TileSet + TileMapLayer export with collision, tested in Godot).
+- 2026-10-10: user asked to double down on Scenes. Scenes 1 done (undo, solo, drag reorder, duplicate, depth sort, zoom modes); Scenes 2-5 queued at the top.

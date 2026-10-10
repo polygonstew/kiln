@@ -8,6 +8,9 @@ import { icon } from './icons.js';
 import { saveFiles, S as FS } from './files.js';
 import { STYLE, stylePrompt, styleAvoid } from './style.js';
 import { loadActor } from './player.js';
+import { registerWheel, registerKeys } from './wheel.js';
+// a slider drag is one undo step: the first change records it, letting go ends it
+window.addEventListener('pointerup', () => { V.editing = false; });
 
 const VIEWS = [['480x270', '480×270 (16:9)'], ['384x216', '384×216 (16:9)'], ['256x224', '256×224 (SNES)'], ['256x240', '256×240 (NES)'], ['320x180', '320×180'], ['240x160', '240×160 (GBA)']];
 export const LOOKS = {
@@ -18,6 +21,13 @@ export const LOOKS = {
 const ROLE_WORDS = l => l.scroll <= .05 ? 'distant sky, far background' : l.scroll < .35 ? 'far background layer' : l.scroll < .75 ? 'middle-ground layer' : 'foreground layer';
 
 let SC = null, sel = 0, V = {}, mounted = false, pending = [];
+let undoS = [], redoS = [];
+const snap = () => ({ layers: SC.layers.map(L => ({ ...L, params: L.params ? { ...L.params } : L.params })), sel });
+function pushUndo() { undoS.push(snap()); if (undoS.length > 60) undoS.shift(); redoS = []; }
+function undo() { if (!undoS.length) return toast('Nothing to undo'); redoS.push(snap()); const s = undoS.pop(); SC.layers = s.layers; sel = Math.min(s.sel, SC.layers.length - 1); drawAll(); save(); }
+function redo() { if (!redoS.length) return; undoS.push(snap()); const s = redoS.pop(); SC.layers = s.layers; sel = Math.min(s.sel, SC.layers.length - 1); drawAll(); save(); }
+let solo = null;     // id of the only layer shown (Alt+click an eye), null = all
+let zoomPick = pref.get('scene.zoom', 0);
 let cam = 0, playing = true, speed = pref.get('scene.speed', 30), actor = null, actorX = 0;
 
 function blankScene() {
@@ -259,7 +269,10 @@ function build(el) {
   el.append(V.left,
     h('section', { class: 'stage' },
       h('div', { class: 'bar' }, V.play, h('span', { class: 'lbl' }, 'Pan'), range(speed, 0, 160, 1, v => { speed = v; pref.set('scene.speed', v); }, v => v + 'px/s'),
-        h('i', { class: 'sep' }), h('span', { class: 'lbl' }, 'Actor'), V.actorSel, h('span', { class: 'grow' }), V.info),
+        h('i', { class: 'sep' }), h('span', { class: 'lbl' }, 'Actor'), V.actorSel,
+        h('i', { class: 'sep' }), h('span', { class: 'lbl' }, 'Zoom'),
+        select([[0, 'Auto'], [-2, 'Sharp'], [-1, 'Fill'], [1, '1×'], [2, '2×'], [3, '3×'], [4, '4×']], zoomPick, v => { zoomPick = +v; pref.set('scene.zoom', zoomPick); drawPreview(); }),
+        h('span', { class: 'grow' }), V.info),
       V.vp,
       h('div', { class: 'bar bot' }, h('span', { class: 'lbl' }, 'Look'), V.looks = h('span', { style: { display: 'flex', gap: '6px' } }), h('span', { class: 'grow' }),
         h('span', { class: 'note', style: { margin: 0 } }, 'Drag the scene or use ← → to move the camera'))),
@@ -271,6 +284,13 @@ function build(el) {
   el.tabIndex = -1;
   el.addEventListener('keydown', e => {
     if (e.target.matches('input,textarea,select')) return;
+    const k = e.key.toLowerCase(), mod = e.ctrlKey || e.metaKey;
+    if (mod && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+    if (mod && k === 'y') { e.preventDefault(); redo(); return; }
+    if (mod && k === 'd') { e.preventDefault(); dupLayer(); return; }
+    if (e.key === 'Delete') { delLayer(); return; }
+    if (k === '[' || k === ']') { sel = clamp(sel + (k === ']' ? 1 : -1), 0, SC.layers.length - 1); drawLayers(); drawRight(); return; }
+    if (k === 'h' && SC.layers[sel]) { pushUndo(); SC.layers[sel].visible = !SC.layers[sel].visible; drawLayers(); drawPreview(); save(); return; }
     if (e.key === 'ArrowLeft') cam -= 8; else if (e.key === 'ArrowRight') cam += 8; else if (e.key === ' ') { V.play.click(); e.preventDefault(); } else return;
     drawPreview();
   });
@@ -291,12 +311,15 @@ function drawPreview() {
   if (!V.cv || !SC) return;
   const { w, h: hh } = SC.view;
   const W = V.vp.clientWidth - 24, H = V.vp.clientHeight - 24;
-  const zf = Math.min(W / w, H / hh); zoomNow = zf >= 2 ? Math.floor(zf) : Math.max(.5, zf);
+  // sharp = whole-number zoom so every game pixel is the same size on screen; fill = as big as fits
+  // Sharp = whole-number zoom (every game pixel the same size); Fill = as big as fits; Auto = sharp once 2× fits
+  const zf = Math.min(W / w, H / hh), fill = Math.max(.25, zf);
+  zoomNow = zoomPick > 0 ? zoomPick : zoomPick === -1 || zf < 1 ? fill : zoomPick === -2 ? Math.floor(zf) : zf >= 2 ? Math.floor(zf) : fill;
   V.cv.width = w; V.cv.height = hh; V.cv.style.width = Math.round(w * zoomNow) + 'px'; V.cv.style.height = Math.round(hh * zoomNow) + 'px';
   const x = V.cv.getContext('2d');
   x.fillStyle = '#000'; x.fillRect(0, 0, w, hh);
   for (const L of SC.layers) {
-    if (!L.visible || !L.out) continue;
+    if (!L.out || (solo ? L.id !== solo : !L.visible)) continue;
     const c = L._cv && L._cvFor === L.out ? L._cv : (L._cv = toCanvas(L.out), L._cvFor = L.out, L._cv);
     const y = hh - L.h + (L.y || 0);
     let ox = -cam * L.scroll;
@@ -343,7 +366,6 @@ function drawLeft() {
       h('button', { class: 'btn sm ghost', onclick: openMenu }, 'Open'), h('button', { class: 'btn sm ghost', onclick: () => { if (confirm('Start an empty scene?')) { SC = blankScene(); sel = 0; drawAll(); } } }, 'New')),
       field('Name', nm),
       field('Screen', select(VIEWS, `${SC.view.w}x${SC.view.h}`, v => { const [w, hh] = v.split('x').map(Number); SC.view = { w, h: hh }; for (const L of SC.layers) { L.w = L.gen === 'sky' && L.kind === 'gen' ? w : w * 2; L.h = hh; } drawAll(); process(); })),
-      field('Look', select(Object.entries(LOOKS).map(([k, l]) => [k, l.name]), SC.look, v => { SC.look = v; drawAll(); process(); }), L0.note),
       field('Haze', h('span', { style: { display: 'flex', gap: '8px', alignItems: 'center' } }, h('input', { type: 'color', value: SC.haze, oninput: e => { SC.haze = e.target.value; process(); } }),
         range(SC.hazeAmt, 0, .8, .01, v => { SC.hazeAmt = v; process(); }, v => Math.round(v * 100) + '%')), 'Far layers fade toward this colour')),
     h('div', { class: 'sec' }, h('h3', {}, 'Start from'),
@@ -367,19 +389,41 @@ async function openMenu() {
 /* ---------------------------------------------------------- layer list ---- */
 function drawLayers() {
   if (!V.list) return;
+  for (const L of SC.layers) if (!L.id) L.id = uid();
   V.list.replaceChildren(...SC.layers.map((L, i) => {
     const c = h('canvas'); if (L.out) toCanvas(L.out, 1, c);
-    const row = h('div', { class: 'ly' + (i === sel ? ' on' : ''), onclick: () => { sel = i; drawRight(); drawLayers(); drawPreview(); } },
-      h('button', { class: 'eye' + (L.visible ? ' on' : ''), title: 'Show / hide', onclick: e => { e.stopPropagation(); L.visible = !L.visible; drawLayers(); drawPreview(); save(); } }, icon(L.visible ? 'eye' : 'eyeoff')),
+    const row = h('div', { class: 'ly' + (i === sel ? ' on' : '') + (solo && solo !== L.id ? ' dim' : ''), draggable: true, title: 'Drag to reorder (back at the top, front at the bottom)', onclick: () => { sel = i; drawRight(); drawLayers(); drawPreview(); } },
+      h('button', { class: 'eye' + (L.visible ? ' on' : '') + (solo === L.id ? ' solo' : ''), title: 'Show / hide (H)  ·  Alt+click: show only this layer',
+        onclick: e => { e.stopPropagation(); if (e.altKey) { solo = solo === L.id ? null : L.id; } else { pushUndo(); L.visible = !L.visible; save(); } drawLayers(); drawPreview(); } }, icon(L.visible ? 'eye' : 'eyeoff')),
       c, h('div', { class: 'nm' }, L.name, h('small', {}, L.busy ? 'drawing…' : `${L.kind === 'gen' ? GENS[L.gen].name : L.kind === 'ai' ? (L.srcURL ? 'described' : 'not drawn yet') : 'image'} · scroll ${L.scroll}`)),
       h('span', { style: { display: 'flex', flexDirection: 'column' } },
         h('button', { class: 'eye', title: 'Move toward the back', onclick: e => { e.stopPropagation(); move(i, -1); } }, icon('up')),
         h('button', { class: 'eye', title: 'Move toward the front', onclick: e => { e.stopPropagation(); move(i, 1); } }, icon('down'))));
+    row.addEventListener('dragstart', e => { dragFrom = i; e.dataTransfer.effectAllowed = 'move'; });
+    row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
+    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+    row.addEventListener('drop', e => { e.preventDefault(); row.classList.remove('drag-over'); if (dragFrom == null || dragFrom === i) return; pushUndo(); const [m] = SC.layers.splice(dragFrom, 1); SC.layers.splice(i, 0, m); sel = i; dragFrom = null; drawAll(); save(); });
     return row;
   }));
   if (!SC.layers.length) V.list.append(h('p', { class: 'note' }, 'No layers. Start from a preset or add one on the left.'));
+  // layers further back should scroll slower; flag any that would slide in front of nearer ones
+  const bad = SC.layers.findIndex((L, i) => i > 0 && L.scroll < SC.layers[i - 1].scroll - 1e-6);
+  if (bad > 0) V.list.append(h('div', { class: 'depthwarn' }, h('span', {}, `"${SC.layers[bad].name}" scrolls slower than "${SC.layers[bad - 1].name}" behind it: it will look like it's further away.`),
+    h('button', { class: 'btn sm', title: 'Order the layers by scroll speed: slow (far) at the back, fast (near) at the front', onclick: () => { pushUndo(); const cur = SC.layers[sel]; SC.layers.sort((a, b) => a.scroll - b.scroll); sel = SC.layers.indexOf(cur); drawAll(); save(); } }, 'Sort by depth')));
 }
-function move(i, d) { const j = i + d; if (j < 0 || j >= SC.layers.length) return; [SC.layers[i], SC.layers[j]] = [SC.layers[j], SC.layers[i]]; sel = j; drawLayers(); drawPreview(); save(); }
+let dragFrom = null;
+function move(i, d) { const j = i + d; if (j < 0 || j >= SC.layers.length) return; pushUndo(); [SC.layers[i], SC.layers[j]] = [SC.layers[j], SC.layers[i]]; sel = j; drawLayers(); drawPreview(); save(); }
+function dupLayer() {
+  const L = SC.layers[sel]; if (!L) return;
+  pushUndo();
+  const c = { ...L, id: uid(), name: L.name + '_2', params: L.params ? { ...L.params } : L.params };
+  SC.layers.splice(sel + 1, 0, c); sel++; drawAll(); save(); toast(`Duplicated "${L.name}"`);
+}
+function delLayer() {
+  const L = SC.layers[sel]; if (!L) return;
+  pushUndo(); SC.layers.splice(sel, 1); sel = Math.max(0, sel - 1); drawAll(); save();
+  toast(`Deleted "${L.name}". Ctrl+Z brings it back`);
+}
 
 /* --------------------------------------------------------- right panel ---- */
 function drawRight() {
@@ -389,10 +433,11 @@ function drawRight() {
   if (L) {
     const nm = h('input', { type: 'text', value: L.name, onchange: () => { L.name = slug(nm.value); drawLayers(); save(); } });
     insp.append(h('div', { class: 'sec' }, h('h3', {}, 'Layer', h('span', { class: 'grow' }),
-      h('button', { class: 'btn sm ghost danger', onclick: () => { SC.layers.splice(sel, 1); sel = Math.max(0, sel - 1); drawAll(); save(); } }, 'Delete')),
+      h('button', { class: 'btn sm ghost', title: 'Duplicate this layer (Ctrl+D)', onclick: dupLayer }, 'Duplicate'),
+      h('button', { class: 'btn sm ghost danger', title: 'Delete this layer (Delete; Ctrl+Z undoes)', onclick: delLayer }, 'Delete')),
       field('Name', nm),
-      field('Scroll', range(L.scroll, 0, 1.5, .01, v => { L.scroll = v; drawLayers(); drawPreview(); save(); }), '0 is fixed to the screen (sky), 1 moves with the camera (ground), above 1 is foreground'),
-      field('Raise', range(L.y || 0, -SC.view.h, SC.view.h, 1, v => { L.y = v; drawPreview(); save(); }, v => v + 'px')),
+      field('Scroll', range(L.scroll, 0, 1.5, .01, v => { if (!V.editing) { pushUndo(); V.editing = true; } L.scroll = v; drawLayers(); drawPreview(); save(); }), '0 is fixed to the screen (sky), 1 moves with the camera (ground), above 1 is foreground'),
+      field('Raise', range(L.y || 0, -SC.view.h, SC.view.h, 1, v => { if (!V.editing) { pushUndo(); V.editing = true; } L.y = v; drawPreview(); save(); }, v => v + 'px')),
       field('Width', select([[SC.view.w, '1 screen'], [SC.view.w * 2, '2 screens'], [SC.view.w * 3, '3 screens'], [SC.view.w * 4, '4 screens']], L.w, v => { L.w = +v; process(L); }), 'Wider layers repeat less often'),
       field('Repeat', check('tile sideways', L.repeat, v => { L.repeat = v; process(L); })),
       field('Solid', check('player stands on it (Godot collision)', isSolid(L), v => { L.solid = v; save(); }), 'Exports collision polygons traced from this layer\'s shapes')));
@@ -462,3 +507,18 @@ function godotScene(sj, res) {
   });
   return `[gd_scene load_steps=${ext.length + 1} format=3]\n\n${ext.join('\n')}\n\n[node name="${SC.name}" type="Node2D"]\n\n${nodes.join('\n')}${bodies.length ? '\n' + bodies.join('\n') : ''}`;
 }
+
+/* ------------------------------------------------- command wheel & keys ---- */
+registerWheel('scenes', () => ({
+  tools: [...Object.entries(GENS).slice(0, 9).map(([k, G]) => ({ label: G.name, hint: 'add layer', run: () => { pushUndo(); addGen(k); } })),
+    { label: 'Duplicate', key: 'Ctrl+D', run: dupLayer }, { label: 'Delete layer', key: 'Del', run: delLayer }, { label: 'Undo', key: 'Ctrl+Z', run: undo }],
+  guides: [
+    { label: 'Sort by depth', hint: 'slow at back', run: () => { pushUndo(); const cur = SC.layers[sel]; SC.layers.sort((a, b) => a.scroll - b.scroll); sel = SC.layers.indexOf(cur); drawAll(); save(); } },
+    { label: 'Solo layer', on: !!solo, hint: 'only this one', run: () => { solo = solo ? null : SC.layers[sel]?.id || null; drawLayers(); drawPreview(); } },
+    { label: 'Sharp zoom', on: zoomPick === -2, run: () => { zoomPick = -2; pref.set('scene.zoom', -2); drawPreview(); } },
+    { label: 'Fill zoom', on: zoomPick === -1, run: () => { zoomPick = -1; pref.set('scene.zoom', -1); drawPreview(); } },
+    { label: playing ? 'Pause pan' : 'Play pan', key: 'Space', run: () => V.play?.click() },
+    { label: 'Save scene', run: exportScene }],
+}));
+registerKeys('scenes', [['← →', 'Pan the camera'], ['Space', 'Play / pause the pan'], ['[ and ]', 'Select the layer behind / in front'], ['H', 'Hide / show the layer'],
+  ['Alt+click an eye', 'Show only that layer (solo)'], ['Drag a layer', 'Reorder'], ['Ctrl+D', 'Duplicate layer'], ['Delete', 'Delete layer'], ['Ctrl+Z / Ctrl+Y', 'Undo / redo']]);

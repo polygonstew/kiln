@@ -53,7 +53,7 @@ async function boot() {
   });
   initWheel(() => mods.map(m => ({ id: m.id, label: m.title, key: m.key })), () => cur);
   // workspaces without their own wheel entries still get their main buttons as tools
-  for (const m of mods) if (!['animate', 'forge', 'levels'].includes(m.id)) registerWheel(m.id, () => ({
+  for (const m of mods) if (!['animate', 'forge', 'levels', 'scenes'].includes(m.id)) registerWheel(m.id, () => ({
     tools: [...(views[m.id]?.querySelectorAll('button.btn.go, button.btn:not(.ghost):not(.sm)') || [])].filter(b => b.offsetParent && b.textContent.trim()).slice(0, 10)
       .map(b => ({ label: b.textContent.trim().slice(0, 24), hint: b.title, run: () => b.click() })),
   }));

@@ -385,3 +385,8 @@ table.breakdown td.warn { color: var(--bad); } table.breakdown td.ok { color: va
 .tileset .tl canvas { image-rendering: pixelated; }
 .tileset .tl.solid { box-shadow: inset 0 -3px 0 #e5534b; }
 .tileset .tl.on { border-color: var(--ember); outline: 1px solid var(--ember); }
+.layers .ly.dim { opacity: .45; }
+.layers .ly.drag-over { box-shadow: inset 0 2px 0 var(--ember); }
+.layers .eye.solo { color: var(--dx2, #ffc552); }
+.depthwarn { margin: 8px 0 0; padding: 8px; border: 1px solid var(--warn); border-radius: 2px; font-size: 11px; color: var(--warn); display: flex; gap: 8px; align-items: center; }
+.depthwarn span { flex: 1; }
