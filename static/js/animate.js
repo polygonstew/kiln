@@ -549,10 +549,13 @@ function commitFloat() {
 }
 let clip = null;
 function keys(e) {
-  if (e.target.matches('input,textarea,select')) return;
+  // text fields keep their keys; after a checkbox or slider, Ctrl+Z and friends still work
+  if (e.target.matches('textarea,select,input:not([type=checkbox]):not([type=range]):not([type=radio])')) return;
   const k = e.key.toLowerCase();
   if ((e.ctrlKey || e.metaKey) && k === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
   if ((e.ctrlKey || e.metaKey) && k === 'y') { e.preventDefault(); redo(); return; }
+  if ((e.ctrlKey || e.metaKey) && k === 'c' && !A.sel && !A.float && picked().length > 1) { copyFrames(); return; }
+  if ((e.ctrlKey || e.metaKey) && k === 'v' && clip?.frames) { e.preventDefault(); pasteFrames(); return; }
   if ((e.ctrlKey || e.metaKey) && k === 'c') { const s = A.sel || { x: 0, y: 0, w: frame().width, h: A.actor.h }; clip = { img: cropImg(frame(), s), x: s.x, y: s.y }; toast('Copied'); return; }
   if ((e.ctrlKey || e.metaKey) && k === 'v' && clip) { commitFloat(); pushUndo(); A.float = { img: cloneImg(clip.img), x: clip.x, y: clip.y }; A.tool = 'select'; drawLeft(); drawEditor(); e.preventDefault(); return; }
   if (e.ctrlKey || e.metaKey || e.altKey) return;
@@ -590,7 +593,7 @@ function drawTimeline() {
   const a = A.actor;
   V.tabs.replaceChildren(...a.anims.map((n, i) => h('button', {
     class: i === A.ai ? 'on' : '', title: 'Double-click to rename',
-    onclick: () => { commitFloat(); A.ai = i; A.fi = 0; drawTimeline(); drawEditor(); feedPlayer(); },
+    onclick: () => { commitFloat(); A.ai = i; A.fi = 0; A.fsel = null; drawTimeline(); drawEditor(); feedPlayer(); },
     ondblclick: () => { const v = prompt('Animation name', n.name); if (v) { n.name = slug(v); changed(true); } },
   }, n.name, h('small', {}, n.frames.length))),
   h('button', { title: 'New animation', onclick: addAnim }, '+ Animation'));
@@ -609,9 +612,14 @@ function drawTimeline() {
       h('button', { class: 'btn sm ghost', title: 'Remove this frame\'s boxes', onclick: () => { pushUndo(); frame().boxes = null; changed(); } }, 'Clear'), h('i', { class: 'sep' })] : []),
     h('span', { class: 'lbl', title: 'How many boxes wide this animation\'s frames are. 2 gives a long swing or lunge room without cutting it off' }, 'Box'),
     seg([[1, '1 wide'], [2, '2 wide']], n.span || 1, v => setSpan(n, +v)),
+    h('i', { class: 'sep' }),
+    h('button', { class: 'btn sm ghost', title: 'Copy the picked frames (Shift/Ctrl+click in the timeline to pick several) · Ctrl+C', onclick: copyFrames }, picked().length > 1 ? `Copy ${picked().length} frames` : 'Copy frame'),
+    clip?.frames ? h('button', { class: 'btn sm', title: 'Insert the copied frames after the picked one(s), here or in another animation · Ctrl+V', onclick: pasteFrames }, `Paste ${clip.frames.length}`) : '',
+    h('button', { class: 'btn sm ghost', title: 'Play forward then back: 1 2 3 4 → 1 2 3 4 3 2 1 (the picked frames, or the whole animation)', onclick: pingPong }, 'Ping-pong'),
+    h('i', { class: 'sep' }),
     h('button', { class: 'btn sm ghost', title: 'Move frame left', onclick: () => moveFrame(-1) }, '◂'),
     h('button', { class: 'btn sm ghost', title: 'Move frame right', onclick: () => moveFrame(1) }, '▸'),
-    h('button', { class: 'btn sm ghost danger', onclick: delFrame }, 'Delete frame'),
+    h('button', { class: 'btn sm ghost danger', onclick: delFrame }, picked().length > 1 ? `Delete ${picked().length} frames` : 'Delete frame'),
     h('span', { class: 'grow' }),
     h('button', { class: 'btn sm ghost', title: 'Copy this whole animation as a new one', onclick: () => { pushUndo(); a.anims.splice(A.ai + 1, 0, { ...n, name: n.name + '_copy', frames: n.frames.map(cloneF) }); A.ai++; A.fi = 0; changed(true); } }, 'Duplicate anim'),
     h('button', { class: 'btn sm ghost danger', onclick: () => { if (a.anims.length < 2) return toast('An actor needs at least one animation'); if (!confirm(`Delete the animation "${n.name}"?`)) return; pushUndo(); a.anims.splice(A.ai, 1); A.ai = Math.max(0, A.ai - 1); A.fi = 0; changed(true); } }, 'Delete anim'));
@@ -621,7 +629,13 @@ function drawTimeline() {
     const c = toCanvas(f); c.style.width = Math.round(f.width * z) + 'px'; c.style.height = th + 'px';
     if (touches(f).length) c.style.boxShadow = 'inset 0 0 0 2px #e5534b';
     c.style.background = 'repeating-conic-gradient(#2a2a28 0 25%, #313130 0 50%) 0 0/8px 8px';
-    const el = h('div', { class: 'frame' + (i === A.fi ? ' on' : ''), draggable: true, onclick: () => { commitFloat(); A.fi = i; drawTimeline(); drawEditor(); } }, c, h('span', { class: 'n' }, i + 1));
+    const el = h('div', { class: 'frame' + (i === A.fi ? ' on' : '') + (A.fsel?.has(i) ? ' pick' : ''), draggable: true, title: 'Click: this frame · Shift+click: a range · Ctrl+click: add or remove one (then Ctrl+C / Ctrl+V copy frames)', onclick: e => {
+      commitFloat();
+      if (e.shiftKey) { const a0 = Math.min(A.fa ?? A.fi, i), a1 = Math.max(A.fa ?? A.fi, i); A.fsel = new Set(Array.from({ length: a1 - a0 + 1 }, (_, k) => a0 + k)); }
+      else if (e.ctrlKey || e.metaKey) { A.fsel ||= new Set([A.fi]); A.fsel.has(i) && A.fsel.size > 1 ? A.fsel.delete(i) : A.fsel.add(i); }
+      else { A.fsel = null; A.fa = i; }
+      A.fi = i; drawTimeline(); drawEditor();
+    } }, c, h('span', { class: 'n' }, i + 1));
     el.addEventListener('dragstart', () => { dragFrom = i; });
     el.addEventListener('dragover', e => { e.preventDefault(); el.classList.add('drag-over'); });
     el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
@@ -670,8 +684,33 @@ function shrinkCopy() {
   A.ai = A.fi = 0; A.undo = []; A.redo = []; changed(true);
   toast(`Made "${name}": ${A.actor.w}×${want}, ${pal.length} colours. The big one is unchanged`, 'ok');
 }
+// several frames picked in the timeline (Shift / Ctrl+click), in order; otherwise just the current one
+const picked = () => A.fsel && A.fsel.size > 1 ? [...A.fsel].filter(i => i < anim().frames.length).sort((p, q) => p - q) : [A.fi];
+function copyFrames() { const n = anim(), ix = picked(); clip = { frames: ix.map(i => cloneF(n.frames[i])) }; toast(`Copied ${ix.length} frame${ix.length > 1 ? 's' : ''}`); drawTimeline(); }
+function pasteFrames() {
+  if (!clip?.frames) return;
+  const n = anim(), W = fw(n), at = Math.max(...picked()) + 1;
+  // frames from a wider/narrower animation are centred in this one's box
+  const fit = f => { if (f.width === W && f.height === A.actor.h) return cloneF(f); const o = newImg(W, A.actor.h); blit(o, f, Math.round((W - f.width) / 2), A.actor.h - f.height); return o; };
+  pushUndo(); n.frames.splice(at, 0, ...clip.frames.map(fit));
+  A.fsel = new Set(clip.frames.map((_, k) => at + k)); A.fi = at; changed(true);
+  toast(`Pasted ${clip.frames.length} frame${clip.frames.length > 1 ? 's' : ''} after frame ${at}`);
+}
+// play forward then back: 1 2 3 4 → 1 2 3 4 3 2 1 (a looping animation skips the last 1, since the loop starts there again)
+function pingPong() {
+  const n = anim(), ix = picked().length > 1 ? picked() : n.frames.map((_, i) => i);
+  if (ix.length < 2) return toast('Ping-pong needs at least 2 frames');
+  const whole = ix.length === n.frames.length, back = ix.slice(0, -1).reverse();
+  if (whole && n.loop !== false) back.pop();
+  pushUndo(); n.frames.splice(ix[ix.length - 1] + 1, 0, ...back.map(i => cloneF(n.frames[i])));
+  A.fsel = null; changed(true);
+  toast(whole && n.loop !== false ? `Now ${n.frames.length} frames; looping it plays ${ix.map(i => i + 1).join(' ')} ${back.map(i => i + 1).join(' ')} 1 …` : `Added ${back.length} frames going back`);
+}
 function dupFrame() { pushUndo(); anim().frames.splice(A.fi + 1, 0, cloneF(frame())); A.fi++; changed(true); }
-function delFrame() { const n = anim(); if (n.frames.length < 2) { pushUndo(); n.frames[0] = newImg(fw(n), A.actor.h); changed(true); return; } pushUndo(); n.frames.splice(A.fi, 1); changed(true); }
+function delFrame() {
+  const n = anim(), ix = picked();
+  if (ix.length > 1) { if (ix.length >= n.frames.length) return toast('Keep at least one frame'); pushUndo(); for (const i of ix.reverse()) n.frames.splice(i, 1); A.fsel = null; A.fi = Math.min(A.fi, n.frames.length - 1); changed(true); return; }
+  if (n.frames.length < 2) { pushUndo(); n.frames[0] = newImg(fw(n), A.actor.h); changed(true); return; } pushUndo(); n.frames.splice(A.fi, 1); changed(true); }
 function moveFrame(d) { const n = anim(), j = A.fi + d; if (j < 0 || j >= n.frames.length) return; pushUndo(); [n.frames[A.fi], n.frames[j]] = [n.frames[j], n.frames[A.fi]]; A.fi = j; changed(true); }
 function addAnim() {
   const have = new Set(A.actor.anims.map(a => a.name));
@@ -742,7 +781,7 @@ function drawSheet() {
   });
   const rows = a.anims.map((n, i) => {
     const edge = n.frames.filter(f => touches(f).length).length, empty = n.frames.filter(f => !bbox(f)).length;
-    return h('tr', { class: i === A.ai ? 'on' : '', onclick: () => { commitFloat(); A.ai = i; A.fi = 0; drawTimeline(); drawEditor(); drawSheet(); feedPlayer(); } },
+    return h('tr', { class: i === A.ai ? 'on' : '', onclick: () => { commitFloat(); A.ai = i; A.fi = 0; A.fsel = null; drawTimeline(); drawEditor(); drawSheet(); feedPlayer(); } },
       h('td', {}, n.name), h('td', {}, n.frames.length), h('td', {}, (n.span || 1) > 1 ? '2 wide' : '1'), h('td', {}, n.fps),
       h('td', { class: edge ? 'warn' : empty ? 'faint' : 'ok' }, edge ? `${edge} at edge` : empty ? `${empty} empty` : '✓'));
   });

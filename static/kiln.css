@@ -500,3 +500,4 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .big-warn { margin-top: 6px; padding: 8px; border: 1px solid #5a4218; background: #241c10; color: #e3b04b; font-size: 12px; border-radius: 2px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
 .doc-g h3 { font: 600 12px var(--cond); text-transform: uppercase; letter-spacing: .08em; margin: 12px 0 6px; }
 .doc-r { display: flex; gap: 10px; align-items: center; padding: 6px 8px; border-left: 3px solid; background: #181817; margin-bottom: 4px; font-size: 12px; }
+.frames .frame.pick { outline: 2px solid #e3b04b; outline-offset: -2px; }
