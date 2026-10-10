@@ -51,6 +51,69 @@ export function components(im, gap, minFrac) {
 }
 
 
+/* ----------------------------------------- untangling touching frames ---- */
+// AI sheets often let a sword or cape poke into the next box, or two poses touch. Instead of cutting by
+// rectangles, every separate piece of art goes to the box it mostly sits in, and pieces shared by two
+// neighbouring boxes are split along the seam that crosses the fewest pixels. Returns owner[pixel] = box
+// index (-1 = background) and the seams (for the preview).
+export function untangle(im, boxes) {
+  const w = im.width, hh = im.height, N = w * hh, a = im.data, op = p => a[p * 4 + 3] >= 128;
+  const owner = new Int32Array(N).fill(-1), comp = new Int32Array(N).fill(-1), seams = [];
+  const cellAt = (x, y) => { for (let i = 0; i < boxes.length; i++) { const b = boxes[i]; if (x >= b.x && y >= b.y && x < b.x + b.w && y < b.y + b.h) return i; } return -1; };
+  const nearest = (x, y) => { let bi = 0, bd = 1e18; boxes.forEach((b, i) => { const d = (x - b.x - b.w / 2) ** 2 + (y - b.y - b.h / 2) ** 2; if (d < bd) { bd = d; bi = i; } }); return bi; };
+  let nc = 0;
+  for (let p0 = 0; p0 < N; p0++) {
+    if (comp[p0] >= 0 || !op(p0)) continue;
+    const id = nc++, list = [p0]; comp[p0] = id;
+    for (let k = 0; k < list.length; k++) {
+      const p = list[k], x = p % w, y = (p / w) | 0;
+      for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+        const nx = x + dx, ny = y + dy; if (nx < 0 || ny < 0 || nx >= w || ny >= hh) continue;
+        const q = ny * w + nx; if (comp[q] < 0 && op(q)) { comp[q] = id; list.push(q); }
+      }
+    }
+    // how much of this piece sits in each box
+    const share = new Map();
+    for (const p of list) { const c = cellAt(p % w, (p / w) | 0); share.set(c, (share.get(c) || 0) + 1); }
+    const ranked = [...share.entries()].filter(([c]) => c >= 0).sort((x, y) => y[1] - x[1]);
+    if (!ranked.length) { const c = nearest(list[0] % w, (list[0] / w) | 0); for (const p of list) owner[p] = c; continue; }
+    const [c1] = ranked[0], B1 = boxes[c1];
+    // boxes in c1's row that hold a real part of this piece: one pose with a stray bit, or several poses joined (slash
+    // effects can chain a whole row together)
+    const sig = ranked.filter(([c, n]) => n >= Math.max(40, list.length * .08) && Math.abs((boxes[c].y + boxes[c].h / 2) - (B1.y + B1.h / 2)) < Math.min(boxes[c].h, B1.h) / 2)
+      .map(([c]) => c).sort((p, q) => boxes[p].x - boxes[q].x);
+    if (sig.length < 2) { for (const p of list) owner[p] = c1; continue; }
+    // a seam between each neighbouring pair: a top-to-bottom path crossing the fewest pixels of this piece
+    const cuts = [];
+    for (let k = 0; k + 1 < sig.length; k++) {
+      const P = boxes[sig[k]], Q = boxes[sig[k + 1]];
+      const xa = Math.round(P.x + P.w / 2), xb = Math.max(xa + 1, Math.round(Q.x + Q.w / 2));
+      const ya = Math.max(0, Math.min(P.y, Q.y)), yb = Math.min(hh, Math.max(P.y + P.h, Q.y + Q.h));
+      const W = xb - xa + 1, H = yb - ya, mid = (P.x + P.w + Q.x) / 2;
+      const cost = (x, y) => (comp[y * w + x] === id ? 10 : 0) + Math.abs(x - mid) * 0.02;   // empty columns first, then near the box edge
+      const D = new Float32Array(W * H), from = new Int8Array(W * H);
+      for (let y = 0; y < H; y++) for (let i = 0; i < W; i++) {
+        const c = cost(xa + i, ya + y);
+        if (!y) { D[i] = c; continue; }
+        let best = D[(y - 1) * W + i], f = 0;
+        if (i > 0 && D[(y - 1) * W + i - 1] < best) { best = D[(y - 1) * W + i - 1]; f = -1; }
+        if (i < W - 1 && D[(y - 1) * W + i + 1] < best) { best = D[(y - 1) * W + i + 1]; f = 1; }
+        D[y * W + i] = best + c; from[y * W + i] = f;
+      }
+      let bi = 0; for (let i = 1; i < W; i++) if (D[(H - 1) * W + i] < D[(H - 1) * W + bi]) bi = i;
+      const xs = new Int32Array(H); for (let y = H - 1; y >= 0; y--) { xs[y] = xa + bi; bi += from[y * W + bi]; }
+      cuts.push({ y0: ya, xs, mid }); seams.push({ y0: ya, xs });
+    }
+    for (const p of list) {
+      const x = p % w, y = (p / w) | 0;
+      let k = 0;
+      while (k < cuts.length) { const c = cuts[k], sx = y >= c.y0 && y < c.y0 + c.xs.length ? c.xs[y - c.y0] : c.mid; if (x < sx) break; k++; }
+      owner[p] = sig[k];
+    }
+  }
+  return { owner, seams };
+}
+
 /* ------------------------------------------------- sheet auto-analysis ---- */
 const ANIM_WORDS = new Set(['idle', 'walk', 'run', 'attack', 'jump', 'dash', 'roll', 'hurt', 'hit', 'death', 'die', 'dead', 'fall', 'crouch', 'block',
   'cast', 'climb', 'slide', 'land', 'shoot', 'stand', 'spawn', 'special', 'charge', 'guard', 'dodge', 'fly', 'swim', 'throw', 'taunt', 'parry', 'kick', 'punch', 'slash']);
@@ -130,7 +193,7 @@ export async function openSlicer(src, opts = {}) {
   const ps = pixelScale(im), pixelArt = ps.k >= 2 || fewColours(im), bg = border(im);
   const st = {
     mode: 'auto', cols: 4, rows: 1, key: bg.key, tol: bg.tol, gap: Math.round(Math.max(im.width, im.height) / 120), minFrac: 0.08,
-    rowsAsAnims: true, pixel: false, unscale: ps.k, th: opts.target?.h || 64, hw: opts.target?.hw || 'snes', count: opts.target?.count || 15, name: opts.name || 'imported', fps: 8,
+    rowsAsAnims: true, pixel: false, unscale: ps.k, untangle: im.width * im.height <= 9e6, th: opts.target?.h || 64, hw: opts.target?.hw || 'snes', count: opts.target?.count || 15, name: opts.name || 'imported', fps: 8,
   };
   let A = null;   // what the auto-analysis found
   {
@@ -145,7 +208,7 @@ export async function openSlicer(src, opts = {}) {
     }
     st.mode = A.mode; if (A.cols) st.cols = A.cols; if (A.rows) st.rows = A.rows;
   }
-  let rows = [], keyed = im;
+  let rows = [], keyed = im, tangle = null;
   const cv = h('canvas', { style: { maxWidth: '100%', maxHeight: '58vh', background: 'repeating-conic-gradient(#2a2a28 0 25%, #33322f 0 50%) 0 0/16px 16px' } });
   const info = h('div', { class: 'note' });
   const ctl = h('div');
@@ -175,6 +238,7 @@ export async function openSlicer(src, opts = {}) {
     } else rows = components(keyed, st.gap, st.minFrac);
     // empty cells (the end of a short last row) are not frames
     rows = rows.map(r => r.filter(b => bbox(crop(keyed, b.x, b.y, b.w, b.h)))).filter(r => r.length);
+    tangle = st.untangle && st.mode !== 'auto' ? untangle(keyed, rows.flat()) : null;
     draw();
   }
   function draw() {
@@ -190,6 +254,19 @@ export async function openSlicer(src, opts = {}) {
       x.fillStyle = colors[ri % colors.length]; x.fillRect(b.x + b.w - hs, b.y + b.h - hs, hs, hs);     // resize handle
       x.fillStyle = colors[ri % colors.length]; x.font = `${Math.max(10, Math.round(im.width / 90))}px monospace`; x.fillText(`${ri + 1}.${i + 1}`, b.x + 3, b.y + 14);
     }));
+    if (tangle) {
+      // show what moved: art that sits in one box but belongs to another is tinted, seams drawn in white
+      const all = rows.flat(), o = x.getImageData(0, 0, im.width, im.height), d = o.data;
+      for (let p = 0; p < tangle.owner.length; p++) {
+        const c = tangle.owner[p]; if (c < 0) continue;
+        const px = p % im.width, py = (p / im.width) | 0, b = all[c];
+        if (!(px >= b.x && py >= b.y && px < b.x + b.w && py < b.y + b.h)) { d[p * 4] = (d[p * 4] + 255) >> 1; d[p * 4 + 1] = d[p * 4 + 1] >> 1; d[p * 4 + 2] = (d[p * 4 + 2] + 200) >> 1; }
+      }
+      x.putImageData(o, 0, 0);
+      x.fillStyle = '#fff'; for (const sm of tangle.seams) sm.xs.forEach((sx, i) => x.fillRect(sx, sm.y0 + i, 1, 1));
+      // putImageData wiped the boxes: draw them again
+      rows.forEach((r, ri) => r.forEach(b => { x.strokeStyle = colors[ri % colors.length]; x.strokeRect(b.x + .5, b.y + .5, b.w - 1, b.h - 1); }));
+    }
     const n = rows.reduce((s, r) => s + r.length, 0);
     info.textContent = `${im.width}×${im.height} · ${n} frame${n === 1 ? '' : 's'} in ${rows.length} row${rows.length === 1 ? '' : 's'}`
       + (st.mode === A.mode ? ` · found ${A.why}` : '') + (pixelArt ? ` · already pixel art${st.unscale > 1 ? `, blown up ${st.unscale}×` : ''}` : '');
@@ -258,6 +335,7 @@ export async function openSlicer(src, opts = {}) {
           : [field('Join gaps', range(st.gap, 0, 40, 1, v => { st.gap = v; compute(); }), 'Bigger joins loose capes and weapons to their body'),
           field('Ignore specks', range(st.minFrac, 0, .5, .01, v => { st.minFrac = v; compute(); }, v => Math.round(v * 100) + '%')),
           h('p', { class: 'note' }, 'Drag a box to move it, its corner square to size it, drag on empty space to draw a new one, right-click to remove. Changing a slider above finds the frames again.')],
+        st.mode !== 'auto' ? field('Untangle', check('touching frames', st.untangle, v => { st.untangle = v; compute(); }), 'Pieces poking into the next box go back to their own frame; joined poses are split along the emptiest seam (tinted = moved, white = seam)') : null,
         field('Background', check('remove', st.key, v => { st.key = v; compute(); })),
         st.key ? field('Tolerance', range(st.tol, 4, 120, 1, v => { st.tol = v; compute(); })) : null,
         field('Rows are', seg([[true, 'Separate anims'], [false, 'One anim']], st.rowsAsAnims, v => { st.rowsAsAnims = v; }))),
@@ -280,11 +358,30 @@ export async function openSlicer(src, opts = {}) {
     }
     const all = rows.flat();
     if (!all.length) return toast('No frames found. Try the even grid, or lower "Ignore specks"');
-    const mw = Math.max(...all.map(b => b.w)), mh = Math.max(...all.map(b => b.h));
+    let parts = null, grow = { l: 0, r: 0, t: 0, b: 0 };
+    if (st.untangle && st.mode !== 'auto') {
+      // each frame = the pixels it owns, which may reach outside its box; every frame grows by the same margins
+      // so nothing is clipped and the poses keep their places relative to each other
+      const T = untangle(keyed, all), W = keyed.width, own = all.map(() => ({ x0: 1e9, y0: 1e9, x1: -1, y1: -1 }));
+      for (let p = 0; p < T.owner.length; p++) { const c = T.owner[p]; if (c < 0) continue; const x = p % W, y = (p / W) | 0, o = own[c]; if (x < o.x0) o.x0 = x; if (y < o.y0) o.y0 = y; if (x > o.x1) o.x1 = x; if (y > o.y1) o.y1 = y; }
+      all.forEach((b, i) => { const o = own[i]; if (o.x1 < 0) return; grow.l = Math.max(grow.l, b.x - o.x0); grow.t = Math.max(grow.t, b.y - o.y0); grow.r = Math.max(grow.r, o.x1 + 1 - b.x - b.w); grow.b = Math.max(grow.b, o.y1 + 1 - b.y - b.h); });
+      if (k > 1) for (const s of ['l', 'r', 't', 'b']) grow[s] = Math.ceil(grow[s] / k) * k;
+      parts = all.map((b, i) => {
+        const fx = b.x - grow.l, fy = b.y - grow.t, fw = b.w + grow.l + grow.r, fh = b.h + grow.t + grow.b, f = newImg(fw, fh);
+        for (let y = 0; y < fh; y++) for (let x = 0; x < fw; x++) {
+          const sx = fx + x, sy = fy + y; if (sx < 0 || sy < 0 || sx >= W || sy >= keyed.height) continue;
+          const p = sy * W + sx; if (T.owner[p] !== i) continue;
+          const si = p * 4, di = (y * fw + x) * 4; f.data[di] = keyed.data[si]; f.data[di + 1] = keyed.data[si + 1]; f.data[di + 2] = keyed.data[si + 2]; f.data[di + 3] = keyed.data[si + 3];
+        }
+        return f;
+      });
+    }
+    const mw = Math.max(...all.map(b => b.w)) + grow.l + grow.r, mh = Math.max(...all.map(b => b.h)) + grow.t + grow.b;
     // uniform frames at source scale, feet on the bottom row, centred
+    let pi = 0;
     const norm = rows.map(r => r.map(b => {
-      const part = crop(keyed, b.x, b.y, b.w, b.h);
-      return blit(newImg(mw, mh), part, Math.floor((mw - b.w) / 2), mh - b.h);
+      const part = parts ? parts[pi++] : crop(keyed, b.x, b.y, b.w, b.h);
+      return blit(newImg(mw, mh), part, Math.floor((mw - part.width) / 2), mh - part.height);
     }));
     let out = norm, w = mw, hh = mh, pal = null;
     if (k > 1) {

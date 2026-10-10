@@ -150,3 +150,5 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: slicer grids made movable (drag the grid, size cells by corner, gap/offset fields, arrows; boxes draggable, drawable, right-click delete). Flow tools queued first.
 - 2026-10-10: run 18. Flow 1: concept → actor with a full animation set in one click.
 - 2026-10-10: run 19. Batch pixelize a concept session into a consistent sprite set.
+- 2026-10-10: slicer "Untangle touching frames" (grid/rows modes): pieces go to the box they mostly sit in; joined poses split along
+  min-pixel seams between every adjacent pair; frames grow by common margins (no clipping). Tested: unit cases + the hero sheet's attack row.
