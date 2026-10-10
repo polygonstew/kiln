@@ -23,7 +23,7 @@ Its first rule is **consistency**: characters and styles stay on-model across ev
 | 7 | **Levels** | Tile maps with solid tiles, background scene, actors and a player start → Godot TileSet + TileMapLayer scene |
 | 8 | **Concepts** | Concept boards: images from meta.ai and others (paste/drop/upload), notes, batch → consistent sprites |
 
-Everywhere: menu bar (File/Edit/View/Tools/Help), **Ctrl+K** find anything, **Shift+A** command wheel, right-click
+Everywhere: the KILN logo opens File/Edit/View/Tools/Help, **Ctrl+K** find anything, **Shift+A** command wheel, right-click
 menu with **Send to…** on every image, **?** shortcuts. Extra pages: **`/desk`** (home apps as windows),
 **Kiln Studio** (`kiln-studio`, a desktop window with meta.ai beside Kiln; local screen only).
 

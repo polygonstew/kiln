@@ -4,7 +4,7 @@
 server.py            stdlib HTTP server: static files (/, /help, /desk), ComfyUI driver + websocket progress,
                      cloud engine (Cloudflare FLUX.2 free → OpenRouter paid, capped), Fast engine client,
                      file manager API, projects (with owner ids), exporter, inbox, quick-switch index, app probe
-static/index.html    shell: top bar (wordmark, menu bar, tabs, style chip, asset-folder chip with Godot status, job tray)
+static/index.html    shell: top bar (KILN logo = menu, tabs, style chip, asset-folder chip with Godot status, job tray)
 static/help.html     the in-app guide (searchable); screenshots in static/help/*.jpg
 static/desk.html     the Desk: home apps as windows (Ubuntu or Windows look)
 static/kiln.css      the whole design system (tokens at :root)
@@ -13,7 +13,7 @@ static/js/
   core.js            DOM helper h(), api(), event bus (emit/on), palettes + HARDWARE limits, image ops, k-means,
                      dithering, pixelize() with native pixel-grid detection (detectGrid/snapGrid), tracePolys()
   wheel.js           Shift+A command wheel, right-click menu, ? shortcuts overlay, shared tooltips
-  menubar.js         File / Edit / View / Tools / Help (acts on the area that is showing)
+  menubar.js         the KILN-logo menu: File / Edit / View / Tools / Help (acts on the area that is showing)
   quick.js           Ctrl+K find anything      sendto.js   "Send to…" on every image
   owners.js          name guard: one item per name (clashes → name_2)
   queue.js           generation queue + tray, time estimates, budget tags

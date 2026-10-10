@@ -12,7 +12,7 @@
 
 ```
 python3 -m venv .venv-test && .venv-test/bin/pip install playwright   # once; uses /usr/bin/chromium
-.venv-test/bin/python tools/smoke.py                                    # every area, menus, wheel, Ctrl+K, /help, /desk
+.venv-test/bin/python tools/smoke.py                                    # every area, logo menu, wheel, Ctrl+K, /help, /desk
 ```
 
 `smoke.py` is read-only. For feature tests, drive the UI with Playwright and **protect the user's data**:

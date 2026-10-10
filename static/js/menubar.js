@@ -48,26 +48,39 @@ const MENUS = () => [
   ]],
 ];
 
+// The menus live under the KILN logo: click it for File · Edit · View · Tools · Help, hover one for its items.
 let open = null;
-function close() { open?.panel.remove(); open?.btn.classList.remove('on'); open = null; }
-function show(btn, items) {
+function close() { open?.root.remove(); open?.sub?.remove(); $('#logo')?.classList.remove('on'); open = null; }
+function item(it) {
+  return it === null ? h('i', { class: 'mb-sep' })
+    : h('button', { title: it[1], onclick: () => { close(); it[2](); } }, h('span', {}, it[0]), it[3] ? h('kbd', {}, it[3]) : '');
+}
+function showSub(row, items) {
+  open.sub?.remove();
+  open.root.querySelectorAll('.mb-grp').forEach(g => g.classList.toggle('on', g === row));
+  const sub = h('div', { class: 'mb-panel' }, ...items.map(item));
+  const r = row.getBoundingClientRect();
+  sub.style.left = r.right + 'px'; sub.style.top = (r.top - 5) + 'px';
+  document.body.append(sub); open.sub = sub;
+  const sr = sub.getBoundingClientRect();
+  if (sr.bottom > innerHeight - 6) sub.style.top = Math.max(6, innerHeight - 6 - sr.height) + 'px';
+}
+function showMenu() {
   close();
-  const panel = h('div', { class: 'mb-panel' }, ...items.map(it => it === null ? h('i', { class: 'mb-sep' })
-    : h('button', { title: it[1], onclick: () => { close(); it[2](); } }, h('span', {}, it[0]), it[3] ? h('kbd', {}, it[3]) : '')));
-  const r = btn.getBoundingClientRect();
-  panel.style.left = r.left + 'px'; panel.style.top = r.bottom + 'px';
-  document.body.append(panel); btn.classList.add('on'); open = { btn, panel };
+  const logo = $('#logo'), r = logo.getBoundingClientRect(), menus = MENUS();
+  const root = h('div', { class: 'mb-panel mb-root' }, ...menus.map(([name, items]) => {
+    const row = h('button', { class: 'mb-grp', onclick: () => showSub(row, items) }, h('span', {}, name), h('b', {}, '›'));
+    row.onmouseenter = () => showSub(row, items);
+    return row;
+  }));
+  root.style.left = (r.left + 4) + 'px'; root.style.top = r.bottom + 'px';
+  document.body.append(root); logo.classList.add('on'); open = { root };
+  showSub(root.firstChild, menus[0][1]);          // File open straight away
 }
 export function initMenus() {
-  const nav = $('#menus'); if (!nav) return;
-  const draw = () => nav.replaceChildren(...MENUS().map(([name, items]) => {
-    const b = h('button', { class: 'mb' }, name);
-    b.onclick = e => { e.stopPropagation(); open?.btn === b ? close() : show(b, MENUS().find(m => m[0] === name)[1]); };
-    b.onmouseenter = () => { if (open && open.btn !== b) show(b, MENUS().find(m => m[0] === name)[1]); };     // slide across like a desktop menu bar
-    return b;
-  }));
-  draw();
-  document.addEventListener('pointerdown', e => { if (open && !open.panel.contains(e.target) && !e.target.closest('#menus')) close(); });
+  const logo = $('#logo'); if (!logo) return;
+  logo.onclick = e => { e.stopPropagation(); open ? close() : showMenu(); };
+  document.addEventListener('pointerdown', e => { if (open && !open.root.contains(e.target) && !open.sub?.contains(e.target) && !e.target.closest('#logo')) close(); });
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape' && open) { close(); return; }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); press(/^Save /, 'Save'); }     // Ctrl+S saves for the game, not the web page
