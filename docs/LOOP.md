@@ -35,7 +35,10 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
   PNG. A systemd user unit; Kiln `server.py` engine `fast` routed to it, with progress = step count. Expect ~35 s at
   384 instead of ~2 min. Only run it while ComfyUI is idle (11 GB RAM). Then try nncf int8 weight compression
   for speed, and img2img for identity frames.
-- [ ] **On-model local frames (slice 3).** IP-Adapter SD1.5 (diffusers `load_ip_adapter`, h94/IP-Adapter
+- [x] **On-model local frames (slice 3): evaluated, not adopted.** IP-Adapter SD1.5 with AllInOnePixel+LCM, 4 steps, 384:
+  46 s, 6.6 GB RAM, weak likeness (colours drift, the shield and trim are lost). Removed (`fast/ipbench.py` kept for reference). For on-model
+  frames use Cloud (FLUX.2-klein-9b) or Fast img2img from the reference. ControlNet OpenPose skipped for the same RAM/CPU reasons.
+  Original plan: IP-Adapter SD1.5 (diffusers `load_ip_adapter`, h94/IP-Adapter
   `ip-adapter_sd15.safetensors` + its image encoder, ~2.5 GB) in the fast engine, and optionally ControlNet
   OpenPose. Check RAM first.
 - [ ] **Tooltip and shortcut pass.** Every button and control in every tab gets a `title`. Press `?` for a
@@ -65,3 +68,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10 06:4x: run 1. Local generation benchmark: OpenVINO 1.2× over torch; a model kept loaded beats ComfyUI's
   per-job reload by 2.5–4×. Next run: a resident "Fast" engine.
 - 2026-10-10: run 2. Fast engine live (127.0.0.1:8511, loads on first use, unloads after 15 min idle). Forge → Model → Fast: ~35 s at 384 vs ~2 min.
+- 2026-10-10: run 3. IP-Adapter tried and rejected (weak likeness on this model, 6.6 GB RAM); 2.4 GB download removed.
