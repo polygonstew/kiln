@@ -471,6 +471,8 @@ export function checker(x, w, hh, s = 4, a = '#2a2a28', b = '#33322f') {
 }
 
 /* --------------------------------------------- persisted small prefs ---- */
+// zoom that shows a w×h image whole in a W×H area: whole pixels (crisp) when it fits, scaled down below 1× when it does not
+export const fitZoom = (W, H, w, h) => { const f = Math.min(W / w, H / h); return !(f > 0) ? 1 : f >= 1 ? Math.floor(f) : f; };
 export const pref = {
   get(k, d) { try { const v = localStorage.getItem('kiln.' + k); return v == null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem('kiln.' + k, JSON.stringify(v)); } catch { } },

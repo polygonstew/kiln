@@ -1,6 +1,6 @@
 // Levels: paint a room from tiles (in the spirit of LDtk), mark which tiles are solid, export a Godot
 // TileSet + TileMapLayer scene with collision. Left click paints, right click erases, wheel rolls tiles.
-import { h, api, toast, on, pref, clamp, field, range, select, seg, check, imgData, toCanvas, toDataURL, newImg, rawURL, checker, uid } from './core.js';
+import { h, api, toast, on, pref, clamp, field, range, select, seg, check, imgData, toCanvas, toDataURL, newImg, rawURL, checker, uid, fitZoom } from './core.js';
 import { saveFiles, S as FS } from './files.js';
 import { loadActor } from './player.js';
 import { registerWheel } from './wheel.js';
@@ -126,7 +126,7 @@ function changed() {
 function draw() {
   if (!V.cv || !L || !tsImg) return;
   const T = L.tile, W = L.cols * T, H = L.rows * T;
-  const z = zoom || Math.max(1, Math.floor(Math.min((V.vp.clientWidth - 30) / W, (V.vp.clientHeight - 30) / H)));
+  const z = zoom || fitZoom(V.vp.clientWidth - 30, V.vp.clientHeight - 30, W, H);
   V.z = z;
   V.cv.width = W * z; V.cv.height = H * z;
   const x = V.cv.getContext('2d'); x.imageSmoothingEnabled = false;

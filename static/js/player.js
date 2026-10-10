@@ -1,5 +1,5 @@
 // Animation previewer: plays any set of animations, used by Files and Animate.
-import { h, $, api, rawURL, imgData, crop, checker, pref, clamp, toCanvas } from './core.js';
+import { h, $, api, rawURL, imgData, crop, checker, pref, clamp, toCanvas, fitZoom } from './core.js';
 import { icon } from './icons.js';
 
 const BGS = [['checker', 'Checker'], ['#000000', 'Black'], ['#ffffff', 'White'], ['#5f6b5c', 'Field'], ['#2b3a55', 'Night']];
@@ -100,7 +100,7 @@ export class Player {
     if (this.bg === 'checker') checker(x, W, H, 8); else { x.fillStyle = this.bg; x.fillRect(0, 0, W, H); }
     if (!a || !a.frames.length) { this.fr.textContent = '—'; return; }
     const f0 = a.frames[0], fw = f0.width, fh = f0.height;
-    const z = this.zoom || Math.max(1, Math.floor(Math.min((W - 16) / fw, (H - 16) / fh)));
+    const z = this.zoom || fitZoom(W - 16, H - 16, fw, fh);
     const ox = Math.floor((W - fw * z) / 2), oy = Math.floor((H - fh * z) / 2);
     x.imageSmoothingEnabled = false;
     // effects: age (0..1) of each running one; finished ones are dropped

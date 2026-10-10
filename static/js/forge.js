@@ -2,7 +2,7 @@
 // Two modes: a new thing (sets up an actor's identity), or more of an existing actor,
 // where the reference, palette, frame size and pixel scale are locked so it stays on-model.
 import { $, h, api, toast, emit, on, pref, clamp, field, range, select, check, seg, imgData, toCanvas, toDataURL, hex, rgb, luma,
-  PALETTES, HARDWARE, pixelize, rawURL, bbox, newImg, resizeNN } from './core.js';
+  PALETTES, HARDWARE, pixelize, rawURL, bbox, newImg, resizeNN, fitZoom } from './core.js';
 import { enqueue, estimate, fmtSecs, Q, budgetTag } from './queue.js';
 import { icon } from './icons.js';
 import { saveFiles } from './files.js';
@@ -380,7 +380,7 @@ function paint() {
   const fit = (cv, im, box, isOut) => {
     const W = box.clientWidth - 24, H = box.clientHeight - 24;
     if (!im) { cv.width = 1; cv.height = 1; return; }
-    const z = isOut ? (st.zoom || Math.max(1, Math.floor(Math.min(W / im.width, H / im.height)))) : Math.min(W / im.width, H / im.height);
+    const z = isOut ? (st.zoom || fitZoom(W, H, im.width, im.height)) : Math.min(W / im.width, H / im.height);
     cv.width = im.width; cv.height = im.height;
     cv.getContext('2d').putImageData(im, 0, 0);
     cv.style.width = Math.floor(im.width * z) + 'px'; cv.style.height = Math.floor(im.height * z) + 'px';

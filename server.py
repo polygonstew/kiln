@@ -507,6 +507,46 @@ def status():
     return s
 
 
+# ------------------------------------------------- GDScript: list scripts, check them with the real Godot ---
+GODOT = __import__('shutil').which('godot') or __import__('shutil').which('godot4')
+
+
+def list_scripts(root):
+    """Every .gd file under the asset folder (Godot caches skipped), relative to it."""
+    r = in_home(root)
+    return sorted(str(p.relative_to(r)) for p in r.rglob('*.gd') if not any(x.startswith('.') for x in p.relative_to(r).parts))
+
+
+def check_script(root, rel, text):
+    """Parse-check GDScript with `godot --check-only` in a scratch project whose folders link to the Godot
+    project (or the asset folder), so res:// paths resolve and nothing real is written. {ok, errors: [{line, msg}]}"""
+    if not GODOT:
+        return {'ok': None, 'errors': [], 'godot': False}
+    import tempfile, subprocess
+    r = in_home(root)
+    base = Path(godot_root(str(r)) or r)
+    with tempfile.TemporaryDirectory(prefix='kiln-check-') as tmp:
+        t = Path(tmp)
+        (t / 'project.godot').write_text('config_version=5\n[application]\nconfig/name="kiln-check"\n')
+        for c in base.iterdir():
+            if not c.name.startswith('.') and c.name != 'project.godot':
+                (t / c.name).symlink_to(c)
+        name = re.sub(r'[^\w.-]', '_', Path(rel or 'script.gd').name)
+        (t / '__kiln_check').mkdir()
+        (t / '__kiln_check' / name).write_text(text)
+        try:
+            out = subprocess.run([GODOT, '--headless', '--path', tmp, '--check-only', '-s', f'res://__kiln_check/{name}'],
+                                 capture_output=True, text=True, timeout=45)
+        except subprocess.TimeoutExpired:
+            return {'ok': None, 'errors': [{'line': 0, 'msg': 'Godot took too long to answer'}], 'godot': True}
+        log, errors = out.stdout + out.stderr, []
+        for m in re.finditer(r'SCRIPT ERROR: (?:Parse Error: )?(.+?)\n\s+at: [^\n]*?__kiln_check/[^:\n]+:(\d+)\)', log):
+            e = {'line': int(m.group(2)), 'msg': m.group(1).strip()}
+            if e not in errors:
+                errors.append(e)
+        return {'ok': not errors, 'errors': errors, 'godot': True}
+
+
 # ------------------------------------------------- Godot plugin (godot/addons/kiln) ---
 PLUGIN = ROOT / 'godot' / 'addons' / 'kiln'
 
@@ -852,6 +892,9 @@ class H(BaseHTTPRequestHandler):
                     return self.send(404, {'err': 'no such file'})
                 raw, ct = fs_raw(q['path'])
                 return self.send(200, raw, ct)
+            if u.path == '/api/scripts':
+                root = q.get('root') or settings()['root']
+                return self.send(200, {'root': str(in_home(root)), 'scripts': list_scripts(root), 'godot': bool(GODOT)})
             if u.path == '/api/godot':
                 return self.send(200, {'root': godot_root(q.get('path') or settings()['root'])})
             if u.path == '/api/settings':
@@ -906,6 +949,8 @@ class H(BaseHTTPRequestHandler):
                 d.mkdir(parents=True, exist_ok=True)
                 (d / f'{pid}.json').write_text(json.dumps(b['data']))
                 return self.send(200, {'ok': True})
+            if u.path == '/api/godot/check':
+                return self.send(200, check_script(b.get('root') or settings()['root'], b.get('path', ''), b.get('text', '')))
             if u.path == '/api/godot/install':
                 return self.send(200, plugin_install(b.get('path') or settings().get('root')))
             if u.path == '/api/project/delete':

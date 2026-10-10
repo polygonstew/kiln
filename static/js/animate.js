@@ -1,6 +1,6 @@
 // Animate: pixel editor + timeline + live previewer + motion generators + export (Godot files: actor_godot.js).
 import { $, h, api, toast, emit, on, pref, clamp, uid, field, range, select, check, seg, hex, rgb, luma,
-  newImg, cloneImg, toCanvas, toDataURL, imgData, blit, bbox, flipX, shift, colorsOf, pixelize, rawURL, checker, HARDWARE, PALETTES } from './core.js';
+  newImg, cloneImg, toCanvas, toDataURL, imgData, blit, bbox, flipX, shift, colorsOf, pixelize, rawURL, checker, HARDWARE, PALETTES, fitZoom } from './core.js';
 import { icon } from './icons.js';
 import { Player, loadActor } from './player.js';
 import { MOTIONS } from './motion.js';
@@ -87,6 +87,11 @@ function changed(structure = false) {
   feedPlayer();
   clearTimeout(saveT);
   saveT = setTimeout(autosave, 1500);
+}
+// show an actor that was just opened: everything redrawn, nothing marked changed (opening never saves)
+function opened() {
+  changed(true); clearTimeout(saveT); A.dirty = false;
+  try { localStorage.setItem('kiln.anim.cur', JSON.stringify(serialize())); } catch { }
 }
 async function autosave() {
   await loadOwners('actor');
@@ -274,7 +279,7 @@ async function openMenu() {
 async function openProject(id) {
   try {
     const d = await (await fetch('/api/project?id=' + encodeURIComponent(id))).json();
-    A.actor = await deserialize(d); A.ai = A.fi = 0; A.undo = []; A.redo = []; changed(true); toast('Opened ' + A.actor.name);
+    A.actor = await deserialize(d); A.ai = A.fi = 0; A.undo = []; A.redo = []; opened(); toast('Opened ' + A.actor.name);
   } catch (e) { toast('Could not open: ' + e.message, 'bad'); }
 }
 async function openActorDir(dir) {
@@ -290,7 +295,7 @@ async function openActorDir(dir) {
       A.actor = { id: uid(), name: slug(name), w: a.w || a.anims[0].frames[0].width, h: a.h || a.anims[0].frames[0].height, desc: '',
         pal: [...pal.values()].slice(0, 64).sort((x, y) => luma(x) - luma(y)), anims: a.anims.map(n => ({ name: n.name, fps: n.fps, loop: n.loop, frames: n.frames, span: Math.max(1, Math.round(n.frames[0].width / (a.w || n.frames[0].width))) })) };
     }
-    A.ai = A.fi = 0; A.undo = []; A.redo = []; changed(true);
+    A.ai = A.fi = 0; A.undo = []; A.redo = []; opened();
     toast('Opened ' + name);
   } catch (e) { toast('Could not open that actor: ' + e.message, 'bad'); }
 }
@@ -357,8 +362,11 @@ function drawEditor() {
   if (!V.cv || !A.actor) return;
   const a = A.actor, W = V.vp.clientWidth, H = V.vp.clientHeight;
   const FW = frame().width;
-  zoomNow = A.zoom || Math.max(1, Math.floor(Math.min((W - 40) / FW, (H - 40) / a.h)));
-  const cw = FW * zoomNow, ch = a.h * zoomNow;
+  // a newly opened actor that would not fit at the chosen zoom goes back to Fit, so it is always all in view
+  if (V.shown !== a) { V.shown = a; if (A.zoom && (FW * A.zoom > W - 40 || a.h * A.zoom > H - 40)) { A.zoom = 0; if (V.zoomSel) V.zoomSel.value = 0; } }
+  // Fit (core.fitZoom): whole pixels when the frame is small, scaled down when it is bigger than the editor
+  zoomNow = A.zoom || fitZoom(W - 40, H - 40, FW, a.h);
+  const cw = Math.round(FW * zoomNow), ch = Math.round(a.h * zoomNow);
   V.cv.width = cw; V.cv.height = ch;
   V.cv.style.width = cw + 'px'; V.cv.style.height = ch + 'px';
   const x = V.cv.getContext('2d');
@@ -399,7 +407,7 @@ function drawEditor() {
     if (drag?.t === 'box' && drag.r) put(drag.r, drag.kind === 'hit' ? 'rgba(229,83,75,.95)' : 'rgba(111,179,217,.95)');
   }
   if (hover && !drag) { x.strokeStyle = 'rgba(255,255,255,.5)'; x.strokeRect(hover[0] * zoomNow + .5, hover[1] * zoomNow + .5, zoomNow - 1, zoomNow - 1); }
-  V.status.textContent = `${anim().name} ${A.fi + 1}/${fr.length}${hover ? `  ·  ${hover[0]},${hover[1]}` : ''}  ·  ${zoomNow}×${edge.length ? '  ·  touches the box edge: may be cut off' : ''}`;
+  V.status.textContent = `${anim().name} ${A.fi + 1}/${fr.length}${hover ? `  ·  ${hover[0]},${hover[1]}` : ''}  ·  ${zoomNow >= 1 ? zoomNow + '×' : Math.round(zoomNow * 100) + '%'}${edge.length ? '  ·  touches the box edge: may be cut off' : ''}`;
 }
 setInterval(() => { if (mounted && (A.sel || A.float) && V.cv?.isConnected) drawEditor(); }, 120);
 const px = e => { const r = V.cv.getBoundingClientRect(); return [Math.floor((e.clientX - r.left) / zoomNow), Math.floor((e.clientY - r.top) / zoomNow)]; };

@@ -204,6 +204,11 @@ svg text { font-family: 'IBM Plex Sans Condensed'; }
 <li><b>Background</b>: a saved scene drawn behind the map and placed behind it in Godot.</li></ul>
 </section>
 
+<section id="logic"><h2>Logic: the game's scripts</h2>
+<p>Every <code>.gd</code> in the asset folder in one list: <b>Brains</b> (actor behaviours, yours to change), <b>Kiln's scripts</b> (<code>_kiln/</code>: rewritten when Kiln saves, so changes there do not last), HUD scripts and <b>your scripts</b> (<code>scripts/</code>). <b>New script</b> starts an empty one or a copy of a brain.</p>
+<ul><li>The editor: colours for GDScript, line numbers, <kbd class="k">Tab</kbd>/<kbd class="k">Shift+Tab</kbd> indent (Godot uses tabs), <kbd class="k">Enter</kbd> keeps the indent (one more after a <code>:</code>), <kbd class="k">Ctrl+/</kbd> comments lines, <kbd class="k">Ctrl+S</kbd> saves.</li>
+<li><b>Godot checks every save</b> (the real Godot on this machine, <code>--check-only</code>): problems are listed on the right with their line, marked red by the line numbers; click one to jump to it.</li>
+<li><b>Kiln reference</b>: what Kiln's scripts give you (hurt, heal, shoot, kind_at, set_health, say…). Click a line to insert it at the cursor.</li></ul></section>
 <section id="hud" data-title="HUD">
 <h2>HUD <kbd>5</kbd></h2>
 <p class="lead">Everything on screen during play: health bars, gauges, pips, counters, text, panels, slots, portraits, an <b>inventory</b>, a <b>dialogue box</b> and button <b>prompts</b>, plus bitmap fonts. It saves as a real Godot scene.</p>

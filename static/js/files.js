@@ -1,6 +1,6 @@
 // Files: the asset folder as engines see it. Tree on the left, folder in the middle,
 // preview + actions on the right. Every other tab saves into this folder.
-import { $, h, api, rawURL, toast, emit, on, pref, imgData, colorsOf, hex, rgb, checker } from './core.js';
+import { $, h, api, rawURL, toast, emit, on, pref, imgData, colorsOf, hex, rgb, checker, fitZoom } from './core.js';
 import { icon } from './icons.js';
 import { Player, loadActor } from './player.js';
 
@@ -237,7 +237,7 @@ async function drawDetail() {
     const im = await imgData(rawURL(it.path)).catch(() => null);
     if (im) {
       const cv = h('canvas'); const W = 330, H = 240;
-      const z = Math.max(1, Math.floor(Math.min(W / im.width, H / im.height))) || 1;
+      const z = fitZoom(W, H, im.width, im.height);
       const s = Math.min(1, W / im.width, H / im.height);
       cv.width = im.width; cv.height = im.height; cv.getContext('2d').putImageData(im, 0, 0);
       cv.style.width = (im.width * (z >= 1 && im.width * z <= W ? z : s)) + 'px';

@@ -12,7 +12,7 @@
   color-scheme: dark;
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 13px/1.45 var(--sans); overflow: hidden; }
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font: 13px/1.45 var(--sans); overflow: clip; }  /* clip: the page itself can never scroll the tabs away */
 canvas { image-rendering: pixelated; image-rendering: crisp-edges; }
 button, input, select, textarea { font: inherit; color: inherit; }
 ::selection { background: var(--ember); color: #000; }
@@ -54,9 +54,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .job .bar i { display: block; height: 100%; background: var(--ember); transition: width .5s; }
 
 /* ------------------------------------------------------------------ views */
-#views { position: absolute; top: 42px; left: 0; right: 0; bottom: 0; }
+#views { position: absolute; top: 42px; left: 0; right: 0; bottom: 0; overflow: clip; }
 .view { position: absolute; inset: 0; display: none; }
-.view.on { display: grid; }
+.view.on { display: grid; grid-template-rows: minmax(0, 1fr); }   /* a view never grows past the screen */
 .view:focus { outline: none; }
 .ws { grid-template-columns: 300px 1fr 330px; }
 .ws > aside, .ws > section { min-height: 0; overflow: auto; }
@@ -121,7 +121,7 @@ input[type=color] { width: 28px; height: 22px; padding: 0; border: 1px solid var
 .bar select, .ctl select { width: auto; padding: 3px 6px; }
 .mono { font-family: var(--mono); }
 .dim { color: var(--dim); } .faint { color: var(--faint); }
-.viewport { flex: 1; position: relative; overflow: auto; display: grid; place-items: center; min-height: 0; }
+.viewport { flex: 1; position: relative; overflow: auto; display: grid; place-items: safe center; min-height: 0; }   /* safe: big content scrolls instead of spilling off the top/left */
 .empty { color: var(--faint); text-align: center; max-width: 420px; margin: auto; padding: 30px; }
 .empty h2 { font: 500 15px var(--cond); color: var(--dim); letter-spacing: .04em; margin: 0 0 8px; }
 
@@ -285,7 +285,7 @@ input[type=color] { width: 28px; height: 22px; padding: 0; border: 1px solid var
 .wlist .w small { margin-left: auto; font: 10px var(--mono); color: var(--faint); }
 
 /* ------------------------------------------------------------- dialogs */
-.modal { position: fixed; inset: 0; background: #000b; display: grid; place-items: center; z-index: 80; }
+.modal { position: fixed; inset: 0; background: #000b; display: grid; place-items: safe center; overflow: auto; z-index: 80; }
 .modal > div { background: var(--p1); border: 1px solid var(--line2); width: min(560px, 94vw); max-height: 86vh; overflow: auto; box-shadow: 0 20px 60px #000; }
 .modal header { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); font: 600 12px var(--cond); letter-spacing: .1em; text-transform: uppercase; }
 .modal header .grow { flex: 1; }
@@ -430,7 +430,6 @@ table.breakdown td.warn { color: var(--bad); } table.breakdown td.ok { color: va
 #rootchip .godot { font-style: normal; font: 10px var(--mono); margin-left: 8px; padding: 1px 5px; border-radius: 2px; }
 #rootchip .godot.ok { color: #111; background: var(--ok); } #rootchip .godot.no { color: var(--warn); border: 1px solid var(--warn); }
 /* Actor workshop (over the Animate area) */
-#v-animate { position: relative; }
 .workshop { position: absolute; inset: 0; z-index: 40; background: var(--bg, #131312); display: flex; flex-direction: column; }
 .workshop > header { display: flex; align-items: center; gap: 12px; padding: 10px 18px; border-bottom: 1px solid var(--line); }
 .workshop > header b { font: 600 16px var(--cond); color: var(--ember); letter-spacing: .06em; text-transform: uppercase; }
@@ -462,3 +461,27 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .kinds button { font-size: 11px; padding: 3px 7px; background: #151514; border: 1px solid var(--line2); border-left: 3px solid var(--kc); color: var(--dim); border-radius: 2px; cursor: pointer; }
 .kinds button.on { color: var(--fg, #eee); background: #232320; border-color: var(--kc); }
 .zone-ed { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; } .zone-ed textarea { width: 100%; }
+/* GDScript editor (gdedit.js): textarea over highlighted pre, same metrics */
+.gd-ed { position: relative; display: flex; min-height: 0; height: 100%; background: #10100f; overflow: hidden; font: 13px/19px var(--mono); }
+.gd-gut { flex: 0 0 46px; padding: 10px 8px 10px 0; text-align: right; color: #4b4a45; user-select: none; white-space: pre; }
+.gd-gut span, .gd-gut b { display: block; } .gd-gut b { color: #fff; background: #8a2d26; border-radius: 0 2px 2px 0; font-weight: 400; cursor: help; }
+.gd-wrap { position: relative; flex: 1; overflow: hidden; border-left: 1px solid var(--line); }
+.gd-wrap pre, .gd-wrap textarea { position: absolute; inset: 0; margin: 0; padding: 10px 12px; font: inherit; tab-size: 4; -moz-tab-size: 4; white-space: pre; border: 0; }
+.gd-wrap pre { pointer-events: none; color: #d8d4c8; overflow: visible; }
+.gd-wrap textarea { width: 100%; height: 100%; resize: none; background: transparent; color: transparent; caret-color: #ff8a5c; outline: none; overflow: auto; }
+.gd-wrap textarea::selection { background: rgba(255, 138, 92, .28); color: transparent; }
+.gd-hl .c { color: #6b6a62; } .gd-hl .s { color: #b5c77a; } .gd-hl .k { color: #ff7a4d; } .gd-hl .t { color: #7cc4d9; }
+.gd-hl .f { color: #e3c06b; } .gd-hl .d { color: #c99be0; } .gd-hl .a { color: #e0a06b; } .gd-hl .n { color: #8fd9a8; }
+.gd-hl i { font-style: normal; }
+/* Logic */
+.lg-group { margin-top: 10px; } .lg-gh { font: 600 11px var(--cond); text-transform: uppercase; letter-spacing: .08em; color: var(--faint); margin-bottom: 4px; }
+.lg-file { display: flex; align-items: baseline; gap: 8px; width: 100%; text-align: left; background: none; border: 0; border-left: 2px solid transparent; color: var(--dim); padding: 4px 8px; cursor: pointer; font: 13px var(--mono); }
+.lg-file small { color: var(--faint); font-size: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-file:hover { color: var(--fg, #eee); background: #1a1a19; } .lg-file.on { color: var(--fg, #eee); border-left-color: var(--ember); background: #1d1c1a; }
+.lg-note { margin: 0; padding: 6px 12px; background: #2a1d12; color: #e3b04b; border-bottom: 1px solid var(--line); }
+.lg-ok { color: var(--ok); margin: 0; }
+.lg-err { display: flex; flex-direction: column; gap: 2px; width: 100%; text-align: left; background: #221615; border: 1px solid #4a2522; border-radius: 2px; padding: 6px 8px; margin-bottom: 6px; color: var(--dim); cursor: pointer; font-size: 12px; }
+.lg-err b { color: #ff8a7a; font: 600 11px var(--mono); }
+.lg-ref summary { cursor: pointer; padding: 4px 0; color: var(--dim); font-size: 12px; }
+.lg-r { display: block; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: 5px 2px; cursor: pointer; color: var(--faint); font-size: 11px; }
+.lg-r code { display: block; color: #e3c06b; font: 11px var(--mono); white-space: pre-wrap; word-break: break-all; } .lg-r:hover { background: #1a1a19; }

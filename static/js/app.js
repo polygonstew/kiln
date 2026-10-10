@@ -10,7 +10,7 @@ import './sendto.js';
 import { initMenus } from './menubar.js';
 
 const mods = [files];
-const optional = ['forge', 'animate', 'scenes', 'levels', 'hud', 'stage', 'concepts'];
+const optional = ['forge', 'animate', 'scenes', 'levels', 'hud', 'stage', 'concepts', 'logic'];
 const views = {};
 let cur = null;
 
