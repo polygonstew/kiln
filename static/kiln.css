@@ -511,3 +511,4 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .tour-n { float: right; font: 11px var(--mono); color: var(--faint); } .tour-b { display: flex; gap: 6px; align-items: center; }
 .tour-offer { position: fixed; z-index: 940; right: 16px; bottom: 16px; display: flex; gap: 8px; align-items: center; background: #1c1b19; border: 1px solid var(--ember); padding: 8px 12px; border-radius: 4px; box-shadow: 0 6px 24px #000a; font-size: 13px; }
 .tour-offer small { color: var(--faint); }
+.lv-tools { display: inline-flex; align-items: center; gap: 2px; } .lv-tools .ibtn:disabled { opacity: .35; } .lv-sel { display: inline-flex; align-items: center; gap: 4px; font: 11px var(--mono); color: #e3b04b; }

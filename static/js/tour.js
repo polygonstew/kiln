@@ -30,7 +30,8 @@ const T = {
   levels: [['h3:Level', 'The level', 'Name, size in tiles and a scene from Scenes as its background.'],
     ['h3:Paint', 'Paint', 'Tiles, Things (player start, actors) or Zones (checkpoints, doors, messages, pits).'],
     ['h3:Tiles', 'Tiles', 'Pick a tile and set what it does (solid, one-way, ladder, hazard…). Autotile builds edges that join up as you paint.'],
-    ['stage', 'The map', 'Left click paints, right click erases, the wheel rolls tiles.'],
+    ['tools:levels', 'Tools', 'Brush (B, sizes 1–3), Rectangle (R), Line (L), Fill (G), Pick (I), Select (M: copy, cut, stamp, clear) and undo / redo (Ctrl+Z / Ctrl+Y).'],
+    ['stage', 'The map', 'Left click paints, right click erases, the wheel rolls tiles, Space+drag pans, + and − zoom.'],
     ['h3:Save to asset folder', 'Save for Godot', 'A TileSet with collision and a scene with a TileMapLayer, things and zones.']],
   hud: [['h3:Add', 'Add widgets', 'Health bars, gauges, pips, counters, portraits, inventory, dialogue.'],
     ['stage', 'The screen', 'Drag widgets into place at game resolution.'],
@@ -53,6 +54,7 @@ function target(area, spec) {
   const v = document.querySelector('#v-' + area);
   if (spec === 'tab') return document.querySelector(`#tabs [data-id="${area}"]`);
   if (spec === 'stage') return v?.querySelector(':scope > section.stage');
+  if (spec.startsWith('tools:')) return v?.querySelector('.lv-tools');
   const [kind, text] = [spec.slice(0, spec.indexOf(':')), spec.slice(spec.indexOf(':') + 1)];
   if (kind === 'h3') return [...(v?.querySelectorAll('h3') || [])].find(e => e.offsetParent && e.childNodes[0]?.textContent.trim() === text)?.closest('.sec') || null;
   if (kind === 'btn') return [...(v?.querySelectorAll('button') || [])].find(e => e.offsetParent && e.textContent.trim().startsWith(text)) || null;

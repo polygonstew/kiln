@@ -7,6 +7,7 @@ import { registerWheel } from './wheel.js';
 import { registerKeys } from './wheel.js';
 import { loadOwners, claim } from './owners.js';
 import { ZONE_KINDS, zoneAt, drawZones, zonePanel, zoneNodes, zoneShapes, ZONE_GD } from './zones.js';
+import { TOOLS, brushCells, rectCells, lineCells, floodCells, copyCells, selRect, history } from './leveltools.js';
 import { STYLES, buildPieces, appendPieces, fixAround, terrainOf, terrainHeader, terrainLines } from './autotile.js';
 import { KINDS, kindColour, drawKind, tileLines, TILESET_LAYERS, LEVEL_TILES_GD } from './tilekinds.js';
 
@@ -24,6 +25,10 @@ async function loadActorList() {
   if (mode === 'ents') drawLeft();
 }
 let bgLayers = null;     // the background scene's layers, drawn behind the map: [{cv, y, scroll}]
+// painting tools (leveltools.js): the tool, brush size, a selected rectangle, copied cells being stamped, Space held (pan)
+let tool = pref.get('level.tool', 'brush'), bsize = 1, sel = null, clipC = null, stamping = false, spaceDown = false;
+const H = history(() => ({ id: L.id, cols: L.cols, rows: L.rows, cells: L.cells, ents: L.ents || [], zones: L.zones || [] }),
+  d => { if (d.id !== L.id) return toast('That undo belongs to another level'); delete d.id; Object.assign(L, d); changed(); drawLeft(); draw(); drawBar(); });
 let L = null, V = {}, mounted = false, tsImg = null, zoom = 0, hover = null, drag = null, saveT;
 // what a tile does in the game (tilekinds.js); old levels only had `solid: [tile…]`
 const kindOf = i => (L.kinds ||= Object.fromEntries((L.solid || []).map(k => [k, 'solid'])))[i] || '';
@@ -97,11 +102,16 @@ export const levels = {
     el.append(V.left, h('section', { class: 'stage' },
       h('div', { class: 'bar' }, h('span', { class: 'lbl' }, 'Zoom'), select([[0, 'Fit'], [1, '1×'], [2, '2×'], [3, '3×'], [4, '4×']], zoom, v => { zoom = +v; draw(); }),
         h('button', { class: 'ibtn' + (L.grid ? ' on' : ''), title: 'Tile grid', onclick: e => { L.grid = !L.grid; e.currentTarget.classList.toggle('on', L.grid); draw(); } }, '#'),
+        V.bar = h('span', { class: 'lv-tools' }),
         h('span', { class: 'grow' }), V.info),
       V.vp,
-      h('div', { class: 'bar bot' }, h('span', { class: 'note', style: { margin: 0 } }, 'Left click paints · right click erases · wheel rolls through tiles · Ctrl+wheel zooms · Shift+click a tile: solid on/off · "Tile N is" sets one-way, ladder, hazard…'))),
+      h('div', { class: 'bar bot' }, h('span', { class: 'note', style: { margin: 0 } }, 'Left click paints · right click erases · B R L G I M tools · [ ] brush size · Ctrl+Z undo · Space+drag pans · Ctrl+wheel or + − zooms · wheel rolls tiles'))),
       V.right);
     bind();
+    // keys work whenever Levels is the area on screen (clicking the map does not give it keyboard focus)
+    document.addEventListener('keydown', e => { if (el.classList.contains('on') && !document.querySelector('.modal, .tour-bub, .dx-menu')) keys(e); });
+    document.addEventListener('keyup', e => { if (e.key === ' ') { spaceDown = false; V.cv.style.cursor = 'crosshair'; } });
+    drawBar();
     new ResizeObserver(() => draw()).observe(V.vp);
     loadTiles().then(() => { drawLeft(); drawRight(); draw(); takeTs(); loadBg(); });
   },
@@ -162,22 +172,74 @@ function draw() {
   if ((L.zones || []).length) drawZones(x, L.zones, z, zoneSel, mode === 'zones');
   if (drag?.t === 'zone' && drag.r) drawZones(x, [{ ...drag.r, kind: zonePick, id: 'new' }], z, 'new', true);
   if (V.showSolid) for (let i = 0; i < L.cells.length; i++) if (L.cells[i] >= 0) drawKind(x, kindOf(L.cells[i]), (i % L.cols) * T * z, Math.floor(i / L.cols) * T * z, T * z);
-  if (hover) { x.globalAlpha = .55; x.drawImage(src, (L.pick % L.tsCols) * T, Math.floor(L.pick / L.tsCols) * T, T, T, hover[0] * T * z, hover[1] * T * z, T * z, T * z); x.globalAlpha = 1; x.strokeStyle = '#fff'; x.strokeRect(hover[0] * T * z + .5, hover[1] * T * z + .5, T * z - 1, T * z - 1); }
+  // previews: the brush under the cursor, a rectangle or line being dragged, the selection, copied cells being stamped
+  const ghost = (c, r, v) => { if (v < 0) { x.fillStyle = 'rgba(229,83,75,.35)'; x.fillRect(c * T * z, r * T * z, T * z, T * z); } else { x.globalAlpha = .55; x.drawImage(src, (v % L.tsCols) * T, Math.floor(v / L.tsCols) * T, T, T, c * T * z, r * T * z, T * z, T * z); x.globalAlpha = 1; } };
+  if (drag?.p1) for (const [c, r] of (drag.t === 'rect' ? rectCells : lineCells)(L, drag.p0, drag.p1)) ghost(c, r, drag.v);
+  else if (stamping && clipC && hover) { for (let r = 0; r < clipC.h; r++) for (let c = 0; c < clipC.w; c++) if (clipC.cells[r * clipC.w + c] >= 0) ghost(hover[0] + c, hover[1] + r, clipC.cells[r * clipC.w + c]); x.strokeStyle = '#e3b04b'; x.strokeRect(hover[0] * T * z + .5, hover[1] * T * z + .5, clipC.w * T * z - 1, clipC.h * T * z - 1); }
+  else if (hover && mode === 'tiles' && !drag && tool !== 'select') {
+    const cs = tool === 'brush' ? brushCells(L, hover, bsize) : [hover];
+    if (tool !== 'pick') for (const [c, r] of cs) ghost(c, r, L.pick);
+    x.strokeStyle = '#fff'; for (const [c, r] of cs) x.strokeRect(c * T * z + .5, r * T * z + .5, T * z - 1, T * z - 1);
+  }
+  if (sel) { x.save(); x.strokeStyle = '#e3b04b'; x.lineWidth = 2; x.setLineDash([5, 4]); x.strokeRect(sel.x * T * z + 1, sel.y * T * z + 1, sel.w * T * z - 2, sel.h * T * z - 2); x.restore(); }
   const used = L.cells.filter(t => t >= 0).length;
   V.info.textContent = `${L.cols}×${L.rows} tiles · ${W}×${H} px · ${used} placed${hover ? ` · ${hover[0]},${hover[1]}` : ''} · ${z}×`;
 }
 function cellAt(e) { const r = V.cv.getBoundingClientRect(), T = L.tile * V.z; const c = Math.floor((e.clientX - r.left) / T), w = Math.floor((e.clientY - r.top) / T); return c >= 0 && w >= 0 && c < L.cols && w < L.rows ? [c, w] : null; }
-function paint(p, t) {
-  if (!p) return; const i = p[1] * L.cols + p[0], ter = t >= 0 && L.pickTer != null ? L.terrains?.[L.pickTer] : null;
+function putCell(c, r, t) {
+  const i = r * L.cols + c, ter = t >= 0 && L.pickTer != null ? L.terrains?.[L.pickTer] : null;
   if (ter ? terrainOf(L.terrains, L.cells[i]) === ter : L.cells[i] === t) return;
   L.cells[i] = ter ? ter.first : t;
-  if (L.terrains?.length) fixAround(L, p[0], p[1]);      // autotile pieces next to it join up again
-  draw();
+  if (L.terrains?.length) fixAround(L, c, r);      // autotile pieces next to it join up again
+}
+const putAll = (cells, t) => { for (const [c, r] of cells) putCell(c, r, t); draw(); };
+function paint(p, t) { if (p) { putCell(p[0], p[1], t); draw(); } }
+// copied cells placed with their top-left on p (empty cells in the copy leave what is there)
+function stampAt(p) {
+  for (let r = 0; r < clipC.h; r++) for (let c = 0; c < clipC.w; c++) { const t = clipC.cells[r * clipC.w + c], x = p[0] + c, y = p[1] + r; if (t >= 0 && x < L.cols && y < L.rows) { L.cells[y * L.cols + x] = t; } }
+  if (L.terrains?.length) for (let r = -1; r <= clipC.h; r++) for (let c = -1; c <= clipC.w; c++) fixAround(L, p[0] + c, p[1] + r);
+  changed(); draw();
+}
+const selCells = () => rectCells(L, [sel.x, sel.y], [sel.x + sel.w - 1, sel.y + sel.h - 1]);
+function setTool(t) { tool = t; pref.set('level.tool', t); stamping = false; if (t !== 'select') sel = null; drawBar(); draw(); }
+function drawBar() {
+  if (!V.bar) return;
+  const [u, r] = H.sizes;
+  V.bar.replaceChildren(h('i', { class: 'sep' }),
+    ...TOOLS.map(([id, label, key, glyph]) => h('button', { class: 'ibtn' + (tool === id ? ' on' : ''), title: `${label} (${key})`, onclick: () => setTool(id) }, glyph)),
+    h('i', { class: 'sep' }), h('span', { class: 'lbl' }, 'Size'),
+    ...[1, 2, 3].map(n => h('button', { class: 'ibtn' + (bsize === n ? ' on' : ''), title: `Brush ${n}×${n} ([ and ] change it)`, onclick: () => { bsize = n; drawBar(); } }, String(n))),
+    h('i', { class: 'sep' }),
+    h('button', { class: 'ibtn', title: 'Undo (Ctrl+Z)', disabled: !u, onclick: () => H.undo() }, '↶'), h('button', { class: 'ibtn', title: 'Redo (Ctrl+Y)', disabled: !r, onclick: () => H.redo() }, '↷'),
+    sel ? h('span', { class: 'lv-sel' }, h('i', { class: 'sep' }), `${sel.w}×${sel.h}`,
+      h('button', { class: 'btn sm ghost', title: 'Copy (Ctrl+C), then click to stamp it', onclick: () => copySel(false) }, 'Copy'),
+      h('button', { class: 'btn sm ghost', title: 'Cut (Ctrl+X)', onclick: () => copySel(true) }, 'Cut'),
+      h('button', { class: 'btn sm ghost danger', title: 'Clear the selection (Delete)', onclick: clearSel }, 'Clear')) : '',
+    stamping ? h('span', { class: 'lv-sel' }, h('i', { class: 'sep' }), 'Stamping · click to place, Esc stops') : '');
+}
+function copySel(cut) { if (!sel) return; clipC = copyCells(L, sel); if (cut) { H.push(); putAll(selCells(), -1); changed(); } stamping = true; toast(`${cut ? 'Cut' : 'Copied'} ${sel.w}×${sel.h}: click to stamp it, Esc to stop`); sel = null; drawBar(); draw(); }
+function clearSel() { if (!sel) return; H.push(); putAll(selCells(), -1); changed(); drawBar(); }
+function keys(e) {
+  if (e.target.matches('textarea,select,input:not([type=checkbox]):not([type=range])')) return;
+  const k = e.key.toLowerCase(), ctrl = e.ctrlKey || e.metaKey;
+  if (ctrl && k === 'z') { e.preventDefault(); e.shiftKey ? H.redo() : H.undo(); drawBar(); return; }
+  if (ctrl && k === 'y') { e.preventDefault(); H.redo(); drawBar(); return; }
+  if (ctrl && (k === 'c' || k === 'x') && sel) { e.preventDefault(); copySel(k === 'x'); return; }
+  if (ctrl && k === 'v' && clipC) { e.preventDefault(); stamping = true; drawBar(); draw(); return; }
+  if (ctrl || e.altKey) return;
+  if (k === 'escape') { sel = null; stamping = false; drawBar(); draw(); return; }
+  if ((k === 'delete' || k === 'backspace') && sel) { e.preventDefault(); clearSel(); return; }
+  if (k === ' ') { e.preventDefault(); spaceDown = true; V.cv.style.cursor = 'grab'; return; }
+  if (k === '[' || k === ']') { bsize = Math.max(1, Math.min(3, bsize + (k === ']' ? 1 : -1))); drawBar(); draw(); return; }
+  if (k === '+' || k === '=' || k === '-') { zoom = clamp((zoom || Math.max(1, Math.round(V.z))) + (k === '-' ? -1 : 1), 1, 8); draw(); return; }
+  const t = mode === 'tiles' && TOOLS.find(t => t[2].toLowerCase() === k);
+  if (t) setTool(t[0]);
 }
 function bind() {
   V.cv.addEventListener('contextmenu', e => e.preventDefault());
   V.cv.addEventListener('pointerdown', e => {
     V.cv.setPointerCapture(e.pointerId);
+    if (mode !== 'tiles') { H.push(); drawBar(); }
     if (mode === 'zones') {
       const r = V.cv.getBoundingClientRect(), px = (e.clientX - r.left) / V.z, py = (e.clientY - r.top) / V.z, T = L.tile;
       const hit = zoneAt(L.zones || [], px, py);
@@ -199,15 +261,29 @@ function bind() {
       if (en.type === 'start') L.ents = L.ents.filter(q => q.type !== 'start');   // only one start
       L.ents.push(en); changed(); draw(); drawLeft(); return;
     }
-    if (e.button === 1) { const p = cellAt(e); if (p && L.cells[p[1] * L.cols + p[0]] >= 0) { L.pick = L.cells[p[1] * L.cols + p[0]]; drawLeft(); } return; }
-    drag = { t: e.button === 2 ? -1 : L.pick }; paint(cellAt(e), drag.t);
+    if (spaceDown || (e.button === 1 && e.shiftKey)) { drag = { t: 'pan', x: e.clientX, y: e.clientY, sl: V.vp.scrollLeft, st: V.vp.scrollTop }; V.cv.style.cursor = 'grabbing'; return; }
+    const p = cellAt(e); if (!p) return;
+    if (e.button === 1 || (tool === 'pick' && e.button === 0)) { const t = L.cells[p[1] * L.cols + p[0]]; if (t >= 0) { L.pick = t; L.pickTer = null; drawLeft(); if (tool === 'pick') setTool('brush'); } return; }
+    if (stamping && clipC && e.button === 0) { H.push(); stampAt(p); drawBar(); return; }
+    if (stamping && e.button === 2) { stamping = false; drawBar(); draw(); return; }
+    if (tool === 'select') { drag = { t: 'sel', p0: p }; sel = selRect(p, p); drawBar(); draw(); return; }
+    const v = e.button === 2 ? -1 : L.pick;
+    H.push(); drawBar();
+    if (tool === 'fill') { putAll(floodCells(L, p), v); changed(); return; }
+    if (tool === 'rect' || tool === 'line') { drag = { t: tool, v, p0: p, p1: p }; draw(); return; }
+    drag = { t: 'brush', v }; putAll(brushCells(L, p, bsize), v);
   });
   V.cv.addEventListener('pointermove', e => {
     if (drag?.t === 'zone') {      // a zone snaps to whole tiles
       const p = cellAt(e); if (!p) return; const [c0, r0] = drag.c0, T = L.tile;
       drag.r = { x: Math.min(c0, p[0]) * T, y: Math.min(r0, p[1]) * T, w: (Math.abs(p[0] - c0) + 1) * T, h: (Math.abs(p[1] - r0) + 1) * T }; draw(); return;
     }
-    hover = mode === 'tiles' ? cellAt(e) : null; if (drag) paint(hover, drag.t); else draw();
+    if (drag?.t === 'pan') { V.vp.scrollLeft = drag.sl - (e.clientX - drag.x); V.vp.scrollTop = drag.st - (e.clientY - drag.y); return; }
+    hover = mode === 'tiles' ? cellAt(e) : null;
+    if (drag?.t === 'brush' && hover) putAll(brushCells(L, hover, bsize), drag.v);
+    else if ((drag?.t === 'rect' || drag?.t === 'line') && hover) { drag.p1 = hover; draw(); }
+    else if (drag?.t === 'sel' && hover) { sel = selRect(drag.p0, hover); drawBar(); draw(); }
+    else draw();
   });
   const up = () => {
     if (drag?.t === 'zone') {
@@ -215,6 +291,9 @@ function bind() {
       const q = { id: uid(), kind: zonePick, ...r, name: '', text: '', target: '', once: zonePick === 'message' };
       (L.zones ||= []).push(q); zoneSel = q.id; changed(); drawLeft(); draw(); return;
     }
+    if (drag?.t === 'rect' || drag?.t === 'line') putAll((drag.t === 'rect' ? rectCells : lineCells)(L, drag.p0, drag.p1), drag.v);
+    if (drag?.t === 'pan') V.cv.style.cursor = spaceDown ? 'grab' : 'crosshair';
+    if (drag?.t === 'pan' || drag?.t === 'sel') { drag = null; return; }
     if (drag) { drag = null; changed(); }
   };
   V.cv.addEventListener('pointerup', up); V.cv.addEventListener('pointercancel', up);
@@ -245,7 +324,8 @@ function drawLeft() {
         h('button', { class: 'btn sm ghost', title: 'Start a new empty level (this one is kept)', onclick: () => { const n = prompt('Name for the new level', 'room'); if (!n) return; L = { ...blank(slug(n)), ts: L.ts, tile: L.tile, solid: L.solid, kinds: { ...(L.kinds || {}) } }; loadTiles().then(() => { changed(); drawLeft(); drawRight(); draw(); }); } }, 'New')),
       field('Name', name),
       field('Size', h('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, cols, '×', rows,
-        h('button', { class: 'btn sm', title: 'Resize the level in tiles (tiles stay where they are)', onclick: () => resize(+cols.value, +rows.value) }, 'Set')), 'In tiles. 480×270 px is 30×17 tiles of 16'),
+        h('button', { class: 'btn sm', title: 'Resize the level in tiles (tiles stay where they are)', onclick: () => { H.push(); resize(+cols.value, +rows.value); drawBar(); } }, 'Set'),
+        h('button', { class: 'btn sm ghost danger', title: 'Remove every tile, thing and zone (Ctrl+Z brings them back)', onclick: () => { if (!confirm('Clear the whole level? Ctrl+Z undoes it.')) return; H.push(); L.cells = L.cells.map(() => -1); L.ents = []; L.zones = []; changed(); drawLeft(); draw(); drawBar(); } }, 'Clear')), 'In tiles. 480×270 px is 30×17 tiles of 16'),
       field('Background', V.bgSel = select([['', 'None']], L.bg || '', v => { L.bg = v || null; changed(); loadBg(); }), 'A scene from Scenes, shown behind the map and placed behind it in Godot'),
       field('Tile', seg([[8, '8'], [16, '16'], [32, '32']], L.tile, v => { L.tile = +v; L.ts = null; L.terrains = []; loadTiles().then(() => { changed(); drawLeft(); draw(); }); }), 'Pixels per tile')),
     h('div', { class: 'sec' }, h('h3', {}, 'Paint'), seg([['tiles', 'Tiles'], ['ents', 'Things'], ['zones', 'Zones']], mode, v => { mode = v; drawLeft(); draw(); }),
@@ -383,4 +463,4 @@ registerWheel('levels', () => ({
   guides: [{ label: 'Tile grid', on: !!L?.grid, run: () => { L.grid = !L.grid; draw(); } }, { label: 'Show behaviours', on: !!V.showSolid, run: () => { V.showSolid = !V.showSolid; drawLeft(); draw(); } },
     { label: 'Save level', run: exportLevel }],
 }));
-registerKeys('levels', [['Left click', 'Paint the picked tile'], ['Right click', 'Erase'], ['Middle click', 'Pick the tile under the cursor'], ['Mouse wheel', 'Roll through tiles'], ['Ctrl+wheel', 'Zoom'], ['Shift+click a tile', 'Solid on/off (other behaviours: "Tile N is" under the tiles)']]);
+registerKeys('levels', [['B R L G I M', 'Brush, Rectangle, Line, Fill, Pick, Select'], ['[ ]', 'Brush size 1–3'], ['Ctrl+Z / Ctrl+Y', 'Undo / redo'], ['Ctrl+C / X / V', 'Copy / cut the selection, then click to stamp it'], ['Delete', 'Clear the selection'], ['Space+drag', 'Pan'], ['+ / −', 'Zoom'], ['Esc', 'Stop stamping / drop the selection'], ['Left click', 'Paint the picked tile'], ['Right click', 'Erase'], ['Middle click', 'Pick the tile under the cursor'], ['Mouse wheel', 'Roll through tiles'], ['Ctrl+wheel', 'Zoom'], ['Shift+click a tile', 'Solid on/off (other behaviours: "Tile N is" under the tiles)']]);
