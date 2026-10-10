@@ -143,9 +143,13 @@ function drawLeft() {
   const wIn = h('input', { type: 'number', value: a.w, min: 4, max: 256, style: { width: '62px' } });
   const hIn = h('input', { type: 'number', value: a.h, min: 4, max: 256, style: { width: '62px' } });
   const sw = h('div', { class: 'sw big' }, ...a.pal.map((c, i) => h('i', {
-    class: A.c1 && hex(A.c1) === hex(c) ? 'on' : '', title: `${hex(c)}  ·  click: draw with it  ·  double-click: recolour it everywhere  ·  on the canvas: left adds, right removes, wheel rolls colours, middle-click picks`,
+    class: (A.c1 && hex(A.c1) === hex(c) ? 'on' : '') + ((A.cyc || []).includes(hex(c)) ? ' cyc' : ''), 'data-cyc': (A.cyc || []).indexOf(hex(c)) + 1 || '', title: `${hex(c)}  ·  click: draw with it  ·  Shift+click: add to a colour cycle  ·  double-click: recolour it everywhere  ·  on the canvas: left adds, right removes, wheel rolls colours, middle-click picks`,
     style: { background: hex(c) },
-    onclick: () => { A.c1 = c; if (A.tool === 'eraser' || A.tool === 'pick') A.tool = 'pencil'; drawLeft(); },
+    onclick: e => {
+      // Shift+click picks colours for a colour cycle (torch, water, glow); a plain click draws with it
+      if (e.shiftKey) { const k = hex(c); A.cyc = (A.cyc || []).includes(k) ? A.cyc.filter(x => x !== k) : [...(A.cyc || []), k]; drawLeft(); return; }
+      A.c1 = c; if (A.tool === 'eraser' || A.tool === 'pick') A.tool = 'pencil'; drawLeft();
+    },
     oncontextmenu: e => { e.preventDefault(); A.c2 = c; drawLeft(); },
     ondblclick: () => recolour(i),
   })), h('i', { title: 'Add a colour', style: { background: 'none', border: '1px dashed var(--line2)', display: 'grid', placeItems: 'center', color: 'var(--faint)' }, onclick: addColour }, '+'));
@@ -165,6 +169,10 @@ function drawLeft() {
         )),
     h('div', { class: 'sec' }, h('h3', {}, 'Palette', h('span', { class: 'grow' }), h('small', { style: { color: used.size > H.sprite ? 'var(--warn)' : 'var(--faint)' } }, `${used.size} used · ${H.name} allows ${H.sprite}`)),
       sw,
+      (A.cyc || []).length >= 2 ? h('div', { style: { display: 'flex', gap: '6px', alignItems: 'center', margin: '8px 0 2px' } },
+        h('button', { class: 'btn sm go', title: 'Make a looping animation where the picked colours rotate through each other, in the order you picked them. Classic for torches, water, glowing runes', onclick: colourCycle }, `Colour cycle (${A.cyc.length})`),
+        h('button', { class: 'btn sm ghost', title: 'Clear the picked colours', onclick: () => { A.cyc = []; drawLeft(); } }, 'Clear')) :
+        h('p', { class: 'note', style: { margin: '6px 0 0' } }, 'Shift+click 2 or more colours to make a colour cycle (torch, water, glow).'),
       h('div', { class: 'btns' },
         h('button', { class: 'btn sm', title: 'Replace the palette with the colours actually used in the frames', onclick: () => { A.actor.pal = [...used].map(rgb).sort((x, y) => luma(x) - luma(y)); drawLeft(); } }, 'From frames'),
         select([['', 'Load preset…'], ...Object.entries(PALETTES).map(([k, p]) => [k, p.name])], '', v => { if (v) { A.actor.pal = PALETTES[v].colors.slice(); drawLeft(); } }),
@@ -190,6 +198,30 @@ function recolour(i) {
   inp.click();
 }
 // change an animation's box width; art stays centred, and narrowing never silently cuts art off
+// Colour cycling: frame k shifts each picked colour k places along the cycle (order = order picked).
+function colourCycle() {
+  const cyc = (A.cyc || []).map(rgb), n = cyc.length;
+  if (n < 2) return;
+  const base = frame(), idx = new Map(cyc.map((c, i) => [c[0] << 16 | c[1] << 8 | c[2], i]));
+  let hits = 0;
+  const frames = Array.from({ length: n }, (_, k) => {
+    const f = cloneImg(base), d = f.data;
+    for (let i = 0; i < d.length; i += 4) {
+      if (d[i + 3] < 128) continue;
+      const j = idx.get(d[i] << 16 | d[i + 1] << 8 | d[i + 2]);
+      if (j === undefined) continue;
+      if (k === 0) hits++;
+      const c = cyc[(j + k) % n]; d[i] = c[0]; d[i + 1] = c[1]; d[i + 2] = c[2];
+    }
+    return f;
+  });
+  if (!hits) return toast('None of the picked colours are in this frame. Draw with them first, then cycle', 'bad');
+  pushUndo();
+  const name = slug(anim().name + '_cycle');
+  A.actor.anims.splice(A.ai + 1, 0, { name, fps: Math.max(6, Math.min(14, n * 2)), loop: true, span: anim().span, frames });
+  A.ai++; A.fi = 0; changed(true);
+  toast(`"${name}": ${n} frames, ${hits} pixels cycle. Change its speed under the timeline`, 'ok');
+}
 function setSpan(n, span) {
   if ((n.span || 1) === span) return;
   const W = A.actor.w * span;
@@ -844,6 +876,7 @@ registerWheel('animate', () => ({
     { label: 'Hit flash', key: 'F', hint: 'preview', run: () => player?.juice('flash') },
     { label: 'Squash', key: 'S', hint: 'preview', run: () => player?.juice('squash') },
     { label: 'Shake', key: 'K', hint: 'preview', run: () => player?.juice('shake') },
+    { label: 'Colour cycle', hint: 'Shift+click colours', run: () => (A.cyc || []).length >= 2 ? colourCycle() : toast('Shift+click 2 or more palette colours first') },
     { label: 'Box template', hint: 'draw into boxes', run: templateOut },
     { label: 'Save actor', run: exportActor },
   ],
