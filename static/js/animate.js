@@ -638,6 +638,20 @@ async function exportActor() {
   const g = await api('/api/godot?path=' + encodeURIComponent(FS.root)).catch(() => ({}));
   const res = g.root ? 'res://' + dest.slice(g.root.length + 1) : dir;
   files.push({ name: `${a.name}.tres`, text: spriteFrames(a, res) });
+  // body hitbox from the idle (or first) animation: the figure's box, trimmed to its core width
+  // so a cape or a held weapon doesn't widen it
+  const base = a.anims.find(n => /idle|stand/i.test(n.name)) || a.anims[0];
+  const bbs = base.frames.map(bbox).filter(Boolean);
+  if (bbs.length) {
+    const med = k => bbs.map(b => b[k]).sort((p, q) => p - q)[bbs.length >> 1];
+    const bh = med('h'), bw = Math.max(2, Math.round(med('w') * 0.6)), cx = med('x') + med('w') / 2;
+    man.hitbox = { x: Math.round(cx - bw / 2), y: a.h - bh, w: bw, h: bh };
+    files.find(f => f.name === 'manifest.json').text = JSON.stringify(man, null, 2) + '\n';
+    files.push({ name: `${a.name}.tscn`, text: actorScene(a, res, man.hitbox) });
+  }
+  if (a.identity?.ref) files.push({ name: 'reference.png', b64: a.identity.ref });
+  files.push({ name: 'palette.hex', text: a.pal.map(c => hex(c).slice(1)).join('\n') + '\n' });
+  files.push({ name: 'CHARACTER.md', text: await characterDoc(a, dir, base) });
   try {
     const r = await saveFiles(dir, files);
     // keep the editable source too
@@ -646,6 +660,55 @@ async function exportActor() {
     toast(`Saved ${files.length} files to ${dir}/${g.root ? ' (Godot paths)' : ''}`, 'ok');
     return r;
   } catch (e) { toast('Save failed: ' + e.message, 'bad'); }
+}
+// Godot 4 drop-in: CharacterBody2D (origin at the feet) + AnimatedSprite2D + body hitbox
+function actorScene(a, res, hb) {
+  const start = (a.anims.find(n => /idle|stand/i.test(n.name)) || a.anims[0]).name;
+  return `[gd_scene load_steps=3 format=3]\n\n[ext_resource type="SpriteFrames" path="${res}/${a.name}.tres" id="1"]\n\n`
+    + `[sub_resource type="RectangleShape2D" id="body"]\nsize = Vector2(${hb.w}, ${hb.h})\n\n`
+    + `[node name="${a.name}" type="CharacterBody2D"]\n\n`
+    + `[node name="Sprite" type="AnimatedSprite2D" parent="."]\ntexture_filter = 1\nposition = Vector2(0, ${-a.h / 2})\nsprite_frames = ExtResource("1")\nanimation = &"${start}"\nautoplay = "${start}"\n\n`
+    + `[node name="Body" type="CollisionShape2D" parent="."]\nposition = Vector2(${hb.x + hb.w / 2 - a.w / 2}, ${hb.y + hb.h / 2 - a.h})\nshape = SubResource("body")\n`;
+}
+// CHARACTER.md: everything needed to come back later (a person or an agent) and make more of this
+// actor on-model. The "## Notes" section is yours: it is kept when the file is rewritten.
+async function characterDoc(a, dir, base) {
+  let notes = '';
+  try { const old = await (await fetch(rawURL(FS.root + '/' + dir + '/CHARACTER.md'))).text(); const i = old.indexOf('## Notes'); if (i >= 0) notes = old.slice(i).trim(); } catch { }
+  const id = a.identity || {}, fb = bbox(base.frames[0]);
+  return `# ${a.name}
+
+${a.desc?.trim() || '_No description yet. Add one in Animate → Identity; it is what keeps the generator on-model._'}
+
+| | |
+|---|---|
+| Kind | ${a.kind || 'character'} |
+| Frame | ${a.w}×${a.h} px, feet on the bottom row |
+| Figure | ${id.figH || fb?.h || a.h} px tall${id.cell ? `; art drawn on ~${id.cell.toFixed(1)} px cells per 1024 px` : ''} |
+| Palette | ${a.pal.length <= 32 ? `${a.pal.length} colours: ${a.pal.map(hex).join(' ')}` : `${a.pal.length} colours (full list in \`palette.hex\`)`} |
+| Reference | ${id.ref ? '\`reference.png\` (the image new frames are redrawn from)' : 'none yet (Animate → Identity → Use this frame as reference)'} |
+
+## Animations
+
+${a.anims.map(n => `- **${n.name}**: ${n.frames.length} frame${n.frames.length > 1 ? 's' : ''} at ${n.fps} fps${n.loop === false ? ', plays once' : ''} (\`${n.name}.png\`)`).join('\n')}
+
+## Making more of it (stay on-model)
+
+1. Kiln → Animate → open **${a.name}** → **Make more frames**. Forge locks the reference, the palette above,
+   the frame size and the pixel scale, and warns when height or colours drift.
+2. The cloud prompt Kiln sends, if you need to do it by hand with \`reference.png\` attached:
+
+   > Redraw this exact ${a.kind || 'character'} from the reference image: ${a.desc?.trim() || '<description>'}. Change: <pose or action>.
+   > Keep the identical design, costume, proportions, colours, line weight and facing direction; only the pose or action changes.
+
+3. Then pixelize with: palette locked to the colours above, figure ${id.figH || fb?.h || a.h} px tall, outline 1 px, feet on the floor.
+
+## Files
+
+\`${a.name}.tres\` Godot SpriteFrames · \`${a.name}.tscn\` CharacterBody2D + sprite + body hitbox · \`manifest.json\` · \`sheet.png\`/\`sheet.json\` (Aseprite-style) · one strip PNG per animation.
+
+${notes || '## Notes\n\n_Your notes: personality, rules (e.g. "always holds the lantern in the left hand"), what to avoid. Kept when Kiln rewrites this file._'}
+`;
 }
 function spriteFrames(a, res) {
   const ext = [], subs = [], animsOut = [];

@@ -1,7 +1,7 @@
 // Scenes: parallax backgrounds built from layers (generated, drawn by AI, or imported),
 // crushed into one of three looks, previewed scrolling, exported for engines.
 import { $, h, api, toast, emit, on, pref, clamp, uid, field, range, select, check, seg, hex, rgb, mix, luma,
-  newImg, cloneImg, toCanvas, toDataURL, imgData, keyBackground, buildPalette, applyPalette, PALETTES, HARDWARE, snapDepth, nearest, BAYER4, checker, rawURL, crop, blit } from './core.js';
+  newImg, cloneImg, toCanvas, toDataURL, imgData, keyBackground, buildPalette, applyPalette, PALETTES, HARDWARE, snapDepth, nearest, BAYER4, checker, rawURL, crop, blit, tracePolys } from './core.js';
 import { GENS, PRESETS } from './procgen.js';
 import { enqueue, budgetTag } from './queue.js';
 import { icon } from './icons.js';
@@ -394,7 +394,8 @@ function drawRight() {
       field('Scroll', range(L.scroll, 0, 1.5, .01, v => { L.scroll = v; drawLayers(); drawPreview(); save(); }), '0 is fixed to the screen (sky), 1 moves with the camera (ground), above 1 is foreground'),
       field('Raise', range(L.y || 0, -SC.view.h, SC.view.h, 1, v => { L.y = v; drawPreview(); save(); }, v => v + 'px')),
       field('Width', select([[SC.view.w, '1 screen'], [SC.view.w * 2, '2 screens'], [SC.view.w * 3, '3 screens'], [SC.view.w * 4, '4 screens']], L.w, v => { L.w = +v; process(L); }), 'Wider layers repeat less often'),
-      field('Repeat', check('tile sideways', L.repeat, v => { L.repeat = v; process(L); }))));
+      field('Repeat', check('tile sideways', L.repeat, v => { L.repeat = v; process(L); })),
+      field('Solid', check('player stands on it (Godot collision)', isSolid(L), v => { L.solid = v; save(); }), 'Exports collision polygons traced from this layer\'s shapes')));
     if (L.kind === 'gen') {
       const G = GENS[L.gen];
       insp.append(h('div', { class: 'sec' }, h('h3', {}, G.name, h('span', { class: 'grow' }),
@@ -434,7 +435,9 @@ async function exportScene() {
     const n = (used.get(L.name) || 0) + 1; used.set(L.name, n);
     const name = n > 1 ? `${L.name}_${n}` : L.name, file = `${name}.png`;
     files.push({ name: file, b64: toDataURL(L.out) });
-    sj.layers.push({ name, file, scroll: L.scroll, y: SC.view.h - L.h + (L.y || 0), repeat: L.repeat, w: L.w, h: L.h, visible: L.visible });
+    const lj = { name, file, scroll: L.scroll, y: SC.view.h - L.h + (L.y || 0), repeat: L.repeat, w: L.w, h: L.h, visible: L.visible };
+    if (isSolid(L)) lj.collision = tracePolys(L.out, { minArea: 16, eps: 1.5 });
+    sj.layers.push(lj);
   }
   files.push({ name: 'scene.json', text: JSON.stringify(sj, null, 2) + '\n' });
   const g = await api('/api/godot?path=' + encodeURIComponent(FS.root)).catch(() => ({}));
@@ -446,8 +449,16 @@ async function exportScene() {
     toast(`Saved ${sj.layers.length} layers to ${dir}/`, 'ok');
   } catch (e) { toast('Save failed: ' + e.message, 'bad'); }
 }
+// a gameplay layer (moves with the camera) named like ground/floor/platform is solid unless switched off
+function isSolid(L) { return L.solid ?? (Math.abs(L.scroll - 1) < .05 && /ground|floor|platform|terrain|street|road/i.test(L.name)); }
 function godotScene(sj, res) {
   const ext = sj.layers.map((l, i) => `[ext_resource type="Texture2D" path="${res}/${l.file}" id="${i + 1}"]`);
   const nodes = sj.layers.map((l, i) => `[node name="${l.name}" type="Parallax2D" parent="."]\nscroll_scale = Vector2(${l.scroll}, 1)\n${l.repeat ? `repeat_size = Vector2(${l.w}, 0)\nrepeat_times = 3\n` : ''}${l.visible === false ? 'visible = false\n' : ''}\n[node name="Sprite2D" type="Sprite2D" parent="${l.name}"]\ntexture = ExtResource("${i + 1}")\ncentered = false\nposition = Vector2(0, ${l.y})\ntexture_filter = 1\n`);
-  return `[gd_scene load_steps=${ext.length + 1} format=3]\n\n${ext.join('\n')}\n\n[node name="${SC.name}" type="Node2D"]\n\n${nodes.join('\n')}`;
+  // solid layers: a StaticBody2D of traced polygons in world space (one copy per repeat, starting at x=0)
+  const bodies = sj.layers.filter(l => l.collision?.length).map(l => {
+    const copies = l.repeat ? 3 : 1, out = [`[node name="${l.name}_solid" type="StaticBody2D" parent="."]\nposition = Vector2(0, ${l.y})\n`];
+    for (let c = 0; c < copies; c++) l.collision.forEach((poly, i) => out.push(`[node name="shape_${c}_${i}" type="CollisionPolygon2D" parent="${l.name}_solid"]\npolygon = PackedVector2Array(${poly.map(([x, y]) => `${x + c * l.w}, ${y}`).join(', ')})\n`));
+    return out.join('\n');
+  });
+  return `[gd_scene load_steps=${ext.length + 1} format=3]\n\n${ext.join('\n')}\n\n[node name="${SC.name}" type="Node2D"]\n\n${nodes.join('\n')}${bodies.length ? '\n' + bodies.join('\n') : ''}`;
 }

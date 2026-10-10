@@ -501,3 +501,63 @@ export function seg(opts, val, onChange) {
   draw(val);
   return box;
 }
+
+/* ---------------------------------------------------- collision outlines ---- */
+// Opaque shapes -> simplified closed polygons (pixel-corner coordinates), for Godot CollisionPolygon2D.
+// Holes are filled (a collider is solid), shapes smaller than minArea px are skipped.
+export function tracePolys(im, { minArea = 24, eps = 1.5, alpha = 128 } = {}) {
+  const w = im.width, hh = im.height, N = w * hh, d = im.data;
+  const lab = new Int32Array(N).fill(-1), polys = [];
+  const solid = p => d[p * 4 + 3] >= alpha;
+  for (let p0 = 0; p0 < N; p0++) {
+    if (lab[p0] >= 0 || !solid(p0)) continue;
+    // 4-connected component
+    const id = polys.length + 1e6 + p0, comp = [p0]; lab[p0] = id;
+    let x0 = w, y0 = hh, x1 = 0, y1 = 0;
+    for (let k = 0; k < comp.length; k++) {
+      const p = comp[k], x = p % w, y = (p / w) | 0;
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < hh - 1 ? p + w : -1])
+        if (q >= 0 && lab[q] < 0 && solid(q)) { lab[q] = id; comp.push(q); }
+    }
+    if (comp.length < minArea) continue;
+    // fill holes: everything in the box not reachable from outside the shape is inside
+    const bw = x1 - x0 + 3, bh = y1 - y0 + 3, out = new Uint8Array(bw * bh), inC = (x, y) => {
+      const X = x + x0 - 1, Y = y + y0 - 1; return X >= 0 && Y >= 0 && X < w && Y < hh && lab[Y * w + X] === id;
+    };
+    const st = [0]; out[0] = 1;
+    while (st.length) {
+      const q = st.pop(), x = q % bw, y = (q / bw) | 0;
+      for (const [nx, ny] of [[x - 1, y], [x + 1, y], [x, y - 1], [x, y + 1]])
+        if (nx >= 0 && ny >= 0 && nx < bw && ny < bh && !out[ny * bw + nx] && !inC(nx, ny)) { out[ny * bw + nx] = 1; st.push(ny * bw + nx); }
+    }
+    const ins = (X, Y) => { const x = X - x0 + 1, y = Y - y0 + 1; return x >= 0 && y >= 0 && x < bw && y < bh && !out[y * bw + x]; };
+    // walk the pixel-edge contour clockwise (inside on the right), from the top-left pixel's top-left corner
+    const sx = comp.reduce((m, p) => { const x = p % w, y = (p / w) | 0; return y < m[1] || (y === m[1] && x < m[0]) ? [x, y] : m; }, [w, hh]);
+    const AL = [[0, -1], [0, 0], [-1, 0], [-1, -1]], AR = [[0, 0], [-1, 0], [-1, -1], [0, -1]], DX = [1, 0, -1, 0], DY = [0, 1, 0, -1];
+    let x = sx[0], y = sx[1], dir = 0, pts = [], guard = 0;
+    do {
+      const l = ins(x + AL[dir][0], y + AL[dir][1]), r = ins(x + AR[dir][0], y + AR[dir][1]);
+      const nd = l ? (dir + 3) % 4 : r ? dir : (dir + 1) % 4;
+      if (nd !== dir || !pts.length) pts.push([x, y]);
+      dir = nd; x += DX[dir]; y += DY[dir];
+    } while ((x !== sx[0] || y !== sx[1]) && ++guard < 4 * N);
+    polys.push(simplifyClosed(pts, eps));
+  }
+  return polys.filter(p => p.length >= 3);
+}
+function simplifyClosed(pts, eps) {
+  if (pts.length < 4) return pts;
+  // split at the point farthest from the first, simplify both halves (Douglas-Peucker)
+  let far = 0, fd = -1;
+  pts.forEach((p, i) => { const dd = (p[0] - pts[0][0]) ** 2 + (p[1] - pts[0][1]) ** 2; if (dd > fd) { fd = dd; far = i; } });
+  const dp = (a) => {
+    if (a.length < 3) return a;
+    const [p, q] = [a[0], a[a.length - 1]], L = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
+    let bi = 0, bd = -1;
+    for (let i = 1; i < a.length - 1; i++) { const dd = Math.abs((q[0] - p[0]) * (p[1] - a[i][1]) - (p[0] - a[i][0]) * (q[1] - p[1])) / L; if (dd > bd) { bd = dd; bi = i; } }
+    return bd > eps ? [...dp(a.slice(0, bi + 1)).slice(0, -1), ...dp(a.slice(bi))] : [p, q];
+  };
+  const A = dp(pts.slice(0, far + 1)), B = dp([...pts.slice(far), pts[0]]);
+  return [...A.slice(0, -1), ...B.slice(0, -1)];
+}
