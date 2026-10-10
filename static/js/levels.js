@@ -6,10 +6,11 @@ import { loadActor } from './player.js';
 import { registerWheel } from './wheel.js';
 import { registerKeys } from './wheel.js';
 import { loadOwners, claim } from './owners.js';
+import { ZONE_KINDS, zoneAt, drawZones, zonePanel, zoneNodes, zoneShapes, ZONE_GD } from './zones.js';
 import { KINDS, kindColour, drawKind, tileLines, TILESET_LAYERS, LEVEL_TILES_GD } from './tilekinds.js';
 
 // Entities: things placed on the map (actors exported from Animate, the player start). x,y = feet, in level pixels.
-let mode = 'tiles', entPick = 'start', actorList = [], sprites = {};   // sprites: actor name -> first idle frame (canvas)
+let mode = 'tiles', zonePick = 'checkpoint', zoneSel = null, levelNames = [], entPick = 'start', actorList = [], sprites = {};   // sprites: actor name -> first idle frame (canvas)
 async function loadActorList() {
   const r = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/sprites')).catch(() => ({ items: [] }));
   actorList = [];
@@ -157,6 +158,8 @@ function draw() {
     else { x.fillStyle = e.type === 'start' ? '#9cc76b' : '#e3b04b'; x.fillRect((e.x - 1) * z, (e.y - 14) * z, 2 * z, 14 * z); x.fillRect((e.x + 1) * z, (e.y - 14) * z, 7 * z, 5 * z); }
     if (mode === 'ents') { x.strokeStyle = 'rgba(255,255,255,.5)'; x.strokeRect((e.x - 3) * z + .5, (e.y - 1) * z + .5, 6 * z, 2 * z); }
   }
+  if ((L.zones || []).length) drawZones(x, L.zones, z, zoneSel, mode === 'zones');
+  if (drag?.t === 'zone' && drag.r) drawZones(x, [{ ...drag.r, kind: zonePick, id: 'new' }], z, 'new', true);
   if (V.showSolid) for (let i = 0; i < L.cells.length; i++) if (L.cells[i] >= 0) drawKind(x, kindOf(L.cells[i]), (i % L.cols) * T * z, Math.floor(i / L.cols) * T * z, T * z);
   if (hover) { x.globalAlpha = .55; x.drawImage(src, (L.pick % L.tsCols) * T, Math.floor(L.pick / L.tsCols) * T, T, T, hover[0] * T * z, hover[1] * T * z, T * z, T * z); x.globalAlpha = 1; x.strokeStyle = '#fff'; x.strokeRect(hover[0] * T * z + .5, hover[1] * T * z + .5, T * z - 1, T * z - 1); }
   const used = L.cells.filter(t => t >= 0).length;
@@ -168,6 +171,13 @@ function bind() {
   V.cv.addEventListener('contextmenu', e => e.preventDefault());
   V.cv.addEventListener('pointerdown', e => {
     V.cv.setPointerCapture(e.pointerId);
+    if (mode === 'zones') {
+      const r = V.cv.getBoundingClientRect(), px = (e.clientX - r.left) / V.z, py = (e.clientY - r.top) / V.z, T = L.tile;
+      const hit = zoneAt(L.zones || [], px, py);
+      if (e.button === 2) { if (hit) { L.zones = L.zones.filter(q => q !== hit); zoneSel = null; changed(); drawLeft(); draw(); } return; }
+      if (hit) { zoneSel = hit.id; drawLeft(); draw(); return; }
+      drag = { t: 'zone', c0: [Math.floor(px / T), Math.floor(py / T)], r: null }; return;
+    }
     if (mode === 'ents') {
       const r = V.cv.getBoundingClientRect(), px = (e.clientX - r.left) / V.z, py = (e.clientY - r.top) / V.z;
       L.ents = L.ents || [];
@@ -185,8 +195,21 @@ function bind() {
     if (e.button === 1) { const p = cellAt(e); if (p && L.cells[p[1] * L.cols + p[0]] >= 0) { L.pick = L.cells[p[1] * L.cols + p[0]]; drawLeft(); } return; }
     drag = { t: e.button === 2 ? -1 : L.pick }; paint(cellAt(e), drag.t);
   });
-  V.cv.addEventListener('pointermove', e => { hover = mode === 'tiles' ? cellAt(e) : null; if (drag) paint(hover, drag.t); else draw(); });
-  const up = () => { if (drag) { drag = null; changed(); } };
+  V.cv.addEventListener('pointermove', e => {
+    if (drag?.t === 'zone') {      // a zone snaps to whole tiles
+      const p = cellAt(e); if (!p) return; const [c0, r0] = drag.c0, T = L.tile;
+      drag.r = { x: Math.min(c0, p[0]) * T, y: Math.min(r0, p[1]) * T, w: (Math.abs(p[0] - c0) + 1) * T, h: (Math.abs(p[1] - r0) + 1) * T }; draw(); return;
+    }
+    hover = mode === 'tiles' ? cellAt(e) : null; if (drag) paint(hover, drag.t); else draw();
+  });
+  const up = () => {
+    if (drag?.t === 'zone') {
+      const r = drag.r || { x: drag.c0[0] * L.tile, y: drag.c0[1] * L.tile, w: L.tile, h: L.tile }; drag = null;
+      const q = { id: uid(), kind: zonePick, ...r, name: '', text: '', target: '', once: zonePick === 'message' };
+      (L.zones ||= []).push(q); zoneSel = q.id; changed(); drawLeft(); draw(); return;
+    }
+    if (drag) { drag = null; changed(); }
+  };
   V.cv.addEventListener('pointerup', up); V.cv.addEventListener('pointercancel', up);
   V.cv.addEventListener('pointerleave', () => { hover = null; draw(); });
   V.vp.addEventListener('wheel', e => {
@@ -218,13 +241,14 @@ function drawLeft() {
         h('button', { class: 'btn sm', title: 'Resize the level in tiles (tiles stay where they are)', onclick: () => resize(+cols.value, +rows.value) }, 'Set')), 'In tiles. 480×270 px is 30×17 tiles of 16'),
       field('Background', V.bgSel = select([['', 'None']], L.bg || '', v => { L.bg = v || null; changed(); loadBg(); }), 'A scene from Scenes, shown behind the map and placed behind it in Godot'),
       field('Tile', seg([[8, '8'], [16, '16'], [32, '32']], L.tile, v => { L.tile = +v; L.ts = null; loadTiles().then(() => { changed(); drawLeft(); draw(); }); }), 'Pixels per tile')),
-    h('div', { class: 'sec' }, h('h3', {}, 'Paint'), seg([['tiles', 'Tiles'], ['ents', 'Things']], mode, v => { mode = v; drawLeft(); draw(); }),
+    h('div', { class: 'sec' }, h('h3', {}, 'Paint'), seg([['tiles', 'Tiles'], ['ents', 'Things'], ['zones', 'Zones']], mode, v => { mode = v; drawLeft(); draw(); }),
+      mode === 'zones' ? zonesUI() : null,
       mode === 'ents' ? [h('div', { class: 'entlist' },
           h('button', { class: entPick === 'start' ? 'on' : '', title: 'Where the player appears (exported as a Marker2D named PlayerStart)', onclick: () => { entPick = 'start'; drawLeft(); } }, '⚑ Player start'),
           ...actorList.map(a => h('button', { class: entPick === a ? 'on' : '', title: `Place ${a} (its Godot scene, with hitbox and juice)`, onclick: () => { entPick = a; drawLeft(); } }, sprites[a] ? (() => { const c = h('canvas', { width: sprites[a].width, height: sprites[a].height }); c.getContext('2d').drawImage(sprites[a], 0, 0); return c; })() : null, a))),
         h('p', { class: 'note' }, actorList.length ? 'Left click places on the tile under the cursor (feet on its top). Right click removes.' : 'Save an actor in Animate to place it here. The player start works now.'),
         h('p', { class: 'note' }, `${(L.ents || []).length} placed`)] : null),
-    mode === 'ents' ? null : h('div', { class: 'sec' }, h('h3', {}, 'Tiles', h('span', { class: 'grow' }), h('small', {}, `${n} tiles`)), tiles,
+    mode !== 'tiles' ? '' : h('div', { class: 'sec' }, h('h3', {}, 'Tiles', h('span', { class: 'grow' }), h('small', {}, `${n} tiles`)), tiles,
       n ? h('div', { class: 'kindpick' }, h('span', { class: 'fl' }, `Tile ${L.pick + 1} is`),
         h('div', { class: 'kinds' }, ...KINDS.map(([id, label, c, hint]) => h('button', { class: kindOf(L.pick) === id ? 'on' : '', style: { '--kc': c }, title: hint, onclick: () => { setKind(L.pick, id); drawLeft(); if (!V.showSolid) { V.showSolid = true; } draw(); } }, label)))) : null,
       h('div', { style: { display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' } },
@@ -233,6 +257,14 @@ function drawLeft() {
         h('button', { class: 'btn sm ghost' + (V.showSolid ? ' on' : ''), title: 'Show what each tile does on the map (solid red, one-way yellow, ladders green, hazards purple, water blue)', onclick: () => { V.showSolid = !V.showSolid; drawLeft(); draw(); } }, 'Show behaviours'))));
   fillBgSel();
   if (mode === 'ents' && !actorList.length && !V.listed) { V.listed = true; loadActorList(); }
+}
+function zonesUI() {
+  const zs = L.zones || [], sel = zs.find(q => q.id === zoneSel);
+  if (!V.lvListed) { V.lvListed = true; api('/api/fs?path=' + encodeURIComponent(FS.root + '/levels')).then(r => { levelNames = (r.items || []).filter(i => i.dir).map(i => i.name); if (mode === 'zones') drawLeft(); }).catch(() => {}); }
+  return [h('div', { class: 'kinds', style: { marginTop: '8px' } }, ...ZONE_KINDS.map(([id, label, c, hint]) => h('button', { class: zonePick === id ? 'on' : '', style: { '--kc': c }, title: hint, onclick: () => { zonePick = id; drawLeft(); } }, label))),
+    h('p', { class: 'note' }, 'Drag on the map to draw a zone (it snaps to tiles). Click one to edit it, right click removes it.'),
+    sel ? zonePanel(sel, levelNames.filter(n => n !== L.name), redo => { changed(); draw(); if (redo) drawLeft(); }, () => { L.zones = zs.filter(q => q !== sel); zoneSel = null; changed(); drawLeft(); draw(); })
+      : h('p', { class: 'note' }, `${zs.length} zone${zs.length === 1 ? '' : 's'}`)];
 }
 async function fillBgSel() {
   if (!V.bgSel) return;
@@ -290,6 +322,7 @@ async function exportLevel() {
   const tres = `[gd_resource type="TileSet" load_steps=3 format=3]\n\n[ext_resource type="Texture2D" path="${res}/tileset.png" id="1"]\n\n`
     + `[sub_resource type="TileSetAtlasSource" id="atlas"]\ntexture = ExtResource("1")\ntexture_region_size = Vector2i(${T}, ${T})\n${tiles.join('\n')}\n\n`
     + `[resource]\ntile_size = Vector2i(${T}, ${T})\n${TILESET_LAYERS}sources/0 = SubResource("atlas")\n`;
+  const zoneGd = (base => (base ? base + '/' : '') + 'sprites/_kiln/zone.gd')(res.replace(/(^|\/)levels\/[^/]+$/, ''));
   const tilesGd = (base => (base ? base + '/' : '') + 'sprites/_kiln/level_tiles.gd')(res.replace(/(^|\/)levels\/[^/]+$/, ''));
   // res is ".../levels/<name>": the background scene lives next door in ".../backgrounds/<scene>/"
   const base = res.replace(/(^|\/)levels\/[^/]+$/, '');
@@ -300,15 +333,18 @@ async function exportLevel() {
   const entExt = types.map(n => `[ext_resource type="PackedScene" path="${(base ? base + '/' : '')}sprites/${n}/${n}.tscn" id="${aid(n)}"]\n`).join('');
   const entNodes = ents.map(e => e.type === 'start' ? `[node name="PlayerStart" type="Marker2D" parent="."]\nposition = Vector2(${e.x}, ${e.y})\n\n`
     : `[node name="${e.name}_${count[e.name] = (count[e.name] || 0) + 1}" parent="." instance=ExtResource("${aid(e.name)}")]\nposition = Vector2(${e.x}, ${e.y})\n\n`).join('');
-  const tscn = `[gd_scene load_steps=${(bgRes ? 4 : 3) + types.length} format=3]\n\n[ext_resource type="TileSet" path="${res}/${L.name}.tres" id="1"]\n[ext_resource type="Script" path="${tilesGd}" id="3"]\n`
-    + (bgRes ? `[ext_resource type="PackedScene" path="${bgRes}" id="2"]\n` : '') + entExt + `\n[node name="${L.name}" type="Node2D"]\n\n`
+  const zones = L.zones || [];
+  const tscn = `[gd_scene load_steps=${(bgRes ? 4 : 3) + types.length + (zones.length ? 1 + zones.length : 0)} format=3]\n\n[ext_resource type="TileSet" path="${res}/${L.name}.tres" id="1"]\n[ext_resource type="Script" path="${tilesGd}" id="3"]\n`
+    + (zones.length ? `[ext_resource type="Script" path="${zoneGd}" id="zone"]\n` : '')
+    + (bgRes ? `[ext_resource type="PackedScene" path="${bgRes}" id="2"]\n` : '') + entExt + '\n' + zoneShapes(zones) + `[node name="${L.name}" type="Node2D"]\n\n`
     + (bgRes ? `[node name="Background" parent="." instance=ExtResource("2")]\nposition = Vector2(0, ${(L.rows * T) - (V.bgView?.h || L.rows * T)})\n\n` : '')
-    + `[node name="Tiles" type="TileMapLayer" parent="."]\ntexture_filter = 1\ntile_map_data = PackedByteArray(${tileMapData()})\ntile_set = ExtResource("1")\nscript = ExtResource("3")\n` + (entNodes ? '\n' + entNodes : '');
-  const json = { background: L.bg || null, entities: (L.ents || []).map(({ type, name, x, y }) => ({ type, name, x, y })), tile: T, cols: L.cols, rows: L.rows, tileset: 'tileset.png', tilesetCols: L.tsCols, solid: L.solid, kinds: Object.fromEntries(Object.entries(L.kinds || {}).filter(([, k]) => k)), cells: L.cells, source: 'kiln' };
+    + `[node name="Tiles" type="TileMapLayer" parent="."]\ntexture_filter = 1\ntile_map_data = PackedByteArray(${tileMapData()})\ntile_set = ExtResource("1")\nscript = ExtResource("3")\n` + (entNodes ? '\n' + entNodes : '')
+    + (zones.length ? `\n[node name="Zones" type="Node2D" parent="."]\n\n` + zoneNodes(zones, base ? base + '/' : '', 'zone') : '');
+  const json = { background: L.bg || null, entities: (L.ents || []).map(({ type, name, x, y }) => ({ type, name, x, y })), tile: T, cols: L.cols, rows: L.rows, tileset: 'tileset.png', tilesetCols: L.tsCols, solid: L.solid, kinds: Object.fromEntries(Object.entries(L.kinds || {}).filter(([, k]) => k)), cells: L.cells, zones: zones.map(({ id, ...q }) => q), source: 'kiln' };
   try {
     await saveFiles(dir, [{ name: 'tileset.png', b64: toDataURL(tsImg) }, { name: `${L.name}.tres`, text: tres }, { name: `${L.name}.tscn`, text: tscn },
       { name: 'level.json', text: JSON.stringify(json) + '\n' }]);
-    await saveFiles('sprites/_kiln', [{ name: 'level_tiles.gd', text: LEVEL_TILES_GD }]).catch(() => {});
+    await saveFiles('sprites/_kiln', [{ name: 'level_tiles.gd', text: LEVEL_TILES_GD }, { name: 'zone.gd', text: ZONE_GD }]).catch(() => {});
     changed(); toast(`Saved to ${dir}/${g.root ? ' (Godot paths)' : ''}`, 'ok');
   } catch (e) { toast('Save failed: ' + e.message, 'bad'); }
 }

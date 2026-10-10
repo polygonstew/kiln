@@ -120,6 +120,7 @@ var _sel := 0
 var _typing := false
 
 func _ready() -> void:
+	add_to_group("kiln_hud")      # Kiln zones (message) find the HUD through this group
 	for n in _all(self):
 		if n.get_meta("kiln", "") == "pips":
 			for p in n.get_children():

@@ -104,3 +104,9 @@ Project + `level.json`: `kinds: { "<tile index>": "solid" | "oneway" | "slope_r"
 (`solid: [...]` is kept for old readers). TileSet: physics layer 0 (solid/one-way/slopes; one-way = `one_way = true`),
 custom data layer 0 `kind` (String) on every tile with a behaviour. Scene: the TileMapLayer runs `sprites/_kiln/level_tiles.gd`.
 
+## Level zones
+Project + `level.json`: `zones: [{ kind: checkpoint|door|message|deadly|event, x, y, w, h (level px), name, text, target (level name), once }]`.
+Scene: `Zones` Node2D with one Area2D per zone (centre position, RectangleShape2D) running `sprites/_kiln/zone.gd`
+(exports kind, event_name, target = that level's .tscn, text, once). Actors with Workshop role Player get group `player`;
+hud.gd joins group `kiln_hud`; juice.gd joins `kiln_actors`.
+

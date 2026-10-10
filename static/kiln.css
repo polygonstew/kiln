@@ -461,3 +461,4 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .kinds { display: flex; flex-wrap: wrap; gap: 4px; }
 .kinds button { font-size: 11px; padding: 3px 7px; background: #151514; border: 1px solid var(--line2); border-left: 3px solid var(--kc); color: var(--dim); border-radius: 2px; cursor: pointer; }
 .kinds button.on { color: var(--fg, #eee); background: #232320; border-color: var(--kc); }
+.zone-ed { border-top: 1px solid var(--line); margin-top: 8px; padding-top: 8px; } .zone-ed textarea { width: 100%; }
