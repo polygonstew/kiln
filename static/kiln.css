@@ -351,3 +351,12 @@ table.breakdown td.warn { color: var(--bad); } table.breakdown td.ok { color: va
 .dx-menu button:hover kbd { color: #120d04; }
 .dx-head { font: 9px var(--mono, monospace); letter-spacing: .3em; text-transform: uppercase; color: rgba(232,165,54,.65); padding: 6px 14px 2px; }
 .dx-sep { display: block; height: 1px; margin: 4px 10px; background: linear-gradient(90deg, rgba(232,165,54,.5), transparent); }
+.dx-keys { display: grid; place-items: center; }
+.dx-kbox { background: var(--dxbg); border: 1px solid rgba(232,165,54,.6); padding: 18px 22px 22px; min-width: 520px; max-width: 90vw; max-height: 86vh; overflow: auto;
+  clip-path: polygon(0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 18px 100%, 0 calc(100% - 18px)); animation: dxpop .16s ease-out; }
+.dx-ktitle { font: 700 15px var(--cond, sans-serif); letter-spacing: .3em; color: var(--dx2); border-bottom: 1px solid rgba(232,165,54,.4); padding-bottom: 8px; margin-bottom: 10px; display: flex; align-items: baseline; gap: 14px; }
+.dx-ktitle small { font: 10px var(--mono, monospace); letter-spacing: .25em; color: rgba(232,165,54,.6); }
+.dx-kcols { display: flex; gap: 34px; flex-wrap: wrap; }
+.dx-kcol { min-width: 240px; }
+.dx-krow { display: flex; gap: 12px; padding: 3px 0; font: 12px var(--cond, sans-serif); color: #e9d9b8; align-items: baseline; }
+.dx-krow kbd { min-width: 110px; font: 10px var(--mono, monospace); color: var(--dx); }

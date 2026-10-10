@@ -119,7 +119,7 @@ function showMenu(e) {
   const P = providers[current()]?.() || {};
   if (P.tools?.length) items.push({ head: 'Tools' }, ...P.tools.slice(0, 8), null);
   if (P.guides?.length) items.push({ head: 'Guides' }, ...P.guides.slice(0, 6), null);
-  items.push({ head: 'Go to' }, ...areas().filter(a => a.id !== current()).map(a => ({ label: a.label, key: a.key, run: () => emit('tab', a.id) })), null,
+  items.push({ label: 'Controls and shortcuts', key: '?', run: showKeys }, null, { head: 'Go to' }, ...areas().filter(a => a.id !== current()).map(a => ({ label: a.label, key: a.key, run: () => emit('tab', a.id) })), null,
     { label: 'Command wheel', key: 'Shift+A', run: () => open(e.clientX, e.clientY, false) }, { head: 'Shift + right-click: browser menu' });
   while (items.length && items[items.length - 1] === null) items.pop();
   const box = h('div', { class: 'dx-menu' }, ...items.map(it => it === null ? h('i', { class: 'dx-sep' })
@@ -139,3 +139,53 @@ function closeMenu() {
   M.remove(); M = null;
   window.removeEventListener('pointerdown', outside, true); window.removeEventListener('keydown', escMenu, true);
 }
+
+/* --------------------------------------------------------- shortcuts (?) ---- */
+// Press ? anywhere for the keys and mouse moves that work in the area you're in, plus the global ones.
+const KEYS = {
+  '*': [['1 – 6', 'Switch area'], ['Shift+A', 'Command wheel (area / tool / guide)'], ['Right-click', 'Kiln menu (Shift+right-click: browser menu)'], ['?', 'This list'], ['Esc', 'Close wheel, menu or this list']],
+  files: [['Enter', 'Open'], ['F2', 'Rename'], ['Delete', 'Move to trash'], ['Backspace', 'Up a folder'], ['Drop files', 'Copy them into this folder']],
+  forge: [['Ctrl+V', 'Paste an image as the source'], ['Click source', 'Pick the background colour to remove'], ['Drop on guide box', 'Set a guide image'], ['Right-click a result', 'Use as source / as guide']],
+  animate: [['Left click', 'Add pixels'], ['Right click', 'Remove pixels'], ['Mouse wheel', 'Roll through the palette'], ['Middle click', 'Pick the colour under the cursor'], ['Ctrl/Alt+wheel', 'Zoom'],
+    ['B E G I L R M V', 'Pencil, eraser, fill, pick, line, rectangle, select, move'], ['Shift+drag (R)', 'Filled rectangle'], ['O', 'Onion skin'], ['H', 'Flip frame'], ['N', 'Copy frame'],
+    [', and .', 'Previous / next frame'], ['Ctrl+Z / Ctrl+Y', 'Undo / redo'], ['Ctrl+C / Ctrl+V', 'Copy / paste selection'], ['Enter or Esc', 'Drop the selection'], ['Delete', 'Clear the selection'], ['Drop a sheet', 'Cut it into frames']],
+  scenes: [['← →', 'Pan the camera'], ['Space', 'Play / pause the scroll']],
+  hud: [['Arrows', 'Nudge the widget (Shift: 8 px)'], ['Ctrl+D', 'Duplicate widget'], ['Delete', 'Remove widget']],
+  stage: [['← →', 'Walk'], ['Shift', 'Run'], ['Space or ↑', 'Jump'], ['↓', 'Crouch'], ['Z', 'Attack'], ['X', 'Hurt'], ['K', 'Death / back to idle']],
+};
+export function registerKeys(area, list) { KEYS[area] = list; }
+let K = null;
+function showKeys() {
+  if (K) return closeKeys();
+  const area = current(), name = areas().find(a => a.id === area)?.label || '';
+  const col = (title, list) => h('div', { class: 'dx-kcol' }, h('div', { class: 'dx-head' }, title), ...list.map(([k, d]) => h('div', { class: 'dx-krow' }, h('kbd', {}, k), h('span', {}, d))));
+  K = h('div', { class: 'dx-veil dx-keys', onpointerdown: e => { if (e.target === K) closeKeys(); } },
+    h('div', { class: 'dx-kbox' }, h('div', { class: 'dx-ktitle' }, 'CONTROLS', h('small', {}, name.toUpperCase())),
+      h('div', { class: 'dx-kcols' }, KEYS[area] ? col(name, KEYS[area]) : null, col('Everywhere', KEYS['*']))));
+  document.body.append(K);
+}
+function closeKeys() { K?.remove(); K = null; }
+window.addEventListener('keydown', e => {
+  if (e.target.matches?.('input,textarea,select,[contenteditable]') || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.key === '?') { e.preventDefault(); showKeys(); }
+  else if (e.key === 'Escape' && K) { e.stopPropagation(); closeKeys(); }
+}, true);
+
+/* ------------------------------------------------------- shared tooltips ---- */
+// Buttons whose label is plain but whose effect isn't obvious get a tip here, once, for every area.
+const TIPS = {
+  'Bookmark this folder': 'Add this folder to Places in the sidebar', 'Folder': 'Make a new folder here', 'Import': 'Copy files from your computer into this folder',
+  'Generate': 'Make new images from the description (they appear under Generated)', 'Clear list': 'Forget the Generated list (image files are kept)',
+  'New actor in Animate': 'Start an actor from this sprite: its look, palette, size and scale become the reference', 'Add as frame': 'Add this sprite to the actor open in Animate',
+  'Save PNG': 'Save this sprite into the asset folder', 'Save palette': 'Save these colours as a palette file (palettes/)',
+  'Blank': 'Insert an empty frame after this one', 'Delete frame': 'Remove this frame (Ctrl+Z brings it back)', 'Delete anim': 'Remove this whole animation (asks first)',
+  'New': 'Start a new one (the current one is autosaved)', 'Open': 'Open one you saved before', 'Delete': 'Delete this (asks first)',
+  'Described layer': 'A layer drawn from your words, matched to the layers behind it', 'Image…': 'Use an image file as a layer',
+  'Bar': 'Add a health/stamina bar', 'Gauge': 'Add a round or segmented gauge', 'Pips': 'Add a row of icons (flasks, hearts)', 'Panel': 'Add a nine-slice panel',
+  'Slot': 'Add an item slot', 'Portrait': 'Add a portrait frame', 'Counter': 'Add a number counter (souls, coins)', 'Text': 'Add a text label in a bitmap font',
+  'Save font for engines': 'Write the bitmap font as .fnt + .png (Godot loads it as a FontFile)',
+};
+const tip = el => { if (el.title || el.dataset.tip) return; const t = TIPS[el.textContent.trim()] || (/^Save /.test(el.textContent.trim()) ? 'Save into the asset folder, ready for Godot' : null); if (t) el.title = t; el.dataset.tip = 1; };
+new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes) if (n.nodeType === 1) { if (n.matches('button')) tip(n); n.querySelectorAll?.('button').forEach(tip); } })
+  .observe(document.documentElement, { childList: true, subtree: true });
+document.querySelectorAll('button').forEach(tip);

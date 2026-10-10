@@ -41,7 +41,9 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
   Original plan: IP-Adapter SD1.5 (diffusers `load_ip_adapter`, h94/IP-Adapter
   `ip-adapter_sd15.safetensors` + its image encoder, ~2.5 GB) in the fast engine, and optionally ControlNet
   OpenPose. Check RAM first.
-- [ ] **Tooltip and shortcut pass.** Every button and control in every tab gets a `title`. Press `?` for a
+- [x] **Tooltip and shortcut pass.** DONE: `?` overlay (wheel.js `KEYS`, `registerKeys`), "Controls and shortcuts" in the right-click menu,
+  and a shared `TIPS` table that titles plain buttons in every area. What remains untitled is self-labelled (size chips, presets).
+  Original plan: Every button and control in every tab gets a `title`. Press `?` for a
   shortcuts overlay (black-and-gold HUD style), generated from a shared registry.
 - [ ] **Quick switcher, Ctrl+K**: fuzzy search across actors, scenes, HUDs, files, tabs and wheel actions.
 - [ ] **Fun tools in Animate**: a "juice" preview (hit flash, squash and stretch, screen shake) on the live
@@ -69,3 +71,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
   per-job reload by 2.5–4×. Next run: a resident "Fast" engine.
 - 2026-10-10: run 2. Fast engine live (127.0.0.1:8511, loads on first use, unloads after 15 min idle). Forge → Model → Fast: ~35 s at 384 vs ~2 min.
 - 2026-10-10: run 3. IP-Adapter tried and rejected (weak likeness on this model, 6.6 GB RAM); 2.4 GB download removed.
+- 2026-10-10: run 4. `?` controls overlay per area plus shared button tooltips (wheel.js).
