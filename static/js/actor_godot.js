@@ -6,6 +6,7 @@
 //   JUICE_GD        sprites/_kiln/juice.gd: hit_flash, squash, shake, hurt, shoot, box following
 //   PROJECTILE_GD   sprites/_kiln/projectile.gd    FLASH_SHADER  sprites/_kiln/hit_flash.gdshader
 import { bbox } from './core.js';
+import { BRAINS, defaultBrain } from './brains.js';
 
 // Godot 4 drop-in: CharacterBody2D (origin at the feet) + AnimatedSprite2D + body hitbox, with the same
 // "juice" the Animate preview shows: hit_flash(), squash(), shake() from sprites/_kiln/juice.gd.
@@ -108,12 +109,23 @@ func shake(strength: float = 4.0, duration: float = 0.3) -> void:
 @export var knockback := 60.0              ## how far a hit pushes this actor (px/s)
 @export var invulnerable_time := 0.6       ## seconds of blinking safety after a hit
 @export var projectile: PackedScene        ## what shoot() fires (a Kiln projectile scene)
+@export var max_health := 3                ## hits it takes; the player's health also drives a Kiln HUD
+var health := -1
 var invulnerable := false
+var dead := false
 signal hurt_started(from_position: Vector2)
+signal died
 
-## Take a hit: flash, squash, shake, knockback away from the hit, blink while invulnerable, play "hurt".
-func hurt(from_position: Vector2 = Vector2.INF) -> void:
-\tif invulnerable:
+## Take a hit: lose health, flash, squash, shake, knockback away from the hit, blink while invulnerable, play "hurt".
+func hurt(from_position: Vector2 = Vector2.INF, damage: int = 1) -> void:
+\tif invulnerable or dead:
+\t\treturn
+\tif health < 0:
+\t\thealth = max_health
+\thealth = maxi(0, health - damage)
+\t_tell_hud()
+\tif health == 0:
+\t\tdie()
 \t\treturn
 \thurt_started.emit(from_position)
 \thit_flash()
@@ -132,6 +144,32 @@ func hurt(from_position: Vector2 = Vector2.INF) -> void:
 \tblink.kill()
 \tsprite.modulate.a = 1.0
 \tinvulnerable = false
+
+## Out of health: play "death" (if it has one), then enemies disappear and the player's level restarts.
+func die() -> void:
+\tdead = true
+\tdied.emit()
+\tvelocity = Vector2.ZERO
+\tif sprite.sprite_frames.has_animation("death"):
+\t\tsprite.sprite_frames.set_animation_loop("death", false)
+\t\tsprite.play("death")
+\t\tawait sprite.animation_finished
+\tif is_in_group("player"):
+\t\tget_tree().reload_current_scene()
+\telse:
+\t\tqueue_free()
+
+## Heal (or set) health; the player's HUD follows.
+func heal(amount: int = 1) -> void:
+\thealth = mini(max_health, maxi(health, 0) + amount)
+\t_tell_hud()
+
+func _tell_hud() -> void:
+\tif not is_in_group("player"):
+\t\treturn
+\tvar hud := get_tree().get_first_node_in_group("kiln_hud")
+\tif hud and hud.has_method("set_health"):
+\t\thud.set_health(float(health) / max_health)
 
 func _back_to_idle() -> void:
 \tif sprite.sprite_frames.has_animation("idle"):
@@ -186,7 +224,7 @@ func _on_hit(other: Node) -> void:
 \t\treturn
 \thit.emit(t)
 \tif t.has_method("hurt"):
-\t\tt.hurt(global_position)
+\t\tt.hurt(global_position, damage)
 \tif not pierce:
 \t\tqueue_free()
 `;
@@ -202,20 +240,27 @@ void fragment() {
 `;
 export function actorScene(a, res, hb) {
   const start = (a.anims.find(n => /idle|stand/i.test(n.name)) || a.anims[0]).name;
-  const shared = res.replace(/\/[^/]+$/, '') + '/_kiln', R = a.react || {}, pj = (a.projectiles || [])[0];
+  const shared = res.replace(/\/[^/]+$/, '') + '/_kiln', R = a.react || {}, pj = (a.projectiles || [])[0], br = brainOf(a);
   return `[gd_scene load_steps=${pj ? 8 : 7} format=3]\n\n[ext_resource type="SpriteFrames" path="${res}/${a.name}.tres" id="1"]\n`
     + (pj ? `[ext_resource type="PackedScene" path="${res}/projectile_${pj.name}.tscn" id="4"]\n` : '')
+    + (br ? `[ext_resource type="Script" path="${shared}/brains/${br}.gd" id="5"]\n` : '')
     + `[ext_resource type="Script" path="${shared}/juice.gd" id="2"]\n[ext_resource type="Shader" path="${shared}/hit_flash.gdshader" id="3"]\n\n`
     + `[sub_resource type="ShaderMaterial" id="flash"]\nshader = ExtResource("3")\nshader_parameter/flash = 0.0\nshader_parameter/flash_color = Color(1, 1, 1, 1)\n\n`
     + `[sub_resource type="RectangleShape2D" id="body"]\nsize = Vector2(${hb.w}, ${hb.h})\n\n`
     + `[sub_resource type="RectangleShape2D" id="hurt"]\nsize = Vector2(${hb.w}, ${hb.h})\n\n`
-    + `[node name="${a.name}" type="CharacterBody2D"${(a.role || (a.kind === 'creature' ? 'enemy' : 'hero')) === 'hero' ? ' groups=["player"]' : ''}]\nscript = ExtResource("2")\nknockback = ${R.knockback ?? 60}.0\ninvulnerable_time = ${R.iframes ?? 0.6}\n${pj ? 'projectile = ExtResource("4")\n' : ''}`
+    + `[node name="${a.name}" type="CharacterBody2D"${(a.role || (a.kind === 'creature' ? 'enemy' : 'hero')) === 'hero' ? ' groups=["player"]' : ''}]\nscript = ExtResource("2")\nknockback = ${R.knockback ?? 60}.0\ninvulnerable_time = ${R.iframes ?? 0.6}\nmax_health = ${R.health ?? 3}\n${pj ? 'projectile = ExtResource("4")\n' : ''}`
     + (Object.keys(boxesOf(a)).length ? `metadata/boxes = ${JSON.stringify(boxesOf(a))}\n` : '') + '\n'
     + `[node name="Sprite" type="AnimatedSprite2D" parent="."]\nmaterial = SubResource("flash")\ntexture_filter = 1\nposition = Vector2(0, ${-a.h / 2})\nsprite_frames = ExtResource("1")\nanimation = &"${start}"\nautoplay = "${start}"\n\n`
     + `[node name="Body" type="CollisionShape2D" parent="."]\nposition = Vector2(${hb.x + hb.w / 2 - a.w / 2}, ${hb.y + hb.h / 2 - a.h})\nshape = SubResource("body")\n\n`
     + `[node name="Hurtbox" type="Area2D" parent="."]\n\n[node name="Shape" type="CollisionShape2D" parent="Hurtbox"]\nposition = Vector2(${hb.x + hb.w / 2 - a.w / 2}, ${hb.y + hb.h / 2 - a.h})\nshape = SubResource("hurt")\n\n`
-    + `[node name="Hitbox" type="Area2D" parent="."]\n`;
+    + `[node name="Hitbox" type="Area2D" parent="."]\n`
+    + (br ? `\n[node name="Brain" type="Node" parent="."]\nscript = ExtResource("5")\n` + BRAINS[br].params.map(([k, , , , , d]) => {
+      const v = (a.brainParams || {})[k] ?? d;
+      return `${k} = ${k === 'turn_at_ledges' ? !!v : Number.isInteger(v) ? v.toFixed(1) : v}\n`;
+    }).join('') : '');
 }
+// the behaviour this actor runs: chosen in the Workshop, or the default for its role ('' = none)
+export const brainOf = a => { const b = a.brain ?? defaultBrain(a.role || (a.kind === 'creature' ? 'enemy' : 'hero')); return BRAINS[b] ? b : ''; };
 // per-frame boxes in the actor's local space ([centre x, centre y, w, h], feet at 0): { anim: [ {hit, hurt} | {} per frame ] }
 export function boxesOf(a) {
   const out = {}, loc = (r, f) => [r.x + r.w / 2 - f.width / 2, r.y + r.h / 2 - a.h, r.w, r.h];

@@ -9,7 +9,8 @@ import { SETS, makeTemplate, readTemplate, download as downloadSheet } from './s
 import { registerWheel, registerMenu } from './wheel.js';
 import { loadOwners, claim } from './owners.js';
 import { openWorkshop, facesFiles } from './workshop.js';
-import { actorScene, projectileScene, boxesOf, JUICE_GD, PROJECTILE_GD, FLASH_SHADER } from './actor_godot.js';
+import { actorScene, projectileScene, boxesOf, brainOf, JUICE_GD, PROJECTILE_GD, FLASH_SHADER } from './actor_godot.js';
+import { BRAIN_GD } from './brains.js';
 import { saveFiles, S as FS } from './files.js';
 
 const ANIM_NAMES = ['idle', 'walk', 'run', 'jump', 'fall', 'attack', 'hurt', 'death', 'crouch', 'cast', 'climb', 'dash', 'block', 'spin'];
@@ -861,6 +862,12 @@ async function exportActor() {
     files.push({ name: `${a.name}.tscn`, text: actorScene(a, res, man.hitbox) });
     await saveFiles('sprites/_kiln', [{ name: 'juice.gd', text: JUICE_GD }, { name: 'hit_flash.gdshader', text: FLASH_SHADER }, { name: 'projectile.gd', text: PROJECTILE_GD }]).catch(() => {});
     for (const pj of a.projectiles || []) files.push({ name: `projectile_${pj.name}.tscn`, text: projectileScene(a, res, pj) });
+    // the actor's brain script: written once, then it is yours to edit (Logic) and never overwritten
+    const br = brainOf(a);
+    if (br) {
+      const have = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/sprites/_kiln/brains')).catch(() => ({ items: [] }));
+      if (!(have.items || []).some(i => i.name === br + '.gd')) await saveFiles('sprites/_kiln/brains', [{ name: br + '.gd', text: BRAIN_GD[br] }]).catch(() => {});
+    }
   }
   if (a.identity?.ref) files.push({ name: 'reference.png', b64: a.identity.ref });
   files.push(...await facesFiles(a));
