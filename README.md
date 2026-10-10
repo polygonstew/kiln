@@ -5,6 +5,11 @@ into sprites, animations, parallax scenes, tile levels, HUDs and bitmap fonts, a
 Godot reads directly (`.tres`/`.tscn` with `res://` paths when the asset folder is inside a Godot project).
 Its first rule is **consistency**: characters and styles stay on-model across everything made after them.
 
+**Direction (user, 2026-10-10):** Kiln is the *shell* a game is built in, sitting on top of Godot. Godot stays the
+engine and runtime; Kiln is the authoring layer (art, actors, boxes, levels, HUD, then logic, dialogue, cutscenes),
+and every part feeds the others (an actor's faces drive the HUD portrait, its boxes drive combat, a scene becomes a
+level background). Everything it writes is plain Godot (`.tscn`, `.tres`, `.gd`), so a project never depends on Kiln.
+
 - **Open:** http://192.168.0.105:8510 on the LAN (`http://localhost:8510` locally). Guide: **`/help`** (or F1, Help menu)
 - **Services:** `kiln` (port 8510), `kiln-fast` (8511, local Fast generator), `comfyui` (8188, local models)
 - **Stack:** `server.py` (Python stdlib only) + `static/` (vanilla ES modules, no build step)
