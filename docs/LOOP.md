@@ -38,6 +38,17 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
    below, add a line to the Log, and update `docs/RESUME.md` if something structural changed.
    Keep replies short: the user wants minimal token use.
 
+## Stay understandable (user, 2026-10-10: "we do not want codebase comprehension loss")
+Kiln must stay small and plain enough for a person to read and debug by hand. Every run:
+- **One job per module**, each with a header comment saying what it is for. Nothing over 1000 lines: split
+  before adding (`python3 tools/map.py` prints the map and fails past the limit; smoke.py runs it).
+- **New feature → its own module** when it is more than a few functions (workshop.js, actor_godot.js, hud_godot.js).
+- **Delete before you add:** remove dead code, duplicate helpers and unused options you touch. Prefer one
+  obvious way over several clever ones; no frameworks, no build step, no clever metaprogramming.
+- **Keep the map current:** docs/DEVELOPING.md code map and FORMATS.md change in the same commit as the code.
+- **The games stay understandable too:** the GDScript Kiln writes is short, commented, one job per script, plain
+  Godot nodes, no hidden runtime: a Godot developer can open any generated file and follow it.
+
 ## Backlog (top first)
 
 **User, 2026-10-10: "create tools that are not available that make things flow easier". These come first, top to bottom.**
@@ -218,3 +229,4 @@ override everything; each gets a Help section and a Godot export):**
 - 2026-10-10: user asked for collapsible sections (logged above, GUI pass later); continuing with Actor workshop slice 2.
 - 2026-10-10: Actor workshop slice 2 shipped (reactions, projectiles, HUD faces). Next: Colliders.
 - 2026-10-10: Colliders slice 1 (actor boxes): per-frame hit/hurt boxes in Animate (Boxes, Guess hitboxes, Copy → next) → Hitbox/Hurtbox Area2D driven by juice.gd + manifest boxes. Verified in Godot (hit → hurt, flip mirrors). Next colliders: level one-way/ladder/hazard/trigger tiles.
+- 2026-10-10: comprehension guard: animate.js split (Godot export → actor_godot.js, 1186 → 959 lines), tools/map.py (code map, 1000-line limit, headers) wired into smoke.py, rules above.

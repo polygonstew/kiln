@@ -43,5 +43,8 @@ with sync_playwright() as p:
     if not pg.locator('.ic').count(): problems.append('desk: no app icons')
     b.close()
 
+import subprocess, os
+if subprocess.run([sys.executable, os.path.join(os.path.dirname(os.path.abspath(__file__)), 'map.py')], capture_output=True).returncode:
+    problems.append('code map: a module is over the size limit or has no header (run python3 tools/map.py)')
 print('\n'.join(['', 'PROBLEMS:'] + ['  - ' + x for x in problems]) if problems else '\nall clean')
 sys.exit(1 if problems else 0)

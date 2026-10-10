@@ -21,6 +21,15 @@ delete them (`kiln/<kind>-zz_*.json`, `sprites/zz_*`, …) afterwards. A fresh b
 the blank actor `new_actor`, the HUD `hud`; nothing saves until something is edited, and the name guard
 (`owners.js`) renames clashes, but tests that edit must still use their own items.
 
+## Code map
+`python3 tools/map.py` prints every module with its size and purpose (from its header comment) and fails if one
+passes 1000 lines or has no header. It is the code map: run it instead of keeping a hand-written list here.
+Rules for keeping Kiln readable are in CLAUDE.md ("Stay understandable"). Rough shape:
+- **Shell:** app.js (tabs), core.js (DOM, API, pixel pipeline), menubar.js, wheel.js, quick.js, sendto.js, owners.js
+- **Areas:** files, forge, animate (+ workshop, motion, sheets, slicer, player), scenes (+ procgen), levels, hud, stage, concepts
+- **Godot writers:** actor_godot.js (actor scene + juice.gd/projectile.gd), hud_godot.js, the export parts of scenes.js / levels.js
+- **Server:** server.py (stdlib): files, projects, generation queue, cloud budget, Godot plugin endpoints
+
 ## Adding an area
 
 1. `static/js/<area>.js` exporting `export const <area> = { id, title, key, mount(el), show() }`.
