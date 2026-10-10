@@ -18,6 +18,7 @@ var _base_scale := Vector2.ONE
 var _base_y := 0.0
 
 func _ready() -> void:
+\tadd_to_group("kiln_actors")      # level_tiles.gd hurts actors in this group on hazard tiles
 \t_base_scale = sprite.scale
 \t_base_y = sprite.position.y
 \t_hitbox = get_node_or_null("Hitbox")

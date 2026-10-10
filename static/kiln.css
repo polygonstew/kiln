@@ -386,7 +386,6 @@ table.breakdown td.warn { color: var(--bad); } table.breakdown td.ok { color: va
 .tileset { display: flex; flex-wrap: wrap; gap: 4px; }
 .tileset .tl { padding: 2px; border: 1px solid var(--line2); border-radius: 2px; cursor: pointer; line-height: 0; background: #151514; }
 .tileset .tl canvas { image-rendering: pixelated; }
-.tileset .tl.solid { box-shadow: inset 0 -3px 0 #e5534b; }
 .tileset .tl.on { border-color: var(--ember); outline: 1px solid var(--ember); }
 .layers .ly.dim { opacity: .45; }
 .layers .ly.drag-over { box-shadow: inset 0 2px 0 var(--ember); }
@@ -457,3 +456,8 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 @media (max-width: 900px) { .wk-body { grid-template-columns: 1fr; } }
 .wk-proj { border-top: 1px solid var(--line); padding: 8px 0 4px; }
 .wk-proj-h { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; } .wk-proj-h small { color: var(--faint); font: 11px var(--mono); }
+.tileset .tl.kind { box-shadow: inset 0 0 0 2px var(--kc); }
+.kindpick { margin-top: 8px; } .kindpick .fl { display: block; font-size: 11px; color: var(--dim); margin-bottom: 4px; }
+.kinds { display: flex; flex-wrap: wrap; gap: 4px; }
+.kinds button { font-size: 11px; padding: 3px 7px; background: #151514; border: 1px solid var(--line2); border-left: 3px solid var(--kc); color: var(--dim); border-radius: 2px; cursor: pointer; }
+.kinds button.on { color: var(--fg, #eee); background: #232320; border-color: var(--kc); }

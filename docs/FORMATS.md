@@ -98,3 +98,9 @@ Project: each animation stores `boxes: [ {hit:[{x,y,w,h}], hurt:[…]} | null pe
 Export: `manifest.json` → `boxes: { anim: [ {hit:[[cx,cy,w,h]], hurt:[…]} | {} per frame ] }` in actor space
 (centre-based, feet at y = 0, x = 0 at the frame centre); the same dictionary is `metadata/boxes` on the actor scene root,
 read by `_kiln/juice.gd` to drive the `Hitbox` / `Hurtbox` Area2D shapes. No hurt boxes on a frame → the body box.
+
+## Level tile behaviours
+Project + `level.json`: `kinds: { "<tile index>": "solid" | "oneway" | "slope_r" | "slope_l" | "ladder" | "hazard" | "water" }`
+(`solid: [...]` is kept for old readers). TileSet: physics layer 0 (solid/one-way/slopes; one-way = `one_way = true`),
+custom data layer 0 `kind` (String) on every tile with a behaviour. Scene: the TileMapLayer runs `sprites/_kiln/level_tiles.gd`.
+
