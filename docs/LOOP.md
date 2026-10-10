@@ -77,10 +77,10 @@ override everything; each gets a Help section and a Godot export):**
   to the identity). **Hurt-state portrait faces like the Doom marine** (healthy, hurt, badly hurt, near death, dead, grin,
   look left/right) generated from the reference, wired to HUD portraits: `hud.gd set_health()` switches the face.
   **Projectiles**: sprite + flight animation + impact, speed/gravity/lifetime, exported as a scene + script.
-- [ ] **Colliders**: per-animation-frame hitboxes and hurtboxes on actors (attack frames get hitboxes), drawn in Animate;
+- [x] **Colliders** DONE 2026-10-10 (actor boxes, tile behaviours, zones): per-animation-frame hitboxes and hurtboxes on actors (attack frames get hitboxes), drawn in Animate;
   level extras: one-way platforms, ladders, hazards (spike tiles), trigger areas. Export: Area2D/CollisionShape2D per frame
   driven by the AnimatedSprite2D frame, and level Area2D nodes.
-- [ ] **Systems / Logic** (a tab) with an **in-house GDScript editor** (user ask): syntax colours, line numbers, Kiln's API
+- [x] **Systems / Logic** DONE 2026-10-10 (brains, health, Logic tab + GDScript editor; next: visual rule blocks?) (a tab) with an **in-house GDScript editor** (user ask): syntax colours, line numbers, Kiln's API
   hints, and checking with the real Godot here (`godot --headless --check-only`) so errors show before the game runs: ready-made behaviours as small editable GDScript: platformer player controller (speed,
   jump, coyote time, dash, attack), enemy AI (patrol, chase, attack range), health/damage/knockback/i-frames, pickups,
   doors/switches/triggers, save points. Presets with sliders; an "edit the code" view to override. Attach to actors/levels.
@@ -235,4 +235,4 @@ override everything; each gets a Help section and a Godot export):**
 - 2026-10-10: Systems slice 1: health/death/heal in juice.gd (player → HUD set_health), brains.js (player platformer, patrol, flyer GDScript) picked in Workshop → Brain node; brain scripts written once (user-editable). Played in Godot: run, jump 42/40 px, patrol, contact damage, enemy death. Next: Logic tab = GDScript editor (+ godot --check-only endpoint).
 - 2026-10-10: Logic tab (logic.js + gdedit.js): every .gd in the asset folder, GDScript editor (highlight, tab indents, auto-indent, Ctrl+/ , Ctrl+S), Godot --check-only on save via POST /api/godot/check (scratch project symlinked to the assets), Kiln reference panel. Tested.
 - 2026-10-10 BUG (user screenshot): a 454x621 actor pushed Animate off-screen, tabs gone, could not scroll up. Causes: my `#v-animate {position: relative}` (workshop CSS) overrode `.view {position:absolute}`; Fit never went below 1x; `.viewport` place-items:center made overflow unreachable. Fixed: rule removed, core.fitZoom (scales below 1x) used by Animate/player/Files/Forge/Levels, `safe center`, html/body/#views overflow: clip, view rows minmax(0,1fr). Also: opening an actor marked it dirty and autosaved it (rewrote the user's file, identical bytes): now opened() never saves. RULE: never put position on a .view; overlays go inside it as they are.
-
+- 2026-10-10: loop run 22 (bug hunt: Forge). Fast generation OK (94 s for 2 at 384/4 steps; likeness weak = model). Found: a sprite sheet sent to Forge was squashed into one 48 px sprite with no way out → Forge now counts poses on the source (keyed, 96 px tall) and offers "Looks like N poses: cut into frames" (slice-sheet now also takes {url, name}). Known noise: 404 for /api/project?id=style when no style is saved. Next hunt: Animate. Backlog top: Dialogue + lore.

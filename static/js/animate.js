@@ -57,7 +57,7 @@ async function drain() {
     const [k, d] = pending.shift();
     if (k === 'forge') fromForge(d);
     if (k === 'open') await openActorDir(d);
-    if (k === 'slice') sliceInto(rawURL(d), d.split('/').pop().replace(/\.\w+$/, ''));
+    if (k === 'slice') typeof d === 'string' ? sliceInto(rawURL(d), d.split('/').pop().replace(/\.\w+$/, '')) : sliceInto(d.url, d.name);
   }
 }
 

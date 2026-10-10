@@ -2,12 +2,13 @@
 // Two modes: a new thing (sets up an actor's identity), or more of an existing actor,
 // where the reference, palette, frame size and pixel scale are locked so it stays on-model.
 import { $, h, api, toast, emit, on, pref, clamp, field, range, select, check, seg, imgData, toCanvas, toDataURL, hex, rgb, luma,
-  PALETTES, HARDWARE, pixelize, rawURL, bbox, newImg, resizeNN, fitZoom } from './core.js';
+  PALETTES, HARDWARE, pixelize, rawURL, bbox, newImg, resizeNN, fitZoom, keyBackground } from './core.js';
 import { enqueue, estimate, fmtSecs, Q, budgetTag } from './queue.js';
 import { icon } from './icons.js';
 import { saveFiles } from './files.js';
 import { STYLE, stylePrompt, styleAvoid } from './style.js';
 import { registerWheel, registerMenu } from './wheel.js';
+import { components } from './slicer.js';
 
 const KINDS = [
   ['character', 'Character', 'full body character, standing, whole figure visible'],
@@ -36,7 +37,7 @@ const st = Object.assign({
 }, pref.get('forge', {}));
 const save = () => pref.set('forge', st);
 let results = pref.get('forge.results', []);     // [{url, seed, prompt, engine, for, w}]
-let srcURL = null, src = null, out = null, outPal = [], outInfo = null, customPal = null, mounted = false, V = {};
+let srcLabel = '', srcURL = null, src = null, out = null, outPal = [], outInfo = null, customPal = null, mounted = false, V = {};
 let pending = null;
 let guide = null;   // optional guide image (data URL, ≤512, on white): shape/design reference for a NEW thing
 let inbox = [];    // images just saved to ~/Downloads (from any site), newest first
@@ -314,8 +315,14 @@ setInterval(async () => {
   if (sig !== inbox.map(i => i.url).join()) { const fresh = r.items.filter(i => !inbox.some(o => o.url === i.url)); inbox = r.items; drawResults(); if (fresh.length && inbox.length) toast(`New image from Downloads: ${fresh[0].name}`); }
 }, 4000);
 async function useResult(r) { await setSource(r.url, r.prompt); drawResults(); }
+// separate figures in a picture: shrink it to 96 px tall, key out the background, count the blobs
+function countPoses(im) {
+  const k = 96 / im.height, small = keyBackground(resizeNN(im, Math.max(1, Math.round(im.width * k)), 96), 40);
+  const im2 = small.img || small;
+  return components(im2, 3, .15).flat().length;
+}
 async function setSource(url, label) {
-  try { src = await imgData(url); srcURL = url; keyAt = null; run(); } catch { toast('Could not load that image', 'bad'); }
+  try { src = await imgData(url); srcURL = url; srcLabel = (label || '').replace(/\.\w+$/, '').slice(0, 24); keyAt = null; run(); } catch { toast('Could not load that image', 'bad'); }
 }
 function loadLocal(f) { const r = new FileReader(); r.onload = () => setSource(r.result, f.name); r.readAsDataURL(f); }
 let keyAt = null;
@@ -401,6 +408,9 @@ function paint() {
   } else if (out) {
     const H = HARDWARE[st.hw], ok = outPal.length <= H.sprite;
     V.fits.replaceChildren(h('span', { style: { color: ok ? 'var(--ok)' : 'var(--warn)' } }, ok ? `Fits ${H.name}` : `Over ${H.name} limit`), ` · ${outPal.length}/${H.sprite} colours + transparent`);
+    // a wide picture of several separate figures is a sprite sheet: squashing it into one sprite is never what you want
+    const poses = src && src.width / src.height >= 1.8 ? countPoses(src) : 0;
+    if (poses >= 3) V.fits.append(' · ', h('button', { class: 'btn sm go', title: 'Open it in Animate\'s sheet cutter: one frame per pose, all on the same baseline', onclick: () => emit('slice-sheet', { url: srcURL, name: srcLabel || 'sheet' }) }, `Looks like ${poses} poses: cut into frames`));
   } else V.fits.textContent = 'Generate something, or open / paste an image to pixelize';
 }
 
