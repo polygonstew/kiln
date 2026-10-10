@@ -84,6 +84,14 @@ override everything; each gets a Help section and a Godot export):**
   hints, and checking with the real Godot here (`godot --headless --check-only`) so errors show before the game runs: ready-made behaviours as small editable GDScript: platformer player controller (speed,
   jump, coyote time, dash, attack), enemy AI (patrol, chase, attack range), health/damage/knockback/i-frames, pickups,
   doors/switches/triggers, save points. Presets with sliders; an "edit the code" view to override. Attach to actors/levels.
+- [ ] **Toolsets (user asked 2026-10-10 "have you considered toolsets?"), in this order:**
+  1. **Snapshots**: every save keeps earlier versions (kiln/history/, throttled, size-capped); "History…" to restore. (A test once lost the user's scene.)
+  2. **Retro sound effects**: sfxr-style generator (jump, coin, hit, explosion, shoot) → .wav; actors play them on hurt/shoot/jump/die.
+  3. **VFX sprites**: procedural hit sparks, slashes, dust, explosions, pickups sparkle → SpriteFrames; used by hurt/projectile impact.
+  4. **Autotile / terrains**: from 1–3 tiles build a Godot terrain set (edges, corners) so Levels paints walls that join up.
+  5. **Doctor**: check the asset folder (oversized sprites, too many colours, missing files/refs, unused files) with one-click fixes.
+  6. **Items database**: items with icon, stats, text → Godot Resources, feeding HUD inventory and pickups.
+  7. **2D lighting**: normal maps from sprites for Godot lights (CanvasTexture), torch/lamp presets.
 - [ ] **Dialogue + lore**: dialogue trees (lines, choices, conditions, item checks) for the HUD dialogue box, a lore bible
   (characters, places, factions) and a writing assistant (free text engines first, per the AI cost rules; no model names
   in the UI). Export: JSON + a runner that drives `hud.gd say()`.
@@ -236,3 +244,5 @@ override everything; each gets a Help section and a Godot export):**
 - 2026-10-10: Logic tab (logic.js + gdedit.js): every .gd in the asset folder, GDScript editor (highlight, tab indents, auto-indent, Ctrl+/ , Ctrl+S), Godot --check-only on save via POST /api/godot/check (scratch project symlinked to the assets), Kiln reference panel. Tested.
 - 2026-10-10 BUG (user screenshot): a 454x621 actor pushed Animate off-screen, tabs gone, could not scroll up. Causes: my `#v-animate {position: relative}` (workshop CSS) overrode `.view {position:absolute}`; Fit never went below 1x; `.viewport` place-items:center made overflow unreachable. Fixed: rule removed, core.fitZoom (scales below 1x) used by Animate/player/Files/Forge/Levels, `safe center`, html/body/#views overflow: clip, view rows minmax(0,1fr). Also: opening an actor marked it dirty and autosaved it (rewrote the user's file, identical bytes): now opened() never saves. RULE: never put position on a .view; overlays go inside it as they are.
 - 2026-10-10: loop run 22 (bug hunt: Forge). Fast generation OK (94 s for 2 at 384/4 steps; likeness weak = model). Found: a sprite sheet sent to Forge was squashed into one 48 px sprite with no way out → Forge now counts poses on the source (keyed, 96 px tall) and offers "Looks like N poses: cut into frames" (slice-sheet now also takes {url, name}). Known noise: 404 for /api/project?id=style when no style is saved. Next hunt: Animate. Backlog top: Dialogue + lore.
+- 2026-10-10: user screenshot: still cut off. Cause: their tab was open from before the fix (a page keeps the code it loaded). Added /api/status build id + "Kiln updated · Reload" chip (queue.js). Preview zoom label shows %.
+

@@ -477,8 +477,18 @@ def job(pid):
     return j
 
 
+_build = [0, 0]
+
+
+def build_id():
+    """Newest change time of Kiln's own web files: an open tab compares it to see that Kiln was updated."""
+    if time.time() - _build[1] > 5:
+        _build[:] = [int(max(f.stat().st_mtime for f in STATIC.rglob('*') if f.is_file())), time.time()]
+    return _build[0]
+
+
 def status():
-    s = {'comfy': False, 'engines': {}, 'missing': []}
+    s = {'comfy': False, 'engines': {}, 'missing': [], 'build': build_id()}
     try:
         info = comfy_json('/object_info/CheckpointLoaderSimple')
         ckpts = set(info['CheckpointLoaderSimple']['input']['required']['ckpt_name'][0])

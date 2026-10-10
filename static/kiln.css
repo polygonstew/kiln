@@ -485,3 +485,4 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .lg-ref summary { cursor: pointer; padding: 4px 0; color: var(--dim); font-size: 12px; }
 .lg-r { display: block; width: 100%; text-align: left; background: none; border: 0; border-top: 1px solid var(--line); padding: 5px 2px; cursor: pointer; color: var(--faint); font-size: 11px; }
 .lg-r code { display: block; color: #e3c06b; font: 11px var(--mono); white-space: pre-wrap; word-break: break-all; } .lg-r:hover { background: #1a1a19; }
+#kiln-updated { position: fixed; top: 7px; left: 50%; transform: translateX(-50%); z-index: 95; box-shadow: 0 4px 18px #000a; }

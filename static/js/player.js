@@ -126,7 +126,7 @@ export class Player {
       x.strokeRect(ox - .5, oy - .5, fw * z + 1, fh * z + 1);
       x.strokeStyle = '#9cc76b88'; x.beginPath(); x.moveTo(ox, oy + fh * z - .5); x.lineTo(ox + fw * z, oy + fh * z - .5); x.stroke();
     }
-    this.fr.textContent = `${this.i + 1}/${a.frames.length}  ${fw}×${fh}  ${z}×`;
+    this.fr.textContent = `${this.i + 1}/${a.frames.length}  ${fw}×${fh}  ${z >= 1 ? z + '×' : Math.round(z * 100) + '%'}`;
     if (this.onFrame) this.onFrame(this.i);
   }
   destroy() { cancelAnimationFrame(this.raf); }

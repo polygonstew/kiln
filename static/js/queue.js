@@ -119,7 +119,14 @@ export function initTray() {
   document.body.append(panel);
   $('#jobs').onclick = e => { e.stopPropagation(); panel.classList.toggle('open'); render(); };
   document.addEventListener('click', e => { if (!panel.contains(e.target)) panel.classList.remove('open'); });
-  const ping = () => api('/api/status').then(s => { Q.health = s; render(); fillTags(); emit('health', s); }).catch(() => { Q.health = { comfy: false }; render(); });
+  // Kiln updated while this tab was open: offer a reload (the tab keeps running the code it loaded)
+  let build0 = null;
+  const updated = b => {
+    if (build0 == null) { build0 = b; return; }
+    if (!b || b === build0 || document.getElementById('kiln-updated')) return;
+    document.querySelector('header, #top, body').append(h('button', { id: 'kiln-updated', class: 'btn sm go', title: 'Kiln has new features or fixes. Reloading keeps your work (it is saved as you go).', onclick: () => location.reload() }, 'Kiln updated · Reload'));
+  };
+  const ping = () => api('/api/status').then(s => { updated(s.build); Q.health = s; render(); fillTags(); emit('health', s); }).catch(() => { Q.health = { comfy: false }; render(); });
   on('job-done', j => { if (j.req?.engine === 'cloud') ping(); });
   ping(); setInterval(ping, 15000);
   setInterval(() => { if (Q.jobs.some(j => j.state === 'running')) render(); }, 1000);
