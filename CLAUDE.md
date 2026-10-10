@@ -1,6 +1,7 @@
 # Kiln: notes for Claude
 
 Read `docs/RESUME.md` first (live state, machine limits, gotchas), then `docs/ARCHITECTURE.md`.
+Timed improvement runs: follow `docs/LOOP.md` (rules, backlog, log).
 The user's priority is **consistency** (characters/items/styles staying on-model), see
 `docs/CONSISTENCY.md`, then a clean, non-generic UI. Keep docs/RESUME.md updated at the end of
 every session.
