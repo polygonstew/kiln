@@ -2,10 +2,24 @@
 // TileSet + TileMapLayer scene with collision. Left click paints, right click erases, wheel rolls tiles.
 import { h, api, toast, on, pref, clamp, field, range, select, seg, check, imgData, toCanvas, toDataURL, newImg, rawURL, checker, uid } from './core.js';
 import { saveFiles, S as FS } from './files.js';
+import { loadActor } from './player.js';
 import { registerWheel } from './wheel.js';
 import { registerKeys } from './wheel.js';
 import { loadOwners, claim } from './owners.js';
 
+// Entities: things placed on the map (actors exported from Animate, the player start). x,y = feet, in level pixels.
+let mode = 'tiles', entPick = 'start', actorList = [], sprites = {};   // sprites: actor name -> first idle frame (canvas)
+async function loadActorList() {
+  const r = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/sprites')).catch(() => ({ items: [] }));
+  actorList = [];
+  for (const d of (r.items || []).filter(i => i.dir && !i.name.startsWith('_'))) {
+    const inner = await api('/api/fs?path=' + encodeURIComponent(d.path)).catch(() => ({ items: [] }));
+    if (!(inner.items || []).some(i => i.name === d.name + '.tscn')) continue;     // only actors with a Godot scene can be placed
+    actorList.push(d.name);
+    if (!sprites[d.name]) loadActor(d.path).then(a => { const n = a.anims.find(n => /idle|stand/i.test(n.name)) || a.anims[0]; if (n) { sprites[d.name] = toCanvas(n.frames[0]); draw(); } }).catch(() => {});
+  }
+  if (mode === 'ents') drawLeft();
+}
 let bgLayers = null;     // the background scene's layers, drawn behind the map: [{cv, y, scroll}]
 let L = null, V = {}, mounted = false, tsImg = null, zoom = 0, hover = null, drag = null, saveT;
 const slug = s => (s || 'level').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'level';
@@ -130,6 +144,12 @@ function draw() {
     for (let r = 1; r < L.rows; r++) { x.moveTo(0, r * T * z + .5); x.lineTo(W * z, r * T * z + .5); }
     x.stroke();
   }
+  for (const e of L.ents || []) {
+    const sp = e.type === 'actor' ? sprites[e.name] : null;
+    if (sp) x.drawImage(sp, (e.x - sp.width / 2) * z, (e.y - sp.height) * z, sp.width * z, sp.height * z);
+    else { x.fillStyle = e.type === 'start' ? '#9cc76b' : '#e3b04b'; x.fillRect((e.x - 1) * z, (e.y - 14) * z, 2 * z, 14 * z); x.fillRect((e.x + 1) * z, (e.y - 14) * z, 7 * z, 5 * z); }
+    if (mode === 'ents') { x.strokeStyle = 'rgba(255,255,255,.5)'; x.strokeRect((e.x - 3) * z + .5, (e.y - 1) * z + .5, 6 * z, 2 * z); }
+  }
   if (V.showSolid) { x.fillStyle = 'rgba(229,83,75,.28)'; for (let i = 0; i < L.cells.length; i++) if (L.cells[i] >= 0 && L.solid.includes(L.cells[i])) x.fillRect((i % L.cols) * T * z, Math.floor(i / L.cols) * T * z, T * z, T * z); }
   if (hover) { x.globalAlpha = .55; x.drawImage(src, (L.pick % L.tsCols) * T, Math.floor(L.pick / L.tsCols) * T, T, T, hover[0] * T * z, hover[1] * T * z, T * z, T * z); x.globalAlpha = 1; x.strokeStyle = '#fff'; x.strokeRect(hover[0] * T * z + .5, hover[1] * T * z + .5, T * z - 1, T * z - 1); }
   const used = L.cells.filter(t => t >= 0).length;
@@ -141,10 +161,24 @@ function bind() {
   V.cv.addEventListener('contextmenu', e => e.preventDefault());
   V.cv.addEventListener('pointerdown', e => {
     V.cv.setPointerCapture(e.pointerId);
+    if (mode === 'ents') {
+      const r = V.cv.getBoundingClientRect(), px = (e.clientX - r.left) / V.z, py = (e.clientY - r.top) / V.z;
+      L.ents = L.ents || [];
+      if (e.button === 2) {     // right click removes the nearest entity
+        let bi = -1, bd = 1e9; L.ents.forEach((en, i) => { const d = Math.hypot(en.x - px, en.y - 8 - py); if (d < bd) { bd = d; bi = i; } });
+        if (bi >= 0 && bd < L.tile * 1.5) { L.ents.splice(bi, 1); changed(); draw(); drawLeft(); }
+        return;
+      }
+      // feet snap to the top of the tile under the cursor, centred in the column
+      const cx = Math.floor(px / L.tile), cy = Math.floor(py / L.tile);
+      const en = { id: uid(), type: entPick === 'start' ? 'start' : 'actor', name: entPick === 'start' ? 'PlayerStart' : entPick, x: cx * L.tile + L.tile / 2, y: (cy + 1) * L.tile };
+      if (en.type === 'start') L.ents = L.ents.filter(q => q.type !== 'start');   // only one start
+      L.ents.push(en); changed(); draw(); drawLeft(); return;
+    }
     if (e.button === 1) { const p = cellAt(e); if (p && L.cells[p[1] * L.cols + p[0]] >= 0) { L.pick = L.cells[p[1] * L.cols + p[0]]; drawLeft(); } return; }
     drag = { t: e.button === 2 ? -1 : L.pick }; paint(cellAt(e), drag.t);
   });
-  V.cv.addEventListener('pointermove', e => { hover = cellAt(e); if (drag) paint(hover, drag.t); else draw(); });
+  V.cv.addEventListener('pointermove', e => { hover = mode === 'tiles' ? cellAt(e) : null; if (drag) paint(hover, drag.t); else draw(); });
   const up = () => { if (drag) { drag = null; changed(); } };
   V.cv.addEventListener('pointerup', up); V.cv.addEventListener('pointercancel', up);
   V.cv.addEventListener('pointerleave', () => { hover = null; draw(); });
@@ -177,12 +211,19 @@ function drawLeft() {
       V.bgSel = select([['', 'None']], L.bg || '', v => { L.bg = v || null; changed(); loadBg(); }),
       field('Background', V.bgSel, 'A scene from Scenes, shown behind the map and placed behind it in Godot'),
       field('Tile', seg([[8, '8'], [16, '16'], [32, '32']], L.tile, v => { L.tile = +v; L.ts = null; loadTiles().then(() => { changed(); drawLeft(); draw(); }); }), 'Pixels per tile')),
-    h('div', { class: 'sec' }, h('h3', {}, 'Tiles', h('span', { class: 'grow' }), h('small', {}, `${n} · red = solid`)), tiles,
+    h('div', { class: 'sec' }, h('h3', {}, 'Paint'), seg([['tiles', 'Tiles'], ['ents', 'Things']], mode, v => { mode = v; drawLeft(); draw(); }),
+      mode === 'ents' ? [h('div', { class: 'entlist' },
+          h('button', { class: entPick === 'start' ? 'on' : '', title: 'Where the player appears (exported as a Marker2D named PlayerStart)', onclick: () => { entPick = 'start'; drawLeft(); } }, '⚑ Player start'),
+          ...actorList.map(a => h('button', { class: entPick === a ? 'on' : '', title: `Place ${a} (its Godot scene, with hitbox and juice)`, onclick: () => { entPick = a; drawLeft(); } }, sprites[a] ? (() => { const c = h('canvas', { width: sprites[a].width, height: sprites[a].height }); c.getContext('2d').drawImage(sprites[a], 0, 0); return c; })() : null, a))),
+        h('p', { class: 'note' }, actorList.length ? 'Left click places on the tile under the cursor (feet on its top). Right click removes.' : 'Save an actor in Animate to place it here. The player start works now.'),
+        h('p', { class: 'note' }, `${(L.ents || []).length} placed`)] : null),
+    mode === 'ents' ? null : h('div', { class: 'sec' }, h('h3', {}, 'Tiles', h('span', { class: 'grow' }), h('small', {}, `${n} · red = solid`)), tiles,
       h('div', { style: { display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' } },
         h('button', { class: 'btn sm', title: 'Use any image as the tileset: it is cut into tiles of the size above', onclick: pickTileset }, 'Tileset image…'),
         h('button', { class: 'btn sm ghost', title: 'Go back to the built-in starter tiles', onclick: () => { L.ts = null; loadTiles().then(() => { changed(); drawLeft(); draw(); }); } }, 'Starter tiles'),
         h('button', { class: 'btn sm ghost' + (V.showSolid ? ' on' : ''), title: 'Tint solid tiles red on the map', onclick: () => { V.showSolid = !V.showSolid; drawLeft(); draw(); } }, 'Show solid'))));
   fillBgSel();
+  if (mode === 'ents' && !actorList.length && !V.listed) { V.listed = true; loadActorList(); }
 }
 async function fillBgSel() {
   if (!V.bgSel) return;
@@ -243,11 +284,17 @@ async function exportLevel() {
   // res is ".../levels/<name>": the background scene lives next door in ".../backgrounds/<scene>/"
   const base = res.replace(/(^|\/)levels\/[^/]+$/, '');
   const bgRes = L.bg ? (base ? base + '/' : '') + `backgrounds/${L.bg}/${L.bg}.tscn` : null;
-  const tscn = `[gd_scene load_steps=${bgRes ? 3 : 2} format=3]\n\n[ext_resource type="TileSet" path="${res}/${L.name}.tres" id="1"]\n`
-    + (bgRes ? `[ext_resource type="PackedScene" path="${bgRes}" id="2"]\n` : '') + `\n[node name="${L.name}" type="Node2D"]\n\n`
+  // placed actors: one PackedScene per actor type, one instance each; the start is a Marker2D
+  const ents = L.ents || [], types = [...new Set(ents.filter(e => e.type === 'actor').map(e => e.name))];
+  const aid = n => 3 + types.indexOf(n), count = {};
+  const entExt = types.map(n => `[ext_resource type="PackedScene" path="${(base ? base + '/' : '')}sprites/${n}/${n}.tscn" id="${aid(n)}"]\n`).join('');
+  const entNodes = ents.map(e => e.type === 'start' ? `[node name="PlayerStart" type="Marker2D" parent="."]\nposition = Vector2(${e.x}, ${e.y})\n\n`
+    : `[node name="${e.name}_${count[e.name] = (count[e.name] || 0) + 1}" parent="." instance=ExtResource("${aid(e.name)}")]\nposition = Vector2(${e.x}, ${e.y})\n\n`).join('');
+  const tscn = `[gd_scene load_steps=${(bgRes ? 3 : 2) + types.length} format=3]\n\n[ext_resource type="TileSet" path="${res}/${L.name}.tres" id="1"]\n`
+    + (bgRes ? `[ext_resource type="PackedScene" path="${bgRes}" id="2"]\n` : '') + entExt + `\n[node name="${L.name}" type="Node2D"]\n\n`
     + (bgRes ? `[node name="Background" parent="." instance=ExtResource("2")]\nposition = Vector2(0, ${(L.rows * T) - (V.bgView?.h || L.rows * T)})\n\n` : '')
-    + `[node name="Tiles" type="TileMapLayer" parent="."]\ntexture_filter = 1\ntile_map_data = PackedByteArray(${tileMapData()})\ntile_set = ExtResource("1")\n`;
-  const json = { background: L.bg || null, tile: T, cols: L.cols, rows: L.rows, tileset: 'tileset.png', tilesetCols: L.tsCols, solid: L.solid, cells: L.cells, source: 'kiln' };
+    + `[node name="Tiles" type="TileMapLayer" parent="."]\ntexture_filter = 1\ntile_map_data = PackedByteArray(${tileMapData()})\ntile_set = ExtResource("1")\n` + (entNodes ? '\n' + entNodes : '');
+  const json = { background: L.bg || null, entities: (L.ents || []).map(({ type, name, x, y }) => ({ type, name, x, y })), tile: T, cols: L.cols, rows: L.rows, tileset: 'tileset.png', tilesetCols: L.tsCols, solid: L.solid, cells: L.cells, source: 'kiln' };
   try {
     await saveFiles(dir, [{ name: 'tileset.png', b64: toDataURL(tsImg) }, { name: `${L.name}.tres`, text: tres }, { name: `${L.name}.tscn`, text: tscn },
       { name: 'level.json', text: JSON.stringify(json) + '\n' }]);

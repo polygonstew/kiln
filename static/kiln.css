@@ -394,3 +394,7 @@ table.breakdown td.warn { color: var(--bad); } table.breakdown td.ok { color: va
 .ruler .mk { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--ok); opacity: .6; }
 .ruler b { position: absolute; transform: translateX(-50%); font: 9px var(--mono); color: var(--dim); background: var(--bg2, #1d1c1a); padding: 0 3px; border: 1px solid var(--line2); border-radius: 2px; cursor: pointer; white-space: nowrap; font-weight: 400; }
 .ruler b.on { color: var(--ember2); border-color: var(--ember); }
+.entlist { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
+.entlist button { display: flex; align-items: center; gap: 8px; background: #151514; border: 1px solid var(--line2); border-radius: 2px; color: var(--dim); padding: 4px 8px; cursor: pointer; font: 12px var(--cond); text-align: left; }
+.entlist button canvas { height: 28px; image-rendering: pixelated; }
+.entlist button.on { border-color: var(--ember); color: var(--ember2); }

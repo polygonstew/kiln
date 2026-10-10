@@ -83,7 +83,9 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
   weapon, mood, colours) and sends it to Forge.
 - [x] **Levels tab, slice 1** DONE (levels.js, key 7): tile painting (left/right/wheel/middle like Animate), starter tileset or any image,
   solid tiles → Godot TileSet .tres with collision + .tscn TileMapLayer (tile_map_data bytes), verified in Godot 4.7.
-- [ ] **Levels, slice 2:** entities (place actors and a player start, exported as instanced actor .tscn), tiles cut from a Scenes layer,
+- [x] **Levels, slice 2** DONE: Paint → Things: player start (Marker2D) + exported actors (instanced .tscn, feet on the tile top),
+  right-click removes; also level.json entities. Verified in Godot 4.7. Remaining ideas: auto-tiling, several tile layers.
+  Was: entities (place actors and a player start, exported as instanced actor .tscn), tiles cut from a Scenes layer,
   auto-tiling (grass top / dirt fill), several layers (background/foreground).
   Original: **Mold existing software: LDtk-style "Levels" tab.** Paint tiles cut from scenes, place entities (actors),
   draw collision, and export a Godot TileMap/TileSet plus a .tscn. Start small: grid painting + export.
@@ -121,3 +123,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
   name-ownership guard as Scenes (a new level named like an existing one would save over it).
 - 2026-10-10: run 14. Name guard everywhere (Animate, Levels, HUD use owners.js like Scenes).
 - 2026-10-10: run 15. Scenes review tools (overlays, time of day, snapshot, pan video). The Scenes push (1-5) is complete.
+- 2026-10-10: run 16. Levels entities: place actors and the player start, exported as instanced scenes and a Marker2D.
