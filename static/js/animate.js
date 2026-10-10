@@ -8,6 +8,7 @@ import { openSlicer } from './slicer.js';
 import { SETS, makeTemplate, readTemplate, download as downloadSheet } from './sheets.js';
 import { registerWheel, registerMenu } from './wheel.js';
 import { loadOwners, claim } from './owners.js';
+import { openWorkshop, facesFiles } from './workshop.js';
 import { saveFiles, S as FS } from './files.js';
 
 const ANIM_NAMES = ['idle', 'walk', 'run', 'jump', 'fall', 'attack', 'hurt', 'death', 'crouch', 'cast', 'climb', 'dash', 'block', 'spin'];
@@ -102,6 +103,7 @@ const slug = s => (s || 'actor').toLowerCase().replace(/[^a-z0-9_-]+/g, '_').rep
 
 /* --------------------------------------------------------------- layout ---- */
 function build(el) {
+  V.view = el;
   V.left = h('aside', { class: 'l' });
   V.right = h('aside', { class: 'r' });
   V.cv = h('canvas', { style: { cursor: 'crosshair', touchAction: 'none' } });
@@ -121,6 +123,8 @@ function build(el) {
         h('i', { class: 'sep' }),
         tb('flip', 'Flip this frame (H)', () => { pushUndo(); setFrame(flipX(frame())); }),
         h('button', { class: 'btn sm ghost', title: 'Flip every frame of this animation', onclick: () => { pushUndo(); anim().frames = anim().frames.map(flipX); changed(true); } }, 'Flip anim'),
+        h('i', { class: 'sep' }),
+        h('button', { class: 'btn sm go', title: 'Workshop: everything this actor needs (animations, status faces) as a checklist', onclick: () => workshop() }, 'Workshop'),
         h('span', { class: 'grow' }), V.status,
         h('span', { class: 'lbl' }, 'Zoom'),
         V.zoomSel = select([[0, 'Fit'], ...[2, 3, 4, 6, 8, 10, 12, 16, 20].map(z => [z, z + '×'])], A.zoom, v => { A.zoom = +v; pref.set('anim.zoom', A.zoom); drawEditor(); })),
@@ -743,13 +747,21 @@ function setReference() {
   changed(true);
   toast('Reference set. Its palette is now the actor palette', 'ok');
 }
-async function makeMore() {
+async function makeMore(poses) {
   if (!A.actor.identity) setReference();
   const id = A.actor.identity;
   if (!id) return;
   if (!A.actor.desc?.trim()) { const d = prompt('Describe this actor in a few words (it keeps the generator on-model)', A.actor.name.replace(/_/g, ' ')); if (!d) return; A.actor.desc = d; changed(); }
   emit('forge-for', { name: A.actor.name, desc: A.actor.desc, kind: A.actor.kind || 'character', ref: id.ref, refW: id.refW, scale: id.scale, cell: id.cell || 0, figH: id.figH,
-    refSprite: await imgData(id.refSprite), pal: A.actor.pal.slice(), w: A.actor.w, h: A.actor.h, seed: id.seed });
+    refSprite: await imgData(id.refSprite), pal: A.actor.pal.slice(), w: A.actor.w, h: A.actor.h, seed: id.seed, poses: Array.isArray(poses) ? poses : null });
+}
+// the Workshop: everything this actor needs, as a checklist (workshop.js)
+function workshop() {
+  commitFloat();
+  openWorkshop(V.view, {
+    actor: () => A.actor, changed, pushUndo, save: exportActor, makeMore, redraw: () => { drawTimeline(); drawLeft(); drawEditor(); feedPlayer(); },
+    goto: name => { const i = A.actor.anims.findIndex(n => n.name === name); if (i >= 0) { A.ai = i; A.fi = 0; } changed(true); },
+  });
 }
 
 /* --------------------------------------------------------------- export ---- */
@@ -800,6 +812,7 @@ async function exportActor() {
     await saveFiles('sprites/_kiln', [{ name: 'juice.gd', text: JUICE_GD }, { name: 'hit_flash.gdshader', text: FLASH_SHADER }]).catch(() => {});
   }
   if (a.identity?.ref) files.push({ name: 'reference.png', b64: a.identity.ref });
+  files.push(...await facesFiles(a));
   files.push({ name: 'palette.hex', text: a.pal.map(c => hex(c).slice(1)).join('\n') + '\n' });
   files.push({ name: 'CHARACTER.md', text: await characterDoc(a, dir, base) });
   try {

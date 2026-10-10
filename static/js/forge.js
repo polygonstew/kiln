@@ -56,7 +56,7 @@ on('make-actor', async d => {
 on('forge-guide', async url => { const im = await imgData(url).catch(() => null); if (!im) return toast('Could not read that image', 'bad'); guide = flatSmall(im); if (mounted) drawLeft(); toast('Guide image set'); });
 on('use-palette', p => { customPal = p; st.palMode = 'custom'; if (mounted) { drawRight(); run(); } });
 on('job-done', j => { if (j.forge) addResults(j); });
-on('forge-for', id => { ID = id; if (mounted) { drawLeft(); drawRight(); drawResults(); run(); } });
+on('forge-for', id => { ID = id; if (id.poses) { st.poses = id.poses; save(); } if (mounted) { drawLeft(); drawRight(); drawResults(); run(); } });
 on('style', s => {
   st.hw = s.hw; st.outline = s.outline; if (s.palette) st.palMode = 'style'; else if (st.palMode === 'style') st.palMode = 'auto';
   save(); if (mounted) { drawRight(); run(); }

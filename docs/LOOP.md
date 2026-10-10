@@ -54,7 +54,13 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 **User, 2026-10-10 (big features, in this order; Claude decides the layout, keep it simple by default and let users
 override everything; each gets a Help section and a Godot export):**
 
-- [ ] **Actor workshop** ("open an actor → everything for it"): one page per actor with a checklist of what a game character
+- [x] **Actor workshop, slice 1** DONE (workshop.js; Animate → Workshop): role checklist (missing / not posed / done) with Add,
+  Make with Forge (pose presets via forge-for poses), Edit; status faces (8 states, cloud or local, palette-locked + blood) →
+  faces.png/faces.json on save.
+- [ ] **Actor workshop, slice 2:** HUD portrait "faces from actor" (hud.gd `set_health()` picks healthy→dead, `flash_face("grin")`),
+  projectiles (sprite + flight anim + impact, speed/gravity/lifetime → projectile.tscn + script), hurt reaction settings
+  (flash, knockback, i-frames) feeding juice.gd.
+  Original: **Actor workshop** ("open an actor → everything for it"): one page per actor with a checklist of what a game character
   needs (animation set status, hit/hurt reaction, death, projectiles, sounds later), each item one click to make (Forge locked
   to the identity). **Hurt-state portrait faces like the Doom marine** (healthy, hurt, badly hurt, near death, dead, grin,
   look left/right) generated from the reference, wired to HUD portraits: `hud.gd set_health()` switches the face.
@@ -62,7 +68,8 @@ override everything; each gets a Help section and a Godot export):**
 - [ ] **Colliders**: per-animation-frame hitboxes and hurtboxes on actors (attack frames get hitboxes), drawn in Animate;
   level extras: one-way platforms, ladders, hazards (spike tiles), trigger areas. Export: Area2D/CollisionShape2D per frame
   driven by the AnimatedSprite2D frame, and level Area2D nodes.
-- [ ] **Systems / Logic** (a tab): ready-made behaviours as small editable GDScript: platformer player controller (speed,
+- [ ] **Systems / Logic** (a tab) with an **in-house GDScript editor** (user ask): syntax colours, line numbers, Kiln's API
+  hints, and checking with the real Godot here (`godot --headless --check-only`) so errors show before the game runs: ready-made behaviours as small editable GDScript: platformer player controller (speed,
   jump, coyote time, dash, attack), enemy AI (patrol, chase, attack range), health/damage/knockback/i-frames, pickups,
   doors/switches/triggers, save points. Presets with sliders; an "edit the code" view to override. Attach to actors/levels.
 - [ ] **Dialogue + lore**: dialogue trees (lines, choices, conditions, item checks) for the HUD dialogue box, a lore bible
@@ -203,3 +210,4 @@ override everything; each gets a Help section and a Godot export):**
 - 2026-10-10: HUD inventory/dialogue/prompt + Godot HUD scene + hud.gd; Godot plugin (dock, zip, one-click install). Queued: actor
   workshop, colliders, systems/logic, dialogue+lore, cutscenes, menus/music, asset library.
 - 2026-10-10: loop run 21 (bug hunt: Files). Next hunt: Forge. Backlog top: Actor workshop.
+- 2026-10-10: Actor workshop slice 1 shipped (tested: checklist, add all, local face, save writes faces.png/json). GDScript editor queued.

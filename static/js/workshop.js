@@ -1,0 +1,135 @@
+// Actor workshop: everything one game character needs, as a checklist you can tick off with one click each.
+// Opened from Animate (Workshop button) for the actor that is open. Simple by default: a role picks the
+// checklist; every item can still be done by hand in the editor.
+import { h, toast, imgData, pixelize, toCanvas, toDataURL, rgb, hex, newImg, blit, bbox, select, seg } from './core.js';
+import { enqueue } from './queue.js';
+import { SETS } from './sheets.js';
+import { stylePrompt } from './style.js';
+
+// what the generator is asked to change for each animation (Forge "Making frames for…", locked to the actor)
+export const POSES_FOR = {
+  idle: ['standing still, relaxed'], walk: ['walking, left leg forward', 'walking, right leg forward'], run: ['running, leaning forward'],
+  jump: ['jumping, knees tucked'], fall: ['falling, arms up'], land: ['crouching low'], crouch: ['crouching low'],
+  attack: ['winding up a swing, weapon raised behind', 'striking forward, weapon fully extended'], attack2: ['striking forward, weapon fully extended'],
+  dodge: ['crouching low'], hurt: ['recoiling in pain'], death: ['collapsed on the ground'], climb: ['seen from behind'], heal: ['casting a spell, hands raised'],
+  fly: ['standing still, relaxed'], special: ['casting a spell, hands raised'], stagger: ['recoiling in pain'], talk: ['turned to face the viewer'], react: ['recoiling in pain'],
+};
+// Doom-style status faces: the HUD portrait switches between these as health drops
+export const FACES = [
+  ['healthy', 'Healthy', 'calm, determined expression'],
+  ['hurt', 'Hurt', 'wincing in pain, a small cut on the cheek'],
+  ['badly', 'Badly hurt', 'battered and bruised, blood running down the face, gritted teeth'],
+  ['near', 'Near death', 'badly wounded and bloodied, one eye swollen shut, barely conscious'],
+  ['dead', 'Dead', 'dead, eyes closed, ashen grey skin, head slumped'],
+  ['grin', 'Grin', 'grinning fiercely, triumphant'],
+  ['left', 'Look left', 'calm, glancing to the left side'],
+  ['right', 'Look right', 'calm, glancing to the right side'],
+];
+const ROLES = [['hero', 'Player'], ['enemy', 'Enemy'], ['flyer', 'Flyer'], ['boss', 'Boss'], ['npc', 'NPC'], ['prop', 'Prop']];
+const EXTRA = ['#8a1c1c', '#c0392b', '#4a2a3a'].map(rgb);      // blood and bruises the faces may use beyond the actor palette
+
+const same = (a, b) => { if (a.width !== b.width || a.height !== b.height) return false; for (let i = 0; i < a.data.length; i++) if (a.data[i] !== b.data[i]) return false; return true; };
+// missing / empty / not posed yet (every frame a copy of the first) / done
+function animState(n) {
+  if (!n) return 'missing';
+  if (n.frames.every(f => !bbox(f))) return 'empty';
+  if (n.frames.length > 1 && n.frames.every(f => same(f, n.frames[0]))) return 'unposed';
+  return 'done';
+}
+const LABEL = { missing: 'missing', empty: 'empty', unposed: 'not posed yet', done: 'done' };
+
+/* api from animate.js: actor(), changed(structure), pushUndo(), goto(name), makeMore(poses), save() */
+export function openWorkshop(host, api) {
+  const a = api.actor();
+  const role = () => a.role || (a.kind === 'creature' ? 'enemy' : 'hero');
+  const faces = () => (a.faces ||= { size: 32, engine: 'cloud', states: {} });
+  const ov = h('div', { class: 'workshop' });
+  const close = () => { ov.remove(); api.redraw(); };      // only real edits (they call api.changed) save the actor
+  const draw = () => {
+    const S = SETS[role()] || SETS.hero, have = new Map(a.anims.map(n => [n.name, n]));
+    const rows = S.anims.map(([name, n, span, fps, loop]) => {
+      const st = animState(have.get(name));
+      return h('tr', { class: st },
+        h('td', {}, name), h('td', {}, `${n}${span > 1 ? ' · 2 wide' : ''}`), h('td', { class: 'st' }, LABEL[st]),
+        h('td', { class: 'acts' },
+          st === 'missing' ? h('button', { class: 'btn sm', title: `Add "${name}" with ${n} frames, each starting from the first idle frame`, onclick: () => { addAnim(name, n, span, fps, loop); draw(); } }, 'Add') : null,
+          a.identity?.ref ? h('button', { class: 'btn sm' + (st === 'done' ? ' ghost' : ' go'), title: 'Open Forge locked to this actor with poses for this animation', onclick: () => { close(); api.makeMore(POSES_FOR[name] || []); } }, 'Make with Forge') : null,
+          st !== 'missing' ? h('button', { class: 'btn sm ghost', title: 'Edit it in the editor', onclick: () => { close(); api.goto(name); } }, 'Edit') : null));
+    });
+    const done = S.anims.filter(([n]) => animState(have.get(n)) === 'done').length;
+    const extra = a.anims.filter(n => !S.anims.some(([m]) => m === n.name)).map(n => n.name);
+    const ref = a.identity?.refSprite;
+    ov.replaceChildren(
+      h('header', {}, h('b', {}, 'Workshop'), h('span', {}, a.name), h('span', { class: 'grow' }),
+        h('button', { class: 'btn sm', title: 'Save the actor for the game (strips, Godot scene, faces)', onclick: () => api.save() }, 'Save ' + a.name),
+        h('button', { class: 'btn sm go', title: 'Back to the pixel editor', onclick: close }, 'Back to editor')),
+      h('div', { class: 'wk-body' },
+        h('div', { class: 'wk-col' },
+          h('div', { class: 'wk-card wk-id' },
+            ref ? (() => { const c = h('canvas'); imgData(ref).then(im => toCanvas(im, 1, c)); return c; })() : h('div', { class: 'noref' }, 'no reference'),
+            h('div', {}, h('div', { class: 'nm' }, a.name), h('div', { class: 'desc' }, a.desc || 'No description yet: add one in Animate → Identity. It keeps generated frames on-model.'),
+              h('label', { class: 'fld' }, h('span', { class: 'fl' }, 'Role'), select(ROLES, role(), v => { a.role = v; api.changed(); draw(); })),
+              !a.identity?.ref ? h('p', { class: 'note' }, 'Set a reference (Animate → Identity → Use this frame as reference) to generate frames and faces on-model.') : null)),
+          h('div', { class: 'wk-card' }, h('h3', {}, 'Animations', h('span', { class: 'grow' }), h('small', {}, `${done}/${S.anims.length} done`)),
+            h('table', { class: 'wk-anims' }, ...rows),
+            extra.length ? h('p', { class: 'note' }, 'Also has: ' + extra.join(', ')) : null,
+            S.anims.some(([n]) => !have.has(n)) ? h('button', { class: 'btn sm', title: 'Add every missing animation of this role at once', onclick: () => { for (const r of S.anims) if (!have.has(r[0])) addAnim(...r); draw(); } }, 'Add all missing') : null)),
+        h('div', { class: 'wk-col' }, facesCard())));
+  };
+  function addAnim(name, n, span, fps, loop) {
+    api.pushUndo();
+    const base = (a.anims.find(x => /idle|stand/.test(x.name)) || a.anims[0])?.frames[0] || newImg(a.w, a.h);
+    a.anims.push({ name, fps, loop, span, frames: Array.from({ length: n }, () => blit(newImg(a.w * span, a.h), base, Math.floor((a.w * span - base.width) / 2), 0)) });
+    api.changed(true);
+  }
+  /* ---- faces ---- */
+  let busy = {};
+  function facesCard() {
+    const F = faces(), grid = h('div', { class: 'wk-faces' });
+    for (const [k, label] of FACES) {
+      const url = F.states[k], cell = h('div', { class: 'face' + (url ? ' has' : '') + (busy[k] ? ' busy' : '') });
+      if (url) { const c = h('canvas'); imgData(url).then(im => toCanvas(im, 1, c)); cell.append(c); } else cell.append(h('i', {}, busy[k] ? '…' : '?'));
+      cell.append(h('span', {}, label), h('div', { class: 'facts' },
+        h('button', { class: 'btn sm' + (url ? ' ghost' : ''), disabled: !a.identity?.ref || busy[k], title: url ? 'Make this face again' : 'Make this face from the reference', onclick: () => makeFace(k) }, url ? 'Again' : 'Make'),
+        url ? h('button', { class: 'ibtn', title: 'Remove this face', onclick: () => { delete F.states[k]; api.changed(); draw(); } }, '✕') : null));
+      grid.append(cell);
+    }
+    const missing = FACES.filter(([k]) => !F.states[k] && !busy[k]).length;
+    return h('div', { class: 'wk-card' }, h('h3', {}, 'Status faces', h('span', { class: 'grow' }), h('small', {}, 'like the Doom marine')),
+      h('p', { class: 'note', style: { marginTop: 0 } }, 'Close-ups for the HUD portrait: it switches face as health drops. Made from the reference and kept in the actor\'s colours (plus blood and bruises).'),
+      h('label', { class: 'fld' }, h('span', { class: 'fl' }, 'Size'), seg([[24, '24'], [32, '32'], [48, '48'], [64, '64']], F.size, v => { F.size = +v; api.changed(); draw(); })),
+      h('label', { class: 'fld' }, h('span', { class: 'fl' }, 'Made by'), seg([['cloud', 'Cloud (best likeness)'], ['fast', 'This PC (free)']], F.engine || 'cloud', v => { F.engine = v; api.changed(); draw(); })),
+      grid,
+      a.identity?.ref && missing ? h('button', { class: 'btn go', title: 'Make every missing face (one cloud image each)', onclick: () => {
+        const todo = FACES.filter(([k]) => !F.states[k] && !busy[k]);
+        if (todo.length > 2 && F.engine !== 'fast' && !confirm(`Make ${todo.length} faces? One image each: the free daily quota first, then about 4¢ each from the capped budget.`)) return;
+        todo.forEach(([k]) => makeFace(k));
+      } }, `Make ${missing} missing face${missing > 1 ? 's' : ''}`) : null,
+      h('p', { class: 'note' }, 'Saved with the actor as faces.png + faces.json (one cell per face, in this order).'));
+  }
+  function makeFace(k) {
+    const st = FACES.find(f => f[0] === k);
+    const prompt = `Close-up pixel art face portrait of this exact character from the reference image: ${a.desc || a.name}. ${st[2]}. Same design, colours and art style; head and shoulders filling the frame, facing the viewer, plain flat white background. ${stylePrompt()}`;
+    busy[k] = true; draw();
+    const F = faces(), local = F.engine === 'fast';
+    const job = enqueue(local ? { engine: 'fast', prompt: `${a.desc || a.name}, close-up face portrait, ${st[2]}, ${stylePrompt()}`, w: 384, h: 384, steps: 4, batch: 1, init: a.identity.ref, denoise: .6 }
+      : { engine: 'cloud', prompt, w: 512, h: 512, batch: 1, init: a.identity.ref, px: F.size }, `${a.name}: face ${st[1].toLowerCase()}`);
+    job.done.then(async urls => {
+      const im = await imgData(urls[0]);
+      const r = pixelize(im, { w: F.size, h: F.size, fit: 'contain', anchor: 'center', lock: [...a.pal, ...EXTRA], key: true, tol: 38, outline: false });
+      F.states[k] = toDataURL(r.img); delete busy[k]; api.changed(); if (ov.isConnected) draw();
+      toast(`${a.name}: ${st[1]} face ready`, 'ok');
+    }).catch(e => { delete busy[k]; if (ov.isConnected) draw(); toast(`Face "${st[1]}" failed: ${e?.message || e}`, 'bad'); });
+  }
+  draw();
+  host.append(ov);
+  return ov;
+}
+
+// faces.png (one size×size cell per face present, in FACES order) + faces.json, for the actor's folder
+export async function facesFiles(a) {
+  const F = a.faces; if (!F || !Object.keys(F.states || {}).length) return [];
+  const keys = FACES.map(f => f[0]).filter(k => F.states[k]), strip = newImg(F.size * keys.length, F.size);
+  for (let i = 0; i < keys.length; i++) blit(strip, await imgData(F.states[keys[i]]), i * F.size, 0);
+  return [{ name: 'faces.png', b64: toDataURL(strip) }, { name: 'faces.json', text: JSON.stringify({ size: F.size, faces: keys }, null, 1) + '\n' }];
+}
