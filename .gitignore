@@ -5,3 +5,4 @@ __pycache__/
 fast/.venv/
 fast/models/
 .venv-test/
+build/

@@ -6,6 +6,7 @@ Stdlib only. ComfyUI is expected at COMFY (default 127.0.0.1:8188).
 import base64, json, os, random, re, socket, struct, threading, time, urllib.request, urllib.parse, uuid
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
+import play
 from checks import GODOT, list_scripts, check_script, doctor, snapshot, history, restore_copy
 
 ROOT = Path(__file__).resolve().parent
@@ -866,6 +867,11 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/scripts':
                 root = q.get('root') or settings()['root']
                 return self.send(200, {'root': str(in_home(root)), 'scripts': list_scripts(in_home(root)), 'godot': bool(GODOT)})
+            if u.path == '/api/play/status':
+                return self.send(200, play.STATE)
+            if u.path == '/play' or u.path.startswith('/play/'):
+                got = play.serve(u.path[6:].lstrip('/'))
+                return self.send(200, *got) if got else self.send(404, {'err': 'no build yet: press Play in Kiln'})
             if u.path == '/api/doctor':
                 r = in_home(q.get('root') or settings()['root'])
                 return self.send(200, doctor(r, godot_root(str(r))))
@@ -926,6 +932,11 @@ class H(BaseHTTPRequestHandler):
                 text = json.dumps(b['data'])
                 snapshot(d / f'{pid}.json', text)
                 (d / f'{pid}.json').write_text(text)
+                return self.send(200, {'ok': True})
+            if u.path == '/api/play/build':
+                if play.STATE['running']:
+                    return self.send(409, {'err': 'a build is already running'})
+                threading.Thread(target=play.build, args=(in_home(b.get('root') or settings()['root']), b.get('files', {}), b.get('opts', {})), daemon=True).start()
                 return self.send(200, {'ok': True})
             if u.path == '/api/history/restore':
                 return self.send(200, restore_copy(proj_dir(), b['id'], b['stamp']))

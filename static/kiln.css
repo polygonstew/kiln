@@ -26,10 +26,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 #logo:hover, #logo.on { background: var(--p2, #1f1e1c); }
 #logo .caret { color: var(--faint); font-size: 11px; margin-top: 2px; } #logo:hover .caret, #logo.on .caret { color: var(--ember); }
 #mark { width: 80px; height: 32px; margin-top: 3px; pointer-events: none; }
-#tabs { display: flex; }
-#tabs button { background: none; border: 0; border-left: 1px solid var(--line); padding: 0 18px; font: 500 12px var(--cond); letter-spacing: .08em; text-transform: uppercase; color: var(--dim); cursor: pointer; position: relative; display: flex; align-items: center; gap: 8px; }
+#tabs { display: flex; overflow-x: auto; scrollbar-width: none; min-width: 0; }   /* compact; scrolls sideways if there are ever too many */
+#tabs button { background: none; border: 0; border-left: 1px solid var(--line); padding: 0 11px; font: 500 11px var(--cond); letter-spacing: .05em; text-transform: uppercase; color: var(--dim); cursor: pointer; position: relative; display: flex; align-items: center; gap: 8px; }
 #tabs button:last-child { border-right: 1px solid var(--line); }
-#tabs button kbd { font: 10px var(--mono); color: var(--faint); border: 1px solid var(--line2); padding: 0 4px; border-radius: 2px; letter-spacing: 0; }
+#tabs button kbd { font: 9px var(--mono); color: var(--faint); border: 0; padding: 0; letter-spacing: 0; opacity: .7; }
+#tabs button { white-space: nowrap; gap: 5px; }
 #tabs button:hover { color: var(--ink); background: var(--p2); }
 #tabs button.on { color: var(--ink); background: var(--bg); }
 #tabs button.on::after { content: ''; position: absolute; left: 0; right: 0; bottom: -1px; height: 2px; background: var(--ember); }
@@ -512,3 +513,5 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .tour-offer { position: fixed; z-index: 940; right: 16px; bottom: 16px; display: flex; gap: 8px; align-items: center; background: #1c1b19; border: 1px solid var(--ember); padding: 8px 12px; border-radius: 4px; box-shadow: 0 6px 24px #000a; font-size: 13px; }
 .tour-offer small { color: var(--faint); }
 .lv-tools { display: inline-flex; align-items: center; gap: 2px; } .lv-tools .ibtn:disabled { opacity: .35; } .lv-sel { display: inline-flex; align-items: center; gap: 4px; font: 11px var(--mono); color: #e3b04b; }
+.play-log { background: #0e0e0d; border: 1px solid var(--line); padding: 8px; font: 11px/1.5 var(--mono); color: var(--dim); max-height: 220px; overflow: auto; white-space: pre-wrap; margin: 0; }
+#playbtn { margin-left: 10px; align-self: center; }
