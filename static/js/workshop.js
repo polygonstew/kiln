@@ -1,7 +1,7 @@
 // Actor workshop: everything one game character needs, as a checklist you can tick off with one click each.
 // Opened from Animate (Workshop button) for the actor that is open. Simple by default: a role picks the
 // checklist; every item can still be done by hand in the editor.
-import { h, toast, imgData, pixelize, toCanvas, toDataURL, rgb, hex, newImg, blit, bbox, select, seg } from './core.js';
+import { h, toast, imgData, pixelize, toCanvas, toDataURL, rgb, hex, luma, newImg, blit, bbox, select, seg, range, check, field } from './core.js';
 import { enqueue } from './queue.js';
 import { SETS } from './sheets.js';
 import { stylePrompt } from './style.js';
@@ -73,9 +73,52 @@ export function openWorkshop(host, api) {
           h('div', { class: 'wk-card' }, h('h3', {}, 'Animations', h('span', { class: 'grow' }), h('small', {}, `${done}/${S.anims.length} done`)),
             h('table', { class: 'wk-anims' }, ...rows),
             extra.length ? h('p', { class: 'note' }, 'Also has: ' + extra.join(', ')) : null,
-            S.anims.some(([n]) => !have.has(n)) ? h('button', { class: 'btn sm', title: 'Add every missing animation of this role at once', onclick: () => { for (const r of S.anims) if (!have.has(r[0])) addAnim(...r); draw(); } }, 'Add all missing') : null)),
+            S.anims.some(([n]) => !have.has(n)) ? h('button', { class: 'btn sm', title: 'Add every missing animation of this role at once', onclick: () => { for (const r of S.anims) if (!have.has(r[0])) addAnim(...r); draw(); } }, 'Add all missing') : null),
+          reactCard(), projCard()),
         h('div', { class: 'wk-col' }, facesCard())));
   };
+  /* ---- being hit ---- */
+  function reactCard() {
+    const R = a.react || { knockback: 60, iframes: .6 };
+    const set = (k, v) => { a.react = { ...R, [k]: v }; api.changed(); };
+    return h('div', { class: 'wk-card' }, h('h3', {}, 'When it gets hit'),
+      h('p', { class: 'note', style: { marginTop: 0 } }, 'In Godot, call hurt(from_position): it flashes, squashes, shakes, is knocked back, blinks while safe and plays "hurt" if it has one.'),
+      field('Knockback', range(R.knockback, 0, 240, 5, v => set('knockback', v), v => v + ' px/s'), 'How hard a hit pushes it away'),
+      field('Safe for', range(R.iframes, 0, 2, .05, v => set('iframes', v), v => (+v).toFixed(2) + ' s'), 'Invulnerable (blinking) after a hit'),
+      have('hurt') ? null : h('p', { class: 'note' }, 'Tip: add a "hurt" animation (enemy and player roles include one).'));
+  }
+  const have = name => a.anims.some(n => n.name === name);
+  /* ---- projectiles ---- */
+  function projCard() {
+    const P = a.projectiles || [];
+    return h('div', { class: 'wk-card' }, h('h3', {}, 'Projectiles', h('span', { class: 'grow' }),
+        h('button', { class: 'btn sm', title: 'A new projectile: its own small animation (drawn in the editor) plus how it flies', onclick: addProjectile }, '+ Projectile')),
+      P.length ? null : h('p', { class: 'note', style: { marginTop: 0 } }, 'Fireballs, arrows, thrown knives. Each is an animation of this actor plus speed, gravity and damage; saved as projectile_<name>.tscn. In Godot: shoot(direction).'),
+      ...P.map((pj, i) => h('div', { class: 'wk-proj' },
+        h('div', { class: 'wk-proj-h' }, h('b', {}, pj.name), h('small', {}, `animation "${pj.anim}"`), h('span', { class: 'grow' }),
+          h('button', { class: 'btn sm ghost', title: 'Draw it in the editor', onclick: () => { ov.remove(); api.goto(pj.anim); } }, 'Draw'),
+          h('button', { class: 'ibtn', title: 'Remove this projectile (its animation stays)', onclick: () => { api.pushUndo(); a.projectiles.splice(i, 1); api.changed(true); draw(); } }, '✕')),
+        field('Speed', range(pj.speed, 20, 600, 10, v => { pj.speed = v; api.changed(); }, v => v + ' px/s')),
+        field('Gravity', range(pj.gravity, 0, 2, .05, v => { pj.gravity = v; api.changed(); }, v => v ? (+v).toFixed(2) + '×' : 'none'), 'An arrow arcs, a fireball flies straight'),
+        field('Lifetime', range(pj.lifetime, .2, 6, .1, v => { pj.lifetime = v; api.changed(); }, v => (+v).toFixed(1) + ' s')),
+        field('Damage', range(pj.damage, 1, 10, 1, v => { pj.damage = v; api.changed(); })),
+        field('Pierce', check('goes through what it hits', pj.pierce, v => { pj.pierce = v; api.changed(); })))));
+  }
+  function addProjectile() {
+    const name = (prompt('Name for the projectile', 'fireball') || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '');
+    if (!name) return;
+    api.pushUndo();
+    // a starter orb in the actor's brightest colours so it shows up straight away; draw over it
+    const pal = [...a.pal].sort((p, q) => luma(q) - luma(p)), hot = pal[0] || [255, 220, 120], mid = pal[1] || hot;
+    const frames = Array.from({ length: 4 }, (_, f) => {
+      const im = newImg(a.w, a.h), cx = a.w / 2, cy = a.h / 2, r = Math.max(2, Math.round(Math.min(a.w, a.h) / 10)) + (f % 2);
+      for (let y = 0; y < a.h; y++) for (let x = 0; x < a.w; x++) { const d = Math.hypot(x + .5 - cx, y + .5 - cy); if (d <= r) im.data.set([...(d < r * .55 ? hot : mid), 255], (y * a.w + x) * 4); }
+      return im;
+    });
+    a.anims.push({ name: 'proj_' + name, fps: 12, loop: true, span: 1, frames });
+    (a.projectiles ||= []).push({ name, anim: 'proj_' + name, speed: 180, gravity: 0, lifetime: 2, damage: 1, pierce: false });
+    api.changed(true); draw();
+  }
   function addAnim(name, n, span, fps, loop) {
     api.pushUndo();
     const base = (a.anims.find(x => /idle|stand/.test(x.name)) || a.anims[0])?.frames[0] || newImg(a.w, a.h);

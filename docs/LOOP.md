@@ -57,7 +57,8 @@ override everything; each gets a Help section and a Godot export):**
 - [x] **Actor workshop, slice 1** DONE (workshop.js; Animate → Workshop): role checklist (missing / not posed / done) with Add,
   Make with Forge (pose presets via forge-for poses), Edit; status faces (8 states, cloud or local, palette-locked + blood) →
   faces.png/faces.json on save.
-- [ ] **Actor workshop, slice 2:** HUD portrait "faces from actor" (hud.gd `set_health()` picks healthy→dead, `flash_face("grin")`),
+- [x] **Actor workshop, slice 2** DONE: hit reaction (knockback, i-frames → juice.gd hurt()), projectiles (proj_<name> anim → projectile_<name>.tscn
+  + _kiln/projectile.gd, actor shoot()), HUD portrait status faces (set_health / show_face). Verified in Godot 4.7. Was: HUD portrait "faces from actor" (hud.gd `set_health()` picks healthy→dead, `flash_face("grin")`),
   projectiles (sprite + flight anim + impact, speed/gravity/lifetime → projectile.tscn + script), hurt reaction settings
   (flash, knockback, i-frames) feeding juice.gd.
   Original: **Actor workshop** ("open an actor → everything for it"): one page per actor with a checklist of what a game character
@@ -215,3 +216,4 @@ override everything; each gets a Help section and a Godot export):**
 - 2026-10-10: loop run 21 (bug hunt: Files). Next hunt: Forge. Backlog top: Actor workshop.
 - 2026-10-10: Actor workshop slice 1 shipped (tested: checklist, add all, local face, save writes faces.png/json). GDScript editor queued.
 - 2026-10-10: user asked for collapsible sections (logged above, GUI pass later); continuing with Actor workshop slice 2.
+- 2026-10-10: Actor workshop slice 2 shipped (reactions, projectiles, HUD faces). Next: Colliders.

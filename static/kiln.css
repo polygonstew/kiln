@@ -455,3 +455,5 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .wk-faces .face.busy > i { color: var(--ember); animation: dxin 1s infinite alternate; }
 .wk-faces .facts { display: flex; gap: 4px; align-items: center; }
 @media (max-width: 900px) { .wk-body { grid-template-columns: 1fr; } }
+.wk-proj { border-top: 1px solid var(--line); padding: 8px 0 4px; }
+.wk-proj-h { display: flex; align-items: baseline; gap: 8px; margin-bottom: 4px; } .wk-proj-h small { color: var(--faint); font: 11px var(--mono); }

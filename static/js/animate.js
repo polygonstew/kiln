@@ -809,7 +809,8 @@ async function exportActor() {
     man.hitbox = { x: Math.round(cx - bw / 2), y: a.h - bh, w: bw, h: bh };
     files.find(f => f.name === 'manifest.json').text = JSON.stringify(man, null, 2) + '\n';
     files.push({ name: `${a.name}.tscn`, text: actorScene(a, res, man.hitbox) });
-    await saveFiles('sprites/_kiln', [{ name: 'juice.gd', text: JUICE_GD }, { name: 'hit_flash.gdshader', text: FLASH_SHADER }]).catch(() => {});
+    await saveFiles('sprites/_kiln', [{ name: 'juice.gd', text: JUICE_GD }, { name: 'hit_flash.gdshader', text: FLASH_SHADER }, { name: 'projectile.gd', text: PROJECTILE_GD }]).catch(() => {});
+    for (const pj of a.projectiles || []) files.push({ name: `projectile_${pj.name}.tscn`, text: projectileScene(a, res, pj) });
   }
   if (a.identity?.ref) files.push({ name: 'reference.png', b64: a.identity.ref });
   files.push(...await facesFiles(a));
@@ -872,6 +873,89 @@ func shake(strength: float = 4.0, duration: float = 0.3) -> void:
 \t\tvar k := 1.0 - float(i) / steps
 \t\tt.tween_property(cam, "offset", Vector2(randf_range(-1, 1), randf_range(-1, 1)) * strength * k, 0.03)
 \tt.tween_property(cam, "offset", Vector2.ZERO, 0.03)
+
+# ---------------------------------------------------------------- being hit (set in Kiln's Workshop)
+@export var knockback := 60.0              ## how far a hit pushes this actor (px/s)
+@export var invulnerable_time := 0.6       ## seconds of blinking safety after a hit
+@export var projectile: PackedScene        ## what shoot() fires (a Kiln projectile scene)
+var invulnerable := false
+signal hurt_started(from_position: Vector2)
+
+## Take a hit: flash, squash, shake, knockback away from the hit, blink while invulnerable, play "hurt".
+func hurt(from_position: Vector2 = Vector2.INF) -> void:
+\tif invulnerable:
+\t\treturn
+\thurt_started.emit(from_position)
+\thit_flash()
+\tsquash(0.18)
+\tshake(3.0, 0.2)
+\tif from_position != Vector2.INF:
+\t\tvelocity = Vector2(signf(global_position.x - from_position.x) * knockback, -knockback * 0.4)
+\tif sprite.sprite_frames.has_animation("hurt"):
+\t\tsprite.play("hurt")
+\t\tsprite.animation_finished.connect(_back_to_idle, CONNECT_ONE_SHOT)
+\tinvulnerable = true
+\tvar blink := create_tween().set_loops(maxi(1, int(invulnerable_time / 0.1)))
+\tblink.tween_property(sprite, "modulate:a", 0.35, 0.05)
+\tblink.tween_property(sprite, "modulate:a", 1.0, 0.05)
+\tawait get_tree().create_timer(invulnerable_time).timeout
+\tblink.kill()
+\tsprite.modulate.a = 1.0
+\tinvulnerable = false
+
+func _back_to_idle() -> void:
+\tif sprite.sprite_frames.has_animation("idle"):
+\t\tsprite.play("idle")
+
+## Fire this actor's projectile (or the one given) toward direction; returns it.
+func shoot(direction := Vector2.RIGHT, scene: PackedScene = null) -> Node:
+\tvar s := scene if scene else projectile
+\tif s == null:
+\t\treturn null
+\tvar p := s.instantiate()
+\tget_parent().add_child(p)
+\tp.global_position = sprite.global_position + Vector2(signf(direction.x) * 10.0, 0)
+\tif p.has_method("launch"):
+\t\tp.launch(direction, self)
+\treturn p
+`;
+// shared by every projectile scene Kiln writes
+const PROJECTILE_GD = `extends Area2D
+## Kiln projectile: flies, falls with gravity_scale, hits anything with hurt(), then disappears (unless pierce).
+
+@export var speed := 160.0
+@export var gravity_scale := 0.0
+@export var lifetime := 2.0
+@export var damage := 1
+@export var pierce := false
+var velocity := Vector2.ZERO
+var shooter: Node = null
+signal hit(target: Node)
+
+func _ready() -> void:
+\tbody_entered.connect(_on_hit)
+\tarea_entered.connect(_on_hit)
+\tget_tree().create_timer(lifetime).timeout.connect(queue_free)
+\tif velocity == Vector2.ZERO:
+\t\tvelocity = Vector2(speed, 0)
+
+func launch(direction: Vector2, from: Node = null) -> void:
+\tshooter = from
+\tvelocity = direction.normalized() * speed
+\t$Sprite.flip_h = direction.x < 0
+
+func _physics_process(delta: float) -> void:
+\tvelocity.y += 980.0 * gravity_scale * delta
+\tposition += velocity * delta
+
+func _on_hit(other: Node) -> void:
+\tif other == shooter:
+\t\treturn
+\thit.emit(other)
+\tif other.has_method("hurt"):
+\t\tother.hurt(global_position)
+\tif not pierce:
+\t\tqueue_free()
 `;
 const FLASH_SHADER = `shader_type canvas_item;
 // Kiln hit flash: mixes the sprite toward flash_color while keeping its shape (alpha).
@@ -885,14 +969,26 @@ void fragment() {
 `;
 function actorScene(a, res, hb) {
   const start = (a.anims.find(n => /idle|stand/i.test(n.name)) || a.anims[0]).name;
-  const shared = res.replace(/\/[^/]+$/, '') + '/_kiln';
-  return `[gd_scene load_steps=6 format=3]\n\n[ext_resource type="SpriteFrames" path="${res}/${a.name}.tres" id="1"]\n`
+  const shared = res.replace(/\/[^/]+$/, '') + '/_kiln', R = a.react || {}, pj = (a.projectiles || [])[0];
+  return `[gd_scene load_steps=${pj ? 7 : 6} format=3]\n\n[ext_resource type="SpriteFrames" path="${res}/${a.name}.tres" id="1"]\n`
+    + (pj ? `[ext_resource type="PackedScene" path="${res}/projectile_${pj.name}.tscn" id="4"]\n` : '')
     + `[ext_resource type="Script" path="${shared}/juice.gd" id="2"]\n[ext_resource type="Shader" path="${shared}/hit_flash.gdshader" id="3"]\n\n`
     + `[sub_resource type="ShaderMaterial" id="flash"]\nshader = ExtResource("3")\nshader_parameter/flash = 0.0\nshader_parameter/flash_color = Color(1, 1, 1, 1)\n\n`
     + `[sub_resource type="RectangleShape2D" id="body"]\nsize = Vector2(${hb.w}, ${hb.h})\n\n`
-    + `[node name="${a.name}" type="CharacterBody2D"]\nscript = ExtResource("2")\n\n`
+    + `[node name="${a.name}" type="CharacterBody2D"]\nscript = ExtResource("2")\nknockback = ${R.knockback ?? 60}.0\ninvulnerable_time = ${R.iframes ?? 0.6}\n${pj ? 'projectile = ExtResource("4")\n' : ''}\n`
     + `[node name="Sprite" type="AnimatedSprite2D" parent="."]\nmaterial = SubResource("flash")\ntexture_filter = 1\nposition = Vector2(0, ${-a.h / 2})\nsprite_frames = ExtResource("1")\nanimation = &"${start}"\nautoplay = "${start}"\n\n`
     + `[node name="Body" type="CollisionShape2D" parent="."]\nposition = Vector2(${hb.x + hb.w / 2 - a.w / 2}, ${hb.y + hb.h / 2 - a.h})\nshape = SubResource("body")\n`;
+}
+// a projectile: Area2D flying one of the actor's animations (proj_<name>), with a round hit shape from its first frame
+function projectileScene(a, res, pj) {
+  const shared = res.replace(/\/[^/]+$/, '') + '/_kiln', n = a.anims.find(x => x.name === pj.anim);
+  const b = n && bbox(n.frames[0]), r = b ? Math.max(2, Math.round(Math.max(b.w, b.h) / 2)) : 4;
+  const off = b ? `position = Vector2(${b.x + b.w / 2 - n.frames[0].width / 2}, ${b.y + b.h / 2 - n.frames[0].height / 2})\n` : '';
+  return `[gd_scene load_steps=4 format=3]\n\n[ext_resource type="SpriteFrames" path="${res}/${a.name}.tres" id="1"]\n[ext_resource type="Script" path="${shared}/projectile.gd" id="2"]\n\n`
+    + `[sub_resource type="CircleShape2D" id="c"]\nradius = ${r}.0\n\n`
+    + `[node name="${pj.name}" type="Area2D"]\nscript = ExtResource("2")\nspeed = ${pj.speed}.0\ngravity_scale = ${pj.gravity}\nlifetime = ${pj.lifetime}\ndamage = ${pj.damage}\npierce = ${!!pj.pierce}\n\n`
+    + `[node name="Sprite" type="AnimatedSprite2D" parent="."]\ntexture_filter = 1\nsprite_frames = ExtResource("1")\nanimation = &"${pj.anim}"\nautoplay = "${pj.anim}"\n\n`
+    + `[node name="Hit" type="CollisionShape2D" parent="."]\n${off}shape = SubResource("c")\n`;
 }
 // CHARACTER.md: everything needed to come back later (a person or an agent) and make more of this
 // actor on-model. The "## Notes" section is yours: it is kept when the file is rewritten.

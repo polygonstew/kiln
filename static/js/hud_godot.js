@@ -51,7 +51,11 @@ export function buildGodotHud(HUD, T, res, base) {
         nodes.push(`[node name="Item" type="TextureRect" parent="${P}/${n}"]\noffset_left = 2\noffset_top = 2\noffset_right = ${W - 2}\noffset_bottom = ${H - 2}\nexpand_mode = 1\nstretch_mode = 5\n`);
         nodes.push(label('Count', `${P}/${n}`, W - 8, H - 8, w.count ? String(w.count) : '', 'tiny', w.edge));
       }
-      if (w.type === 'portrait') nodes.push(`[node name="Face" type="TextureRect" parent="${P}/${n}"]\noffset_left = 3\noffset_top = 3\noffset_right = ${W - 3}\noffset_bottom = ${H - 3}\nexpand_mode = 1\nstretch_mode = 6\n${w.img ? `texture = ExtResource("${addExt('Texture2D', J(w.img.split('/').slice(-3).join('/')))}")\n` : ''}`);
+      if (w.type === 'portrait' && w.faces && T.facesMeta.get(w.faces)) {
+        // status faces: an AtlasTexture over faces.png; hud.gd set_health() moves the region
+        const fm = T.facesMeta.get(w.faces), atlas = addSub('AtlasTexture', `atlas = ExtResource("${addExt('Texture2D', J(w.faces.split('/').slice(-2).join('/') + '/faces.png'))}")\nregion = Rect2(0, 0, ${fm.size}, ${fm.size})`);
+        nodes.push(`[node name="Face" type="TextureRect" parent="${P}/${n}"]\noffset_left = 3\noffset_top = 3\noffset_right = ${W - 3}\noffset_bottom = ${H - 3}\nexpand_mode = 1\nstretch_mode = 5\ntexture = SubResource("${atlas}")\nmetadata/faces = ${JSON.stringify(fm.faces).replace(/^\[/, 'PackedStringArray(').replace(/\]$/, ')')}\nmetadata/face_size = ${fm.size}\n`);
+      } else if (w.type === 'portrait') nodes.push(`[node name="Face" type="TextureRect" parent="${P}/${n}"]\noffset_left = 3\noffset_top = 3\noffset_right = ${W - 3}\noffset_bottom = ${H - 3}\nexpand_mode = 1\nstretch_mode = 6\n${w.img ? `texture = ExtResource("${addExt('Texture2D', J(w.img.split('/').slice(-3).join('/')))}")\n` : ''}`);
     } else if (w.type === 'inventory') {
       const G = T.invGeom(w), frame = png(`${n}_frame.png`, T.nine(w.style, w.fill, w.edge, w.edge2, 4)), slot = png(`${n}_slot.png`, T.nine(w.slotStyle, w.slotFill, w.edge2, w.edge2, 2));
       const cur = png(`${n}_cursor.png`, T.cursor(w.size, w.cursor)), det = png(`${n}_details.png`, T.nine('line', w.detFill, w.edge2, null, 2));
@@ -153,6 +157,43 @@ func set_value(widget: String, v: float) -> void:
 			var state := 0 if f >= 1.0 else (1 if f >= 0.5 and n.get_meta("halves") else 2)
 			var pip: TextureRect = n.get_child(i)
 			pip.texture.region.position.x = state * iw
+
+## Health for the whole HUD: the "health" bar (if any) and every status-face portrait (healthy → hurt → … → dead).
+func set_health(v: float) -> void:
+	set_value("health", v)
+	_health = clampf(v, 0.0, 1.0)
+	if _face_override == "":
+		_show_faces(_face_for_health())
+
+## Show one face for a while (e.g. "grin" after a kill), then back to the health face.
+func show_face(face: String, seconds := 1.2) -> void:
+	_face_override = face
+	_show_faces(face)
+	await get_tree().create_timer(seconds).timeout
+	_face_override = ""
+	_show_faces(_face_for_health())
+
+var _health := 1.0
+var _face_override := ""
+
+func _face_for_health() -> String:
+	var want := "dead" if _health <= 0.0 else ("near" if _health < 0.25 else ("badly" if _health < 0.5 else ("hurt" if _health < 0.75 else "healthy")))
+	return want
+
+func _show_faces(want: String) -> void:
+	var order := ["dead", "near", "badly", "hurt", "healthy"]
+	for n in _all(self):
+		if n is TextureRect and n.has_meta("faces"):
+			var faces: PackedStringArray = n.get_meta("faces")
+			var pick := want
+			if not faces.has(pick) and order.has(pick):
+				for i in range(order.find(pick), order.size()):
+					if faces.has(order[i]):
+						pick = order[i]
+						break
+			var idx := faces.find(pick)
+			if idx >= 0:
+				n.texture.region.position.x = idx * int(n.get_meta("face_size"))
 
 func set_number(widget: String, value: int) -> void:
 	var n := _w(widget)

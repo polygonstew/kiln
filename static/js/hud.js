@@ -153,7 +153,18 @@ function wrap(text, font, maxW) {
   if (line) out.push(line); return out;
 }
 // Render one widget into its own image (so it can be exported alone). value overrides w.value.
-const imgCache = new Map();
+const imgCache = new Map(), facesMeta = new Map();
+// health → face: the same rule hud.gd uses in Godot
+export function faceFor(faces, v) {
+  const want = v <= 0 ? 'dead' : v < .25 ? 'near' : v < .5 ? 'badly' : v < .75 ? 'hurt' : 'healthy';
+  const order = ['dead', 'near', 'badly', 'hurt', 'healthy'];
+  for (let i = order.indexOf(want); i < order.length; i++) if (faces.includes(order[i])) return order[i];
+  return faces[0];
+}
+async function loadFaces(dir) {
+  if (!dir || facesMeta.has(dir)) return;
+  try { facesMeta.set(dir, await (await fetch(rawURL(dir + '/faces.json'))).json()); await loadImg(dir + '/faces.png'); drawCanvas(); } catch { }
+}
 function render(w, value = w.value, part = 'all') {
   const sz = sizeOf(w), pad = w.type === 'panel' ? 4 : 1;
   const im = newImg(sz.w + 2, sz.h + 2 + (w.type === 'panel' ? 0 : 0)), g = px(im);
@@ -203,8 +214,16 @@ function render(w, value = w.value, part = 'all') {
     if (w.count) drawText(imCtx(im), String(w.count), o + w.size - 2, o + w.size - 7, { font: 'tiny', color: w.edge, shadow: '#000000', align: 'right' });
   } else if (w.type === 'portrait') {
     frameBox(g, o, o, w.size, w.size, w.style, w.fill, w.edge, w.edge2, 3);
-    const it = w.img && imgCache.get(w.img);
-    if (it) { const cw = w.size - 6; const crop = cropTop(it, cw); blitIm(im, crop, o + 3, o + 3); }
+    const fm = w.faces && facesMeta.get(w.faces), strip = w.faces && imgCache.get(w.faces + '/faces.png');
+    if (fm && strip) {        // status faces: health picks the face, like the Doom marine
+      const i = Math.max(0, fm.faces.indexOf(faceFor(fm.faces, value))), cell = cropIm(strip, i * fm.size, 0, fm.size, fm.size);
+      const cw = w.size - 6, k = Math.max(1, Math.floor(cw / fm.size)), big = newImg(fm.size * k, fm.size * k);
+      for (let y = 0; y < big.height; y++) for (let x = 0; x < big.width; x++) { const sI = (Math.floor(y / k) * fm.size + Math.floor(x / k)) * 4; big.data.set(cell.data.subarray(sI, sI + 4), (y * big.width + x) * 4); }
+      blitIm(im, big, o + 3 + Math.floor((cw - big.width) / 2), o + 3 + Math.floor((cw - big.height) / 2));
+    } else {
+      const it = w.img && imgCache.get(w.img);
+      if (it) { const cw = w.size - 6; const crop = cropTop(it, cw); blitIm(im, crop, o + 3, o + 3); }
+    }
   } else if (w.type === 'inventory') {
     const G = invGeom(w), ctx = imCtx(im);
     if (part !== 'slots') frameBox(g, o, o, G.W, G.H, w.style, w.fill, w.edge, w.edge2, 4);
@@ -289,7 +308,7 @@ export const hud = {
     const tick = t => { const dt = (t - last) / 1000; last = t; if (demo && el.classList.contains('on')) { demoT += dt; drawCanvas(); } requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
     if (!HUD.widgets.length) starter();
-    for (const w of HUD.widgets) { loadImg(w.item); loadImg(w.img); for (const it of w.items || []) loadImg(it.icon); }
+    for (const w of HUD.widgets) { loadImg(w.item); loadImg(w.img); loadFaces(w.faces); for (const it of w.items || []) loadImg(it.icon); }
     loadBg(); drawLeft(); drawRight(); drawCanvas();
   },
   show() { drawCanvas(); },
@@ -347,6 +366,7 @@ function drawCanvas() {
     if (wd.type === 'counter' && demo) wd._num = wd._num == null ? wd.num : wd._num;
     let live = wd.type === 'counter' && demo ? { ...wd, num: wd.num + Math.floor(demoT * 37) } : wd;
     if (demo && wd.type === 'dialogue') live = { ...wd, _reveal: Math.floor((demoT * 28) % (String(wd.text).length + 40)), _blink: Math.floor(demoT * 3) };
+    if (demo && wd.type === 'portrait' && wd.faces) live = { ...wd, value: (Math.sin(demoT * .7) + 1) / 2 };
     if (demo && wd.type === 'inventory') live = { ...wd, _sel: Math.floor(demoT * 1.5) % Math.max(1, Math.min(wd.items?.length || 1, wd.cols * wd.rows)) };
     const im = render(live, v);
     x.drawImage(toCanvas(im), wd.x - 1, wd.y - 1 + (demo && wd.type === 'prompt' ? Math.round(Math.sin(demoT * 4)) : 0));
@@ -445,6 +465,9 @@ function drawRight() {
       num('size', 'Size', 10, 96); opt('style', 'Frame', frames); col('fill', 'Fill'); col('edge', 'Light edge'); col('edge2', 'Dark edge');
       if (w.type === 'slot') num('count', 'Count', 0, 99);
       F.push(field(w.type === 'slot' ? 'Item' : 'Face', h('button', { class: 'btn sm', onclick: () => pickSprite(p => { if (w.type === 'slot') w.item = p; else w.img = p; loadImg(p); r(); drawRight(); }) }, (w.item || w.img) ? (w.item || w.img).split('/').slice(-2).join('/') : 'Pick a sprite…')));
+      if (w.type === 'portrait') F.push(field('Status faces', h('span', { style: { display: 'flex', gap: '6px' } },
+        h('button', { class: 'btn sm', title: 'Use an actor\'s status faces (made in Animate → Workshop): the face changes with health', onclick: () => pickFaces(dir => { w.faces = dir; loadFaces(dir); r(); drawRight(); }) }, w.faces ? w.faces.split('/').pop() : 'From an actor…'),
+        w.faces ? h('button', { class: 'ibtn', title: 'Stop using status faces', onclick: () => { w.faces = ''; r(); drawRight(); } }, '✕') : null), 'Health picks the face: healthy → hurt → badly hurt → near death → dead'));
     }
     if (w.type === 'inventory') {
       num('cols', 'Columns', 1, 12); num('rows', 'Rows', 1, 8); num('size', 'Slot size', 12, 48); num('gap', 'Gap', 0, 8); num('pad', 'Padding', 2, 16); txt('title', 'Title');
@@ -465,7 +488,7 @@ function drawRight() {
       F.push(field('Face', h('button', { class: 'btn sm', onclick: () => pickSprite(p => { w.img = p; loadImg(p); r(); drawRight(); }) }, w.img ? w.img.split('/').slice(-2).join('/') : 'Pick a sprite…')));
     }
     if (w.type === 'prompt') { txt('key', 'Key'); txt('text', 'Action'); opt('font', 'Font', fonts); col('fill', 'Key cap'); col('edge', 'Key edge'); col('keyColor', 'Key letter'); col('color', 'Text'); }
-    if (['bar', 'gauge', 'pips'].includes(w.type)) F.push(field('Value', range(w.value, 0, 1, .01, v => { w.value = v; w._ghost = Math.max(w._ghost || 0, v); r(); }, v => Math.round(v * 100) + '%')));
+    if (['bar', 'gauge', 'pips'].includes(w.type) || (w.type === 'portrait' && w.faces)) F.push(field(w.type === 'portrait' ? 'Health' : 'Value', range(w.value, 0, 1, .01, v => { w.value = v; w._ghost = Math.max(w._ghost || 0, v); r(); }, v => Math.round(v * 100) + '%')));
     insp.append(h('div', { class: 'sec' }, h('h3', {}, NAMES[w.type], h('span', { class: 'grow' }),
       h('button', { class: 'btn sm ghost danger', onclick: () => { HUD.widgets = HUD.widgets.filter(x => x !== w); sel = null; save(); drawRight(); drawCanvas(); } }, 'Delete')), ...F));
   }
@@ -476,6 +499,17 @@ function drawRight() {
       h('p', { class: 'note', style: { marginTop: 0 } }, h('b', {}, `hud/${HUD.name}/`), ' gets the full mock-up, each widget as parts (frame, fill, state strips, icons, 9-slice panels) and hud.json with positions and margins.'),
       field('States', range(pref.get('hud.states', 11), 2, 33, 1, v => pref.set('hud.states', v)), 'Frames in each meter strip (0% to 100%)'),
       h('button', { class: 'btn go wide', onclick: exportHud }, 'Save ' + HUD.name)));
+}
+// actors that have status faces (faces.json saved by the Workshop)
+async function pickFaces(cb) {
+  const r = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/sprites')).catch(() => ({ items: [] }));
+  const dirs = [];
+  for (const d of r.items.filter(i => i.dir)) { const x = await api('/api/fs?path=' + encodeURIComponent(d.path)).catch(() => ({ items: [] })); if (x.items.some(i => i.name === 'faces.json')) dirs.push(d); }
+  const m = h('div', { class: 'modal', onclick: e => { if (e.target === m) m.remove(); } }, h('div', {},
+    h('header', {}, h('span', { class: 'grow' }, 'Status faces from…'), h('button', { class: 'ibtn', onclick: () => m.remove() }, '✕')),
+    h('div', { class: 'body' }, dirs.length ? dirs.map(d => h('div', { class: 'palrow', onclick: () => { m.remove(); cb(d.path); } }, icon('folder'), h('span', {}, d.name)))
+      : h('p', { class: 'note' }, 'No actor has status faces yet: make them in Animate → Workshop, then save the actor.'))));
+  document.body.append(m);
 }
 async function pickSprite(cb) {
   const r = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/sprites')).catch(() => ({ items: [] }));
@@ -556,7 +590,7 @@ function nineIm(style, fill, edge, edge2, c) { const im = newImg(c * 2 + 3, c * 
 function stripIm(ims) { const s = newImg(ims[0].width * ims.length, ims[0].height); ims.forEach((im, i) => blitIm(s, im, i * im.width, 0)); return s; }
 function diffIm(a, b) { const o = newImg(a.width, a.height); for (let i = 0; i < a.data.length; i += 4) { if (a.data[i + 3] < 128) continue; if (b.data[i + 3] >= 128 && a.data[i] === b.data[i] && a.data[i + 1] === b.data[i + 1] && a.data[i + 2] === b.data[i + 2]) continue; o.data.set(a.data.subarray(i, i + 4), i); } return o; }
 function cursorIm(size, color) { const im = newImg(size + 2, size + 2), c = rgb(color); for (let k = 0; k < size + 2; k++) for (const [x, y] of [[k, 0], [k, size + 1], [0, k], [size + 1, k]]) im.data.set([...c, 255], (y * (size + 2) + x) * 4); return im; }
-const GT = { render, sizeOf, invGeom, toDataURL, FONTS, measure, nine: nineIm, strip: stripIm, diff: diffIm, cursor: cursorIm };
+const GT = { render, sizeOf, invGeom, toDataURL, FONTS, measure, nine: nineIm, strip: stripIm, diff: diffIm, cursor: cursorIm, facesMeta };
 async function exportFont(f) {
   const name = `kiln_${f.font}${f.outline ? '_outline' : f.shadow ? '_shadow' : ''}`;
   const { canvas, fnt } = buildBMFont(f.font, { color: f.color, outline: f.outline || null, shadow: f.shadow || null, name });

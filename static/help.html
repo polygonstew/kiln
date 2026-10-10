@@ -163,6 +163,9 @@ svg text { font-family: 'IBM Plex Sans Condensed'; }
 <h3>Workshop: everything one actor needs</h3>
 <p>The <b>Workshop</b> button (editor tool bar) opens a checklist for the actor you have open. Pick its <b>role</b> (player, enemy, flyer, boss, NPC, prop) and you see every animation that role needs: <i>missing</i>, <i>not posed yet</i> (frames are still copies of the base pose) or <i>done</i>. <b>Add</b> lays an animation out, <b>Make with Forge</b> opens Forge locked to the actor with fitting poses, <b>Edit</b> jumps to it.</p>
 <p><b>Status faces</b> (like the Doom marine): healthy, hurt, badly hurt, near death, dead, grin, look left/right. Close-ups made from the reference in the actor's colours (plus blood and bruises), by the cloud (best likeness) or this PC (free). They save as <code>faces.png</code> + <code>faces.json</code> in the actor's folder.</p>
+<p><b>When it gets hit</b>: knockback and safe (invulnerable) time. In Godot, <code>hurt(from_position)</code> flashes, squashes, shakes, knocks the actor back, blinks while it's safe and plays its "hurt" animation.</p>
+<p><b>Projectiles</b>: <b>+ Projectile</b> adds one with its own small animation (a starter orb to draw over) plus speed, gravity (arrows arc), lifetime, damage and pierce. Saved as <code>projectile_&lt;name&gt;.tscn</code>; in Godot <code>shoot(direction)</code> fires it and it calls <code>hurt()</code> on what it hits.</p>
+<p>In the <b>HUD</b>, a portrait can use an actor's status faces (Status faces → From an actor…); in Godot <code>set_health(0.3)</code> sets the health bar and picks the face, <code>show_face("grin", 1.5)</code> shows one for a moment.</p>
 <h3>Cutting a sprite sheet into frames</h3>
 <figure><img src="/help/slicer.jpg" alt="sheet cutter"><figcaption>The sheet cutter: tool bar on top, boxes on the sheet, how to find frames on the right.</figcaption></figure>
 <ul><li>Drop a sheet on Animate (or File → Cut a sprite sheet…). Kiln reads the layout itself: file names like <code>enemy_4x8_idle_walk_run_attack</code>, even rows, or loose figures.</li>
@@ -203,6 +206,7 @@ svg text { font-family: 'IBM Plex Sans Condensed'; }
 <p><b>Save</b> writes <code>hud/&lt;name&gt;/&lt;name&gt;.tscn</code> (a CanvasLayer of real nodes: TextureProgressBar, NinePatchRect, Labels using Kiln's bitmap fonts) and <code>hud.gd</code>. Add the scene to your game and call:</p>
 <table><tr><th>Call</th><th>Does</th></tr>
 <tr><td><code>set_value("health", 0.5)</code></td><td>bars, gauges and pips (0 to 1)</td></tr>
+<tr><td><code>set_health(0.3)</code> · <code>show_face("grin")</code></td><td>the health bar plus status-face portraits (from the Workshop)</td></tr>
 <tr><td><code>set_number("score", 120)</code> · <code>set_text("title", "…")</code></td><td>counters and text</td></tr>
 <tr><td><code>say("Monk", "The bells…")</code></td><td>shows the dialogue box and types the line; <code>ui_accept</code> skips / closes; signal <code>dialogue_finished</code></td></tr>
 <tr><td><code>prompt("E", "Open")</code> · <code>hide_prompt()</code></td><td>the button prompt</td></tr>
