@@ -28,7 +28,8 @@ Rules for keeping Kiln readable are in CLAUDE.md ("Stay understandable"). Rough 
 - **Shell:** app.js (tabs), core.js (DOM, API, pixel pipeline), menubar.js, wheel.js, quick.js, sendto.js, owners.js
 - **Areas:** files, forge, animate (+ workshop, motion, sheets, slicer, player), scenes (+ procgen), levels, hud, stage, concepts
 - **Godot writers:** actor_godot.js (actor scene + juice.gd/projectile.gd), hud_godot.js, the export parts of scenes.js / levels.js
-- **Server:** server.py (stdlib): files, projects, generation queue, cloud budget, Godot plugin endpoints
+- **Server:** server.py (stdlib): files, projects, generation queue, cloud budget, Godot plugin endpoints; checks.py: GDScript list/check, Doctor, snapshots
+- **Actor extras:** workshop.js, actor_tools.js (CHARACTER.md, game-size copy), brains.js, sfx.js, vfx.js; **Level extras:** tilekinds.js, zones.js, autotile.js
 
 ## Adding an area
 
