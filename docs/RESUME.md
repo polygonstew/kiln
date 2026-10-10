@@ -98,6 +98,12 @@ hence the desktop window. Self-test: `QT_QPA_PLATFORM=offscreen KILN_STUDIO_SHOT
 `static/js/levels.js`: tile painting into a TileMapLayer. Projects `kiln/level-<name>.json`; export `levels/<name>/` (tileset.png,
 <name>.tres TileSet with physics polygons for solid tiles, <name>.tscn with `tile_map_data` = uint16 0 then 6×int16 per cell).
 
+## Concepts tab (key 8)
+
+`static/js/concepts.js`: the remote-friendly version of Kiln Studio (the user works over SSH / from other devices).
+Links open meta.ai and others in a tab on the user's own device; images come back by drop, paste or upload into
+`concepts/<session>/` (+ notes.md). Cards: Pixelize (Forge source), Guide (Forge guide, event `forge-guide`), Frames (slicer), trash.
+
 ## Next ideas (not started)
 
 - Pose prompts: klein-9b sometimes changes the pose too little (strike looked like idle). Try stronger

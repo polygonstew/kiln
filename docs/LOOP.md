@@ -131,3 +131,4 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: run 15. Scenes review tools (overlays, time of day, snapshot, pan video). The Scenes push (1-5) is complete.
 - 2026-10-10: run 16. Levels entities: place actors and the player start, exported as instanced scenes and a Marker2D.
 - 2026-10-10: run 17. The Desk: your home apps as icons and windows (Ubuntu or Windows look) at /desk and in Kiln Studio.
+- 2026-10-10: user is on SSH, so Kiln Studio (a desktop window) is no use remotely. Added the Concepts tab (meta.ai links + drop/paste/upload + notes).

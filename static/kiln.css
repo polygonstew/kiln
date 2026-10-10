@@ -398,3 +398,13 @@ table.breakdown td.warn { color: var(--bad); } table.breakdown td.ok { color: va
 .entlist button { display: flex; align-items: center; gap: 8px; background: #151514; border: 1px solid var(--line2); border-radius: 2px; color: var(--dim); padding: 4px 8px; cursor: pointer; font: 12px var(--cond); text-align: left; }
 .entlist button canvas { height: 28px; image-rendering: pixelated; }
 .entlist button.on { border-color: var(--ember); color: var(--ember2); }
+/* Concepts */
+.cdrop { border: 2px dashed var(--line2); border-radius: 4px; padding: 22px; text-align: center; cursor: pointer; display: flex; flex-direction: column; gap: 4px; color: var(--dim); margin-bottom: 14px; }
+.cdrop b { color: var(--fg, #e6e2d6); font: 600 14px var(--cond); } .cdrop span { font-size: 12px; color: var(--faint); }
+.cdrop:hover, .cdrop.hot { border-color: var(--ember); color: var(--ember2); }
+.cgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.ccard { background: #151514; border: 1px solid var(--line2); border-radius: 3px; overflow: hidden; display: flex; flex-direction: column; }
+.ccard img { width: 100%; aspect-ratio: 1; object-fit: contain; background: #0e0e0d; cursor: zoom-in; image-rendering: auto; }
+.cacts { display: flex; gap: 4px; padding: 6px; flex-wrap: wrap; align-items: center; } .cacts .ibtn { margin-left: auto; }
+.csites { display: flex; flex-wrap: wrap; gap: 6px; } .csites a { text-decoration: none; }
+@media (max-width: 800px) { #v-concepts.ws { grid-template-columns: 1fr; } #v-concepts aside.r { display: none; } }

@@ -8,7 +8,7 @@ import { initWheel, registerWheel } from './wheel.js';
 import './quick.js';
 
 const mods = [files];
-const optional = ['forge', 'animate', 'scenes', 'levels', 'hud', 'stage'];
+const optional = ['forge', 'animate', 'scenes', 'levels', 'hud', 'stage', 'concepts'];
 const views = {};
 let cur = null;
 
@@ -44,7 +44,7 @@ async function boot() {
   on('tab', id => show(id));
   $('#stylechip').onclick = editStyle;
   // cross-tab requests switch to the tab that handles them
-  const route = { 'open-actor': 'animate', 'slice-sheet': 'animate', 'forge-image': 'forge', 'open-scene': 'scenes', 'scene-layer': 'scenes', 'use-palette': 'forge', 'to-animate': 'animate', 'forge-for': 'forge', 'level-tileset': 'levels' };
+  const route = { 'open-actor': 'animate', 'slice-sheet': 'animate', 'forge-image': 'forge', 'open-scene': 'scenes', 'scene-layer': 'scenes', 'use-palette': 'forge', 'to-animate': 'animate', 'forge-for': 'forge', 'level-tileset': 'levels', 'forge-guide': 'forge' };
   for (const [ev, tab] of Object.entries(route)) on(ev, () => { if (mods.some(m => m.id === tab)) show(tab); });
   document.addEventListener('keydown', e => {
     if (e.target.matches('input,textarea,select') || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -53,7 +53,7 @@ async function boot() {
   });
   initWheel(() => mods.map(m => ({ id: m.id, label: m.title, key: m.key })), () => cur);
   // workspaces without their own wheel entries still get their main buttons as tools
-  for (const m of mods) if (!['animate', 'forge', 'levels', 'scenes'].includes(m.id)) registerWheel(m.id, () => ({
+  for (const m of mods) if (!['animate', 'forge', 'levels', 'scenes', 'concepts'].includes(m.id)) registerWheel(m.id, () => ({
     tools: [...(views[m.id]?.querySelectorAll('button.btn.go, button.btn:not(.ghost):not(.sm)') || [])].filter(b => b.offsetParent && b.textContent.trim()).slice(0, 10)
       .map(b => ({ label: b.textContent.trim().slice(0, 24), hint: b.title, run: () => b.click() })),
   }));

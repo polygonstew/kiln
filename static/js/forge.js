@@ -43,6 +43,7 @@ let inbox = [];    // images just saved to ~/Downloads (from any site), newest f
 let ID = null;   // identity of the actor being extended: {name, desc, kind, ref, refW, refH, refSprite, pal, w, h, scale, seed}
 
 on('forge-image', p => { pending = { path: p }; if (mounted) takePending(); });
+on('forge-guide', async url => { const im = await imgData(url).catch(() => null); if (!im) return toast('Could not read that image', 'bad'); guide = flatSmall(im); if (mounted) drawLeft(); toast('Guide image set'); });
 on('use-palette', p => { customPal = p; st.palMode = 'custom'; if (mounted) { drawRight(); run(); } });
 on('job-done', j => { if (j.forge) addResults(j); });
 on('forge-for', id => { ID = id; if (mounted) { drawLeft(); drawRight(); drawResults(); run(); } });

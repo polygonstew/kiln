@@ -146,7 +146,7 @@ function closeMenu() {
 /* --------------------------------------------------------- shortcuts (?) ---- */
 // Press ? anywhere for the keys and mouse moves that work in the area you're in, plus the global ones.
 const KEYS = {
-  '*': [['1 – 7', 'Switch area'], ['Ctrl+K', 'Find anything: areas, actions, actors, scenes, files'], ['Shift+A', 'Command wheel (area / tool / guide)'], ['Right-click', 'Kiln menu (Shift+right-click: browser menu)'], ['?', 'This list'], ['Esc', 'Close wheel, menu or this list']],
+  '*': [['1 – 8', 'Switch area'], ['Ctrl+K', 'Find anything: areas, actions, actors, scenes, files'], ['Shift+A', 'Command wheel (area / tool / guide)'], ['Right-click', 'Kiln menu (Shift+right-click: browser menu)'], ['?', 'This list'], ['Esc', 'Close wheel, menu or this list']],
   files: [['Enter', 'Open'], ['F2', 'Rename'], ['Delete', 'Move to trash'], ['Backspace', 'Up a folder'], ['Drop files', 'Copy them into this folder']],
   forge: [['D', 'Roll the dice: a random enemy idea'], ['Ctrl+V', 'Paste an image as the source'], ['Click source', 'Pick the background colour to remove'], ['Drop on guide box', 'Set a guide image'], ['Right-click a result', 'Use as source / as guide']],
   animate: [['Left click', 'Add pixels'], ['Right click', 'Remove pixels'], ['Mouse wheel', 'Roll through the palette'], ['Middle click', 'Pick the colour under the cursor'], ['Ctrl/Alt+wheel', 'Zoom'],
