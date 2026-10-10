@@ -20,7 +20,7 @@ let V = {}, mounted = false, pending = [];
 const anim = () => A.actor.anims[A.ai];
 const frame = () => anim()?.frames[A.fi];
 
-function blankActor(name = 'hero', w = 32, hh = 32, pal = null) {
+function blankActor(name = 'new_actor', w = 32, hh = 32, pal = null) {
   return { id: uid(), name, w, h: hh, desc: '', pal: pal || PALETTES.sweetie.colors.slice(), anims: [{ name: 'idle', fps: 8, loop: true, frames: [newImg(w, hh)] }] };
 }
 

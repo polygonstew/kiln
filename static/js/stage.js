@@ -54,6 +54,9 @@ async function drawLeft() {
   const [actors, scenes] = await Promise.all([listDirs('sprites'), listDirs('backgrounds')]);
   const huds = (await api('/api/fs?path=' + encodeURIComponent(FS.root + '/hud')).catch(() => ({ items: [] }))).items.filter(i => i.dir);
   const cur = pref.get('stage.pick', {});
+  // first visit: start with something on stage rather than an empty floor
+  if (!('actor' in cur) && actors.length) cur.actor = actors[0].path;
+  if (!('scene' in cur) && scenes.length) cur.scene = scenes[0].path;
   const mapBox = h('div');
   const drawMap = () => {
     if (!actor) { mapBox.replaceChildren(h('p', { class: 'note' }, 'Pick an actor to see how its animations map to actions.')); return; }

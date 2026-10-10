@@ -811,6 +811,8 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/fs':
                 return self.send(200, fs_list(q.get('path')))
             if u.path == '/api/fs/raw':
+                if not in_home(q['path']).is_file():
+                    return self.send(404, {'err': 'no such file'})
                 raw, ct = fs_raw(q['path'])
                 return self.send(200, raw, ct)
             if u.path == '/api/godot':
@@ -834,7 +836,7 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/project':
                 f = proj_dir() / (re.sub(r'[^\w.-]', '_', q.get('id', '')) + '.json')
                 return self.send(200, f.read_bytes()) if f.exists() else self.send(404, {'err': 'not found'})
-            path = 'index.html' if u.path == '/' else 'desk.html' if u.path in ('/desk', '/desk/') else u.path.lstrip('/')
+            path = 'index.html' if u.path == '/' else 'desk.html' if u.path in ('/desk', '/desk/') else 'help.html' if u.path in ('/help', '/help/') else u.path.lstrip('/')
             fp = (STATIC / path).resolve()
             if str(fp).startswith(str(STATIC)) and fp.is_file():
                 return self.send(200, fp.read_bytes(), TYPES.get(fp.suffix, 'application/octet-stream'))

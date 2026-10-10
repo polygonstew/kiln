@@ -1,35 +1,36 @@
 # Kiln
 
-A 2D game asset workbench for retro pixel art (NES 8-bit through SNES 16-bit). It turns
-descriptions and images into sprites, animations, parallax backgrounds, HUDs and bitmap fonts,
-and saves them in a folder layout game engines read directly.
+A 2D game asset workbench for retro pixel art (NES 8-bit through SNES 16-bit). It turns descriptions and images
+into sprites, animations, parallax scenes, tile levels, HUDs and bitmap fonts, and saves them in a folder layout
+Godot reads directly (`.tres`/`.tscn` with `res://` paths when the asset folder is inside a Godot project).
+Its first rule is **consistency**: characters and styles stay on-model across everything made after them.
 
-- **Open:** http://192.168.0.105:8510 on the LAN (also `http://localhost:8510`, and over Tailscale)
-- **Service:** `systemctl --user {status,restart} kiln` (unit `~/.config/systemd/user/kiln.service`)
-- **Needs:** ComfyUI on `127.0.0.1:8188` (`comfyui.service`) for local generation. The cloud
-  model needs `~/.config/uwf-apps/keys.env` (Gemini key first, OpenRouter fallback, capped at $2)
-- **Stack:** `server.py` (Python stdlib only) + `static/` (vanilla JS modules, no build step)
+- **Open:** http://192.168.0.105:8510 on the LAN (`http://localhost:8510` locally). Guide: **`/help`** (or F1, Help menu)
+- **Services:** `kiln` (port 8510), `kiln-fast` (8511, local Fast generator), `comfyui` (8188, local models)
+- **Stack:** `server.py` (Python stdlib only) + `static/` (vanilla ES modules, no build step)
+- **Test:** `.venv-test/bin/python tools/smoke.py` (see docs/DEVELOPING.md)
 
-## Tabs
+## Areas
 
-| Key | Tab | What it does |
+| Key | Area | What it does |
 |---|---|---|
-| 1 | **Files** | File manager for the *asset folder*: folder tree, thumbnails, animated sprite previews, a label on each folder saying what it is for, drag-in import, rename, move to trash |
-| 2 | **Forge** | Describe a thing, generate it, then turn it into real sprite pixels (hardware colour limits, palette, size, outline, background removal). *Making frames for an actor* mode locks reference, palette and scale so new poses stay on-model |
-| 3 | **Animate** | Pixel editor + timeline + onion skin + live previewer, 12 motion generators, sheet slicer, identity card, export (strips + manifest + Godot SpriteFrames + packed sheet) |
-| 4 | **Scenes** | Parallax layers (9 procedural generators, described layers, images), three looks (8-bit Cartridge / 16-bit Painted / Noir Ink), scrolling preview, export with a Godot `Parallax2D` scene |
-| 5 | **HUD** | Bars, gauges, pips, counters, bitmap text, 9-slice panels, slots and portraits. Exports parts, meter state strips, `hud.json` and BMFont fonts |
-| 6 | **Stage** | Drive an exported actor over a saved scene with the HUD on top. Shows the animation timing frame by frame |
+| 1 | **Files** | The asset folder as a file manager: tree, thumbnails, animated sprite previews, drop-in import, rename, trash |
+| 2 | **Forge** | Generate (Cloud / Fast / local) or bring an image; turn it into real sprite pixels on the art's own grid; guide images; dice; actor from one click |
+| 3 | **Animate** | Pixel editor (left adds, right removes, wheel rolls colours), timeline, onion skin, 1/2-wide boxes, animation sets, box templates, colour cycles, juice preview, sheet cutter (grid/rows/figures/custom, untangle, erase) |
+| 4 | **Scenes** | Parallax layers (generators incl. ground, foreground, weather; described layers; images), opacity/blend/tint/haze, undo, depth sort, review tools, Godot Parallax2D export |
+| 5 | **HUD** | Bars, gauges, pips, counters, text, 9-slice panels, slots, portraits, bitmap fonts |
+| 6 | **Stage** | Play an exported actor over a scene with the HUD; animation timing |
+| 7 | **Levels** | Tile maps with solid tiles, background scene, actors and a player start → Godot TileSet + TileMapLayer scene |
+| 8 | **Concepts** | Concept boards: images from meta.ai and others (paste/drop/upload), notes, batch → consistent sprites |
 
-The top bar has the **Style bible** (one art direction for the whole game) and the **asset folder**.
+Everywhere: menu bar (File/Edit/View/Tools/Help), **Ctrl+K** find anything, **Shift+A** command wheel, right-click
+menu with **Send to…** on every image, **?** shortcuts. Extra pages: **`/desk`** (home apps as windows),
+**Kiln Studio** (`kiln-studio`, a desktop window with meta.ai beside Kiln; local screen only).
 
 ## Docs
 
-- `docs/RESUME.md`: current state, what's next, gotchas. **Read this first when resuming.**
-- `docs/ARCHITECTURE.md`: files, modules, data flow, server API
-- `docs/CONSISTENCY.md`: how characters and styles stay on-model (style bible, identity, locks)
-- `docs/FORMATS.md`: everything Kiln writes (folder layout, manifest, scene.json, hud.json, Godot files)
-
-## Credits
-
-Bitmap fonts: Spleen (BSD-2, `vendor/fonts/LICENSE.spleen`) and Tom Thumb (MIT/CC0).
+- `docs/RESUME.md`: current state, machine limits, gotchas. **Read first when resuming.**
+- `docs/DEVELOPING.md`: code map, events, API, how to add an area, testing safely
+- `docs/ARCHITECTURE.md`: files and data flow · `docs/FORMATS.md`: everything Kiln writes
+- `docs/CONSISTENCY.md`: how things stay on-model · `docs/LOOP.md`: the timed improvement runs (rules, backlog, log)
+- In the app: `/help`, the searchable illustrated guide (`static/help.html`, pictures in `static/help/`)

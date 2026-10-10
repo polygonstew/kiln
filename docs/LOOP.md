@@ -22,10 +22,12 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
    Never overwrite their actors, scenes or `library/` files. Never delete anything you didn't create.
 4. **Money:** no paid cloud generation in tests. The Cloudflare free quota is fine, a few images at most.
    The paid OpenRouter backup is capped at $2 total; leave it to the user.
-5. **Style:** match the surrounding code (vanilla JS modules, `h()` helper, plain-English UI text, no AI or
+5. **Docs:** every feature updates `static/help.html` (the in-app guide; new screenshots go in `static/help/`), and
+   README / DEVELOPING / FORMATS when relevant. Run `tools/smoke.py` before committing.
+6. **Style:** match the surrounding code (vanilla JS modules, `h()` helper, plain-English UI text, no AI or
    model names in the UI). Put a tooltip (`title`) on every new control. Keep the dark UI and the ember accent.
    The command wheel and right-click menu use the black-and-gold HUD look.
-6. **Finish:** commit (`Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`), `git push`, tick the item
+7. **Finish:** commit (`Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`), `git push`, tick the item
    below, add a line to the Log, and update `docs/RESUME.md` if something structural changed.
    Keep replies short: the user wants minimal token use.
 
@@ -42,6 +44,10 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - [x] **Flow 3** DONE: sendto.js right-click "Send to" on Concepts cards, Forge results/viewports, Files images, Animate frames,
   scene layers, batch cards: Forge source/guide, Animate frame, new actor, Scene layer, Level tileset (asks if > 256 tiles), Concept board. Was: Every image (Concepts, Forge results, Files, Animate frames, scene layers) gets the same
   right-click "Send to": Forge source · Forge guide · Animate frame · new actor · Scene layer · Level tileset · Concept board.
+- [ ] **Redesign pass (user: "redesign sections that seem janky"):** from the 2026-10-10 review: Forge's right panel is long
+  (split into Size / Colour / Clean-up tabs or collapsible groups); Animate's right panel stacks too much (preview,
+  identity, motions, sheet, import, save: make collapsible with remembered state); Stage needs a "pick actor" hint inline;
+  HUD fine; Files fine. One area per run, screenshot before/after.
 - [ ] **Flow 4: Save all + project health.** One button (top bar) exports every changed actor/scene/level/HUD for Godot, then
   a health report: unsaved items, actors missing animations from their set, frames touching box edges, colours over the
   hardware limit, levels whose background or actors aren't exported. Each line has a "fix / go there" link.
@@ -154,3 +160,5 @@ round: add a feature or two, tooltips, easier navigation, and tools that make ma
 - 2026-10-10: slicer "Untangle touching frames" (grid/rows modes): pieces go to the box they mostly sit in; joined poses split along
   min-pixel seams between every adjacent pair; frames grow by common margins (no clipping). Tested: unit cases + the hero sheet's attack row.
 - 2026-10-10: run 20. "Send to…" on every image. User then asked: better controls to clear out a space and work section by section (next).
+- 2026-10-10: menu bar, /help guide (searchable, illustrated, Into Godot), DEVELOPING.md, smoke test, Godot chip, quick fixes
+  (missing file 404, Levels Background row, new_actor default, Stage preselects). Redesign pass queued.

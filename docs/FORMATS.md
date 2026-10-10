@@ -10,7 +10,10 @@
   hud/<hud>/            hud.png, hud.json, <widget>_*.png parts
   fonts/                kiln_<font>[_outline|_shadow].png + .fnt
   palettes/             <name>.hex + <name>.png
-  tiles/                (reserved; no editor yet)
+  levels/<level>/       tileset.png, <level>.tres (TileSet), <level>.tscn (background + TileMapLayer + actors + PlayerStart), level.json
+  concepts/<session>/   concept images + notes.md (Concepts area, Kiln Studio)
+  sprites/_kiln/        juice.gd + hit_flash.gdshader shared by every actor scene
+  tiles/                (reserved)
   kiln/                 editable sources: actor-*.json, scene-*.json, hud-*.json, style.json
   .trash/               things "deleted" in Files
   ASSETS.md             layout description
@@ -59,3 +62,20 @@ BMFont text format, one page PNG. Godot imports `.fnt` as a FontFile.
 ## palettes/*.hex
 
 One `rrggbb` per line (Lospec format) + a 1-px-per-colour swatch PNG.
+
+## levels/<level>/level.json
+
+`{background, entities: [{type: actor|start, name, x, y}], tile, cols, rows, tileset, tilesetCols, solid: [tile index], cells: [tile index or -1]}`.
+`<level>.tscn` instances `backgrounds/<scene>/<scene>.tscn` as `Background`, then `Tiles` (TileMapLayer; `tile_map_data` = uint16 0, then per
+cell 6 × int16: x, y, source, atlas x, atlas y, alternative), then actor instances and a `PlayerStart` Marker2D.
+
+## Scene extras
+
+`scene.json` layers can carry `opacity`, `blend` (normal/add/screen/multiply → CanvasItemMaterial), `collision` (solid layers) and
+weather layers `{kind: weather, weather: rain|snow|embers|mist, color, amount, speed, wind, size}` (→ GPUParticles2D). `tod` < 0 → a
+`TimeOfDay` CanvasModulate node.
+
+## Actor extras
+
+`manifest.json` anims may carry `w` (2-wide animations), plus `hitbox {x, y, w, h}`. `<actor>.tscn`: CharacterBody2D (origin at the
+feet) with `Sprite` (AnimatedSprite2D, hit-flash ShaderMaterial) and `Body` (RectangleShape2D); script `sprites/_kiln/juice.gd`.

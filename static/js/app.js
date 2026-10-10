@@ -7,6 +7,7 @@ import { editStyle } from './style.js';
 import { initWheel, registerWheel } from './wheel.js';
 import './quick.js';
 import './sendto.js';
+import { initMenus } from './menubar.js';
 
 const mods = [files];
 const optional = ['forge', 'animate', 'scenes', 'levels', 'hud', 'stage', 'concepts'];
@@ -53,6 +54,7 @@ async function boot() {
     if (m) { show(m.id); e.preventDefault(); }
   });
   initWheel(() => mods.map(m => ({ id: m.id, label: m.title, key: m.key })), () => cur);
+  initMenus();
   // workspaces without their own wheel entries still get their main buttons as tools
   for (const m of mods) if (!['animate', 'forge', 'levels', 'scenes', 'concepts'].includes(m.id)) registerWheel(m.id, () => ({
     tools: [...(views[m.id]?.querySelectorAll('button.btn.go, button.btn:not(.ghost):not(.sm)') || [])].filter(b => b.offsetParent && b.textContent.trim()).slice(0, 10)

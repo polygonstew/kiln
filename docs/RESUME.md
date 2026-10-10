@@ -1,6 +1,19 @@
 # RESUME: Kiln state of build
 
-Last updated: 2026-10-10 (session 2: cloud engines, native pixel grid, sheet import, Godot colliders, guide image, Downloads inbox).
+Last updated: 2026-10-10 (session 2 + timed loop runs 1–20 + user requests).
+
+## At a glance (newest first)
+
+- Menu bar (menubar.js), in-app guide `/help` (help.html + static/help/*.jpg), developer guide docs/DEVELOPING.md,
+  smoke test tools/smoke.py, asset chip shows "Godot ✓ / not in Godot" (asset folder is NOT in a Godot project yet:
+  Pallid Mask's project.godot lives in its build worktree).
+- Sheet cutter: movable grid + Custom boxes, untangle bleeding frames, erase/clear/undo, double-click frame focus + skip.
+- Flows: Concepts tab (remote-friendly meta.ai workflow), concept → actor with an animation set, batch → sprites,
+  Send to… on every image. Name guard everywhere (owners.js); opening never saves.
+- Scenes push: undo, solo, drag, depth sort, layer look (opacity/blend/tint/haze), ground/foreground generators,
+  weather particles, Scenes ↔ Levels bridge, review tools (overlays, time of day, snapshot, WebM pan).
+- Levels tab (tiles, solid, things, background) · Desk (/desk) · Kiln Studio (desktop only; user works over SSH).
+- Fast local engine (kiln-fast, OpenVINO) · Ctrl+K · ? shortcuts · wheel/right-click menus · juice + Godot juice.gd.
 
 ## Where things are
 
@@ -119,6 +132,10 @@ Links open meta.ai and others in a tab on the user's own device; images come bac
 - HUD: drag-resize handles; nine-slice preview stretched.
 
 ## Gotchas
+
+- **User data:** the user works in Kiln live. Before any UI test, `stat` their files and check afterwards; create test
+  items with New + `zz_` names and delete them. A Scenes test once overwrote their "night" scene (now impossible: owner ids).
+- The user is on SSH from another device: build browser features, not desktop windows.
 
 - Never `pkill -f "python3 server.py"`: it matches your own shell and other servers. Kill by PID
   from `ss -ltnp | grep :8510`, or use systemctl.
