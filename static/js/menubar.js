@@ -2,6 +2,7 @@
 // that area's own buttons or keys, so all areas get the same menus without each one wiring them up.
 import { $, h, emit, toast } from './core.js';
 import { areaList, currentArea } from './wheel.js';
+import { openHistory } from './history.js';
 
 const view = () => document.querySelector('.view.on');
 const visibleButton = (re, root = view()) => [...(root?.querySelectorAll('button') || [])].find(b => b.offsetParent && re.test(b.textContent.trim()));
@@ -14,6 +15,7 @@ const MENUS = () => [
     ['New…', 'New actor, scene, level, HUD or concept session (in the area you are in)', () => press(/^New$/, 'New')],
     ['Open…', 'Open a saved one', () => press(/^Open( image)?$/, 'Open')],
     ['Save', 'Save what you are working on for the game (Ctrl+S)', () => press(/^Save /, 'Save'), 'Ctrl+S'],
+    ['History…', 'Earlier versions of your actors, scenes, levels and HUDs: bring one back as a copy', openHistory],
     null,
     ['Cut a sprite sheet…', 'Open a sheet and cut it into frames', () => { go('animate'); setTimeout(() => press(/^Cut a sprite sheet/, 'Cut a sheet'), 300); }],
     ['Add concept images…', 'Upload or paste images onto a concept board', () => { go('concepts'); setTimeout(() => document.querySelector('#v-concepts .cdrop')?.click(), 300); }],

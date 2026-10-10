@@ -110,3 +110,5 @@ Scene: `Zones` Node2D with one Area2D per zone (centre position, RectangleShape2
 (exports kind, event_name, target = that level's .tscn, text, once). Actors with Workshop role Player get group `player`;
 hud.gd joins group `kiln_hud`; juice.gd joins `kiln_actors`.
 
+## History
+`<asset folder>/kiln/history/<project id>/<YYYYmmdd-HHMMSS>.json`: earlier versions of a project file (same format), written by the server before it overwrites one.

@@ -85,7 +85,7 @@ override everything; each gets a Help section and a Godot export):**
   jump, coyote time, dash, attack), enemy AI (patrol, chase, attack range), health/damage/knockback/i-frames, pickups,
   doors/switches/triggers, save points. Presets with sliders; an "edit the code" view to override. Attach to actors/levels.
 - [ ] **Toolsets (user asked 2026-10-10 "have you considered toolsets?"), in this order:**
-  1. **Snapshots**: every save keeps earlier versions (kiln/history/, throttled, size-capped); "History…" to restore. (A test once lost the user's scene.)
+  1. [x] DONE **Snapshots**: every save keeps earlier versions (kiln/history/, throttled, size-capped); "History…" to restore. (A test once lost the user's scene.)
   2. **Retro sound effects**: sfxr-style generator (jump, coin, hit, explosion, shoot) → .wav; actors play them on hurt/shoot/jump/die.
   3. **VFX sprites**: procedural hit sparks, slashes, dust, explosions, pickups sparkle → SpriteFrames; used by hurt/projectile impact.
   4. **Autotile / terrains**: from 1–3 tiles build a Godot terrain set (edges, corners) so Levels paints walls that join up.
@@ -245,4 +245,5 @@ override everything; each gets a Help section and a Godot export):**
 - 2026-10-10 BUG (user screenshot): a 454x621 actor pushed Animate off-screen, tabs gone, could not scroll up. Causes: my `#v-animate {position: relative}` (workshop CSS) overrode `.view {position:absolute}`; Fit never went below 1x; `.viewport` place-items:center made overflow unreachable. Fixed: rule removed, core.fitZoom (scales below 1x) used by Animate/player/Files/Forge/Levels, `safe center`, html/body/#views overflow: clip, view rows minmax(0,1fr). Also: opening an actor marked it dirty and autosaved it (rewrote the user's file, identical bytes): now opened() never saves. RULE: never put position on a .view; overlays go inside it as they are.
 - 2026-10-10: loop run 22 (bug hunt: Forge). Fast generation OK (94 s for 2 at 384/4 steps; likeness weak = model). Found: a sprite sheet sent to Forge was squashed into one 48 px sprite with no way out → Forge now counts poses on the source (keyed, 96 px tall) and offers "Looks like N poses: cut into frames" (slice-sheet now also takes {url, name}). Known noise: 404 for /api/project?id=style when no style is saved. Next hunt: Animate. Backlog top: Dialogue + lore.
 - 2026-10-10: user screenshot: still cut off. Cause: their tab was open from before the fix (a page keeps the code it loaded). Added /api/status build id + "Kiln updated · Reload" chip (queue.js). Preview zoom label shows %.
+- 2026-10-10: Toolset 1 Snapshots: server keeps the replaced version on each project save (history/<id>/, 10 min gap, 5 each, 1 GB cap, unchanged skipped); File → History… (history.js) restores as a new copy. Tested via API + UI. Restarted kiln only after the user's generation queue emptied (do that every time).
 

@@ -832,6 +832,54 @@ def proj_dir():
     return in_home(settings()['root']) / 'kiln'
 
 
+# ------------------------------------------------- snapshots: earlier versions of every saved item ---
+HIST_KEEP, HIST_GAP, HIST_CAP = 5, 600, 1 << 30     # newest 5 per item, one per 10 minutes, 1 GB in all
+
+
+def snapshot(f, new_text=None):
+    """Before f (a project file) is overwritten, keep its current version in kiln/history/<id>/<stamp>.json."""
+    if not f.exists():
+        return
+    h = f.parent / 'history' / f.stem
+    snaps = sorted(h.glob('*.json')) if h.exists() else []
+    if snaps and time.time() - snaps[-1].stat().st_ctime < HIST_GAP:
+        return
+    if new_text is not None and f.stat().st_size == len(new_text) and f.read_text() == new_text:
+        return                                          # nothing changed
+    h.mkdir(parents=True, exist_ok=True)
+    __import__('shutil').copy2(f, h / (time.strftime('%Y%m%d-%H%M%S', time.localtime(f.stat().st_mtime)) + '.json'))
+    for old in sorted(h.glob('*.json'))[:-HIST_KEEP]:
+        old.unlink()
+    alls = sorted(f.parent.glob('history/*/*.json'), key=lambda p: p.stat().st_ctime)
+    total = sum(p.stat().st_size for p in alls)
+    for p in alls:                                      # over the cap: oldest go, but every item keeps its newest
+        if total <= HIST_CAP:
+            break
+        if p != max(p.parent.glob('*.json')):
+            total -= p.stat().st_size
+            p.unlink()
+
+
+def history(pid):
+    h = proj_dir() / 'history' / re.sub(r'[^\w.-]', '_', pid)
+    return [{'stamp': p.stem, 'size': p.stat().st_size} for p in sorted(h.glob('*.json'), reverse=True)] if h.exists() else []
+
+
+def restore_copy(pid, stamp):
+    """Bring an earlier version back as a NEW item (<name>_<stamp>): nothing current is overwritten."""
+    pid, stamp = re.sub(r'[^\w.-]', '_', pid), re.sub(r'[^\w-]', '_', stamp)
+    d = json.loads((proj_dir() / 'history' / pid / f'{stamp}.json').read_text())
+    kind = d.get('meta', {}).get('kind') or pid.split('-')[0]
+    name = f"{d.get('meta', {}).get('name') or pid.split('-', 1)[-1]}_{stamp[4:8]}_{stamp[9:13]}"
+    d.setdefault('meta', {})['name'] = name
+    if isinstance(d.get(kind), dict):
+        d[kind]['name'] = name
+        d[kind]['id'] = uuid.uuid4().hex[:12]
+    nid = f'{kind}-{re.sub(r"[^a-z0-9_]+", "_", name.lower())}'
+    (proj_dir() / f'{nid}.json').write_text(json.dumps(d))
+    return {'ok': True, 'id': nid, 'name': name, 'kind': kind}
+
+
 _meta = {}   # path -> (mtime, meta): project files can be ~90 MB (scenes), so read each one once per change
 
 
@@ -905,6 +953,8 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/scripts':
                 root = q.get('root') or settings()['root']
                 return self.send(200, {'root': str(in_home(root)), 'scripts': list_scripts(root), 'godot': bool(GODOT)})
+            if u.path == '/api/history':
+                return self.send(200, history(q.get('id', '')))
             if u.path == '/api/godot':
                 return self.send(200, {'root': godot_root(q.get('path') or settings()['root'])})
             if u.path == '/api/settings':
@@ -957,8 +1007,12 @@ class H(BaseHTTPRequestHandler):
                 pid = re.sub(r'[^\w.-]', '_', b['id'])
                 d = proj_dir()
                 d.mkdir(parents=True, exist_ok=True)
-                (d / f'{pid}.json').write_text(json.dumps(b['data']))
+                text = json.dumps(b['data'])
+                snapshot(d / f'{pid}.json', text)
+                (d / f'{pid}.json').write_text(text)
                 return self.send(200, {'ok': True})
+            if u.path == '/api/history/restore':
+                return self.send(200, restore_copy(b['id'], b['stamp']))
             if u.path == '/api/godot/check':
                 return self.send(200, check_script(b.get('root') or settings()['root'], b.get('path', ''), b.get('text', '')))
             if u.path == '/api/godot/install':
