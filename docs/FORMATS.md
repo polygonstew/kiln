@@ -112,3 +112,6 @@ hud.gd joins group `kiln_hud`; juice.gd joins `kiln_actors`.
 
 ## History
 `<asset folder>/kiln/history/<project id>/<YYYYmmdd-HHMMSS>.json`: earlier versions of a project file (same format), written by the server before it overwrites one.
+
+## Level autotiles
+`terrains: [{ name, first }]`: 16 pieces from tile `first`; piece = first + mask (1 above, 2 right, 4 below, 8 left = same-terrain neighbour). TileSet: `terrain_set_0/mode = 2` (match sides) with peering bits per piece.

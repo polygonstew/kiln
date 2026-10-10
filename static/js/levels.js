@@ -7,6 +7,7 @@ import { registerWheel } from './wheel.js';
 import { registerKeys } from './wheel.js';
 import { loadOwners, claim } from './owners.js';
 import { ZONE_KINDS, zoneAt, drawZones, zonePanel, zoneNodes, zoneShapes, ZONE_GD } from './zones.js';
+import { STYLES, buildPieces, appendPieces, fixAround, terrainOf, terrainHeader, terrainLines } from './autotile.js';
 import { KINDS, kindColour, drawKind, tileLines, TILESET_LAYERS, LEVEL_TILES_GD } from './tilekinds.js';
 
 // Entities: things placed on the map (actors exported from Animate, the player start). x,y = feet, in level pixels.
@@ -68,7 +69,7 @@ async function takeTs() {
   // a whole picture sent as a tileset makes thousands of tiles: check first
   const probe = await imgData(d.url).catch(() => null);
   if (probe && Math.floor(probe.width / d.tile) * Math.floor(probe.height / d.tile) > 256 && !confirm(`That image cuts into ${Math.floor(probe.width / d.tile) * Math.floor(probe.height / d.tile)} tiles of ${d.tile} px. It is probably a picture, not a tileset.\n\nUse it anyway?`)) return;
-  L.ts = d.url; L.tile = d.tile; L.solid = []; L.kinds = {}; L.pick = 0; await loadTiles(); changed(); drawLeft(); draw();
+  L.ts = d.url; L.tile = d.tile; L.solid = []; L.kinds = {}; L.terrains = []; L.pick = 0; await loadTiles(); changed(); drawLeft(); draw();
   toast(`Tileset from "${d.name}": ${tileCount()} tiles of ${d.tile} px. Pick a tile, then set what it does (solid, one-way, ladder…)`, 'ok');
 }
 async function loadBg() {
@@ -166,7 +167,13 @@ function draw() {
   V.info.textContent = `${L.cols}×${L.rows} tiles · ${W}×${H} px · ${used} placed${hover ? ` · ${hover[0]},${hover[1]}` : ''} · ${z}×`;
 }
 function cellAt(e) { const r = V.cv.getBoundingClientRect(), T = L.tile * V.z; const c = Math.floor((e.clientX - r.left) / T), w = Math.floor((e.clientY - r.top) / T); return c >= 0 && w >= 0 && c < L.cols && w < L.rows ? [c, w] : null; }
-function paint(p, t) { if (!p) return; const i = p[1] * L.cols + p[0]; if (L.cells[i] === t) return; L.cells[i] = t; draw(); }
+function paint(p, t) {
+  if (!p) return; const i = p[1] * L.cols + p[0], ter = t >= 0 && L.pickTer != null ? L.terrains?.[L.pickTer] : null;
+  if (ter ? terrainOf(L.terrains, L.cells[i]) === ter : L.cells[i] === t) return;
+  L.cells[i] = ter ? ter.first : t;
+  if (L.terrains?.length) fixAround(L, p[0], p[1]);      // autotile pieces next to it join up again
+  draw();
+}
 function bind() {
   V.cv.addEventListener('contextmenu', e => e.preventDefault());
   V.cv.addEventListener('pointerdown', e => {
@@ -216,7 +223,7 @@ function bind() {
     e.preventDefault();
     if (e.ctrlKey || e.altKey) { zoom = clamp((zoom || V.z) + (e.deltaY < 0 ? 1 : -1), 1, 8); draw(); return; }
     const n = tileCount(); if (!n) return;
-    L.pick = ((L.pick + (e.deltaY > 0 ? 1 : -1)) % n + n) % n; drawLeft(); draw();
+    L.pick = ((L.pick + (e.deltaY > 0 ? 1 : -1)) % n + n) % n; L.pickTer = null; drawLeft(); draw();
   }, { passive: false });
 }
 
@@ -228,7 +235,7 @@ function drawLeft() {
     c.getContext('2d').drawImage(src, (i % L.tsCols) * T, Math.floor(i / L.tsCols) * T, T, T, 0, 0, T, T);
     const k = kindOf(i);
     return h('div', { class: 'tl' + (i === L.pick ? ' on' : '') + (k ? ' kind' : ''), style: k ? { '--kc': kindColour(k) } : {}, title: `Tile ${i + 1}${k ? ' · ' + KINDS.find(r => r[0] === k)[1] : ''}  ·  click: paint with it  ·  Shift+click: solid on/off`,
-      onclick: e => { if (e.shiftKey) setKind(i, kindOf(i) === 'solid' ? '' : 'solid'); else L.pick = i; drawLeft(); draw(); } }, c);
+      onclick: e => { if (e.shiftKey) setKind(i, kindOf(i) === 'solid' ? '' : 'solid'); else { L.pick = i; L.pickTer = null; } drawLeft(); draw(); } }, c);
   }));
   const name = h('input', { type: 'text', value: L.name, onchange: () => { L.name = slug(name.value); name.value = L.name; changed(); drawRight(); } });
   const cols = h('input', { type: 'number', value: L.cols, min: 4, max: 400, style: { width: '60px' } }), rows = h('input', { type: 'number', value: L.rows, min: 4, max: 200, style: { width: '60px' } });
@@ -240,7 +247,7 @@ function drawLeft() {
       field('Size', h('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, cols, '×', rows,
         h('button', { class: 'btn sm', title: 'Resize the level in tiles (tiles stay where they are)', onclick: () => resize(+cols.value, +rows.value) }, 'Set')), 'In tiles. 480×270 px is 30×17 tiles of 16'),
       field('Background', V.bgSel = select([['', 'None']], L.bg || '', v => { L.bg = v || null; changed(); loadBg(); }), 'A scene from Scenes, shown behind the map and placed behind it in Godot'),
-      field('Tile', seg([[8, '8'], [16, '16'], [32, '32']], L.tile, v => { L.tile = +v; L.ts = null; loadTiles().then(() => { changed(); drawLeft(); draw(); }); }), 'Pixels per tile')),
+      field('Tile', seg([[8, '8'], [16, '16'], [32, '32']], L.tile, v => { L.tile = +v; L.ts = null; L.terrains = []; loadTiles().then(() => { changed(); drawLeft(); draw(); }); }), 'Pixels per tile')),
     h('div', { class: 'sec' }, h('h3', {}, 'Paint'), seg([['tiles', 'Tiles'], ['ents', 'Things'], ['zones', 'Zones']], mode, v => { mode = v; drawLeft(); draw(); }),
       mode === 'zones' ? zonesUI() : null,
       mode === 'ents' ? [h('div', { class: 'entlist' },
@@ -251,12 +258,34 @@ function drawLeft() {
     mode !== 'tiles' ? '' : h('div', { class: 'sec' }, h('h3', {}, 'Tiles', h('span', { class: 'grow' }), h('small', {}, `${n} tiles`)), tiles,
       n ? h('div', { class: 'kindpick' }, h('span', { class: 'fl' }, `Tile ${L.pick + 1} is`),
         h('div', { class: 'kinds' }, ...KINDS.map(([id, label, c, hint]) => h('button', { class: kindOf(L.pick) === id ? 'on' : '', style: { '--kc': c }, title: hint, onclick: () => { setKind(L.pick, id); drawLeft(); if (!V.showSolid) { V.showSolid = true; } draw(); } }, label)))) : null,
+      n ? autotileUI() : null,
       h('div', { style: { display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' } },
         h('button', { class: 'btn sm', title: 'Use any image as the tileset: it is cut into tiles of the size above', onclick: pickTileset }, 'Tileset image…'),
-        h('button', { class: 'btn sm ghost', title: 'Go back to the built-in starter tiles', onclick: () => { L.ts = null; loadTiles().then(() => { changed(); drawLeft(); draw(); }); } }, 'Starter tiles'),
+        h('button', { class: 'btn sm ghost', title: 'Go back to the built-in starter tiles', onclick: () => { L.ts = null; L.terrains = []; loadTiles().then(() => { changed(); drawLeft(); draw(); }); } }, 'Starter tiles'),
         h('button', { class: 'btn sm ghost' + (V.showSolid ? ' on' : ''), title: 'Show what each tile does on the map (solid red, one-way yellow, ladders green, hazards purple, water blue)', onclick: () => { V.showSolid = !V.showSolid; drawLeft(); draw(); } }, 'Show behaviours'))));
   fillBgSel();
   if (mode === 'ents' && !actorList.length && !V.listed) { V.listed = true; loadActorList(); }
+}
+// autotile: make a 16-piece set from the picked tile, and paint with a set so edges join up
+function autotileUI() {
+  const style = V.atStyle || 'grass';
+  return h('div', { class: 'kindpick' }, h('span', { class: 'fl' }, 'Autotile (edges and corners join up as you paint)'),
+    (L.terrains || []).length ? h('div', { class: 'kinds', style: { marginBottom: '6px' } }, ...L.terrains.map((t, i) => h('button', { class: L.pickTer === i ? 'on' : '', style: { '--kc': '#9cc76b' }, title: `Paint with "${t.name}": each tile picks its edge piece from its neighbours`, onclick: () => { L.pickTer = L.pickTer === i ? null : i; drawLeft(); } }, '▦ ' + t.name))) : '',
+    h('div', { style: { display: 'flex', gap: '4px', alignItems: 'center' } }, select(STYLES, style, v => { V.atStyle = v; }),
+      h('button', { class: 'btn sm', title: `Build 16 pieces (caps, edges, corners) from tile ${L.pick + 1} and add them to the tileset`, onclick: makeAutotile }, `From tile ${L.pick + 1}`)));
+}
+async function makeAutotile() {
+  const T = L.tile, cols = L.tsCols, src = L.pick;
+  const cv = document.createElement('canvas'); cv.width = T; cv.height = T; cv.getContext('2d').drawImage(toCanvas(tsImg), (src % cols) * T, Math.floor(src / cols) * T, T, T, 0, 0, T, T);
+  const tile = cv.getContext('2d').getImageData(0, 0, T, T);
+  const { url, first } = appendPieces(tsImg, T, buildPieces(tile, T, V.atStyle || 'grass'));
+  const name = slug(prompt('Name for this autotile', ['ground', 'wall', 'stone', 'platform'][(L.terrains || []).length % 4]) || 'ground');
+  L.ts = url; await loadTiles();
+  (L.terrains ||= []).push({ name, first });
+  for (let m = 0; m < 16; m++) { kindOf(first + m); L.kinds[first + m] = kindOf(src) || 'solid'; }
+  L.solid = Object.keys(L.kinds).filter(t => L.kinds[t] === 'solid').map(Number);
+  L.pickTer = L.terrains.length - 1; changed(); drawLeft(); draw();
+  toast(`Autotile "${name}": paint with it and edges join up`, 'ok');
 }
 function zonesUI() {
   const zs = L.zones || [], sel = zs.find(q => q.id === zoneSel);
@@ -281,7 +310,7 @@ function resize(c, r) {
 }
 function pickTileset() {
   const i = h('input', { type: 'file', accept: 'image/*' });
-  i.onchange = () => { const f = i.files[0]; if (!f) return; const r = new FileReader(); r.onload = async () => { L.ts = r.result; L.solid = []; L.kinds = {}; await loadTiles(); L.pick = 0; changed(); drawLeft(); draw(); toast(`Tileset: ${tileCount()} tiles of ${L.tile} px. Pick a tile, then set what it does`); }; r.readAsDataURL(f); };
+  i.onchange = () => { const f = i.files[0]; if (!f) return; const r = new FileReader(); r.onload = async () => { L.ts = r.result; L.solid = []; L.kinds = {}; L.terrains = []; await loadTiles(); L.pick = 0; changed(); drawLeft(); draw(); toast(`Tileset: ${tileCount()} tiles of ${L.tile} px. Pick a tile, then set what it does`); }; r.readAsDataURL(f); };
   i.click();
 }
 async function openMenu() {
@@ -317,11 +346,11 @@ async function exportLevel() {
   const tiles = [];
   for (let i = 0; i < L.tsCols * rowsT; i++) {
     const k = `${i % L.tsCols}:${Math.floor(i / L.tsCols)}/0`;
-    tiles.push(tileLines(k, kindOf(i), hT));
+    tiles.push(tileLines(k, kindOf(i), hT) + terrainLines(k, L.terrains, i));
   }
   const tres = `[gd_resource type="TileSet" load_steps=3 format=3]\n\n[ext_resource type="Texture2D" path="${res}/tileset.png" id="1"]\n\n`
     + `[sub_resource type="TileSetAtlasSource" id="atlas"]\ntexture = ExtResource("1")\ntexture_region_size = Vector2i(${T}, ${T})\n${tiles.join('\n')}\n\n`
-    + `[resource]\ntile_size = Vector2i(${T}, ${T})\n${TILESET_LAYERS}sources/0 = SubResource("atlas")\n`;
+    + `[resource]\ntile_size = Vector2i(${T}, ${T})\n${TILESET_LAYERS}${terrainHeader(L.terrains)}sources/0 = SubResource("atlas")\n`;
   const zoneGd = (base => (base ? base + '/' : '') + 'sprites/_kiln/zone.gd')(res.replace(/(^|\/)levels\/[^/]+$/, ''));
   const tilesGd = (base => (base ? base + '/' : '') + 'sprites/_kiln/level_tiles.gd')(res.replace(/(^|\/)levels\/[^/]+$/, ''));
   // res is ".../levels/<name>": the background scene lives next door in ".../backgrounds/<scene>/"
