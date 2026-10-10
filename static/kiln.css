@@ -497,3 +497,6 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .vfx-row { display: flex; gap: 10px; align-items: center; border-top: 1px solid var(--line); padding: 8px 0; }
 .vfx-pv { image-rendering: pixelated; background: repeating-conic-gradient(#1c1c1b 0 25%, #222221 0 50%) 0 0/8px 8px; border: 1px solid var(--line2); flex: none; }
 .vfx-c { flex: 1; } .vfx-c b { font: 600 12px var(--sans); } .vfx-s { display: flex; gap: 4px; margin-top: 4px; flex-wrap: wrap; }
+.big-warn { margin-top: 6px; padding: 8px; border: 1px solid #5a4218; background: #241c10; color: #e3b04b; font-size: 12px; border-radius: 2px; display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.doc-g h3 { font: 600 12px var(--cond); text-transform: uppercase; letter-spacing: .08em; margin: 12px 0 6px; }
+.doc-r { display: flex; gap: 10px; align-items: center; padding: 6px 8px; border-left: 3px solid; background: #181817; margin-bottom: 4px; font-size: 12px; }

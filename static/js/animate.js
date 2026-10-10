@@ -1,6 +1,6 @@
 // Animate: pixel editor + timeline + live previewer + motion generators + export (Godot files: actor_godot.js).
 import { $, h, api, toast, emit, on, pref, clamp, uid, field, range, select, check, seg, hex, rgb, luma,
-  newImg, cloneImg, toCanvas, toDataURL, imgData, blit, bbox, flipX, shift, colorsOf, pixelize, rawURL, checker, HARDWARE, PALETTES, fitZoom } from './core.js';
+  newImg, cloneImg, toCanvas, toDataURL, imgData, blit, bbox, flipX, shift, colorsOf, pixelize, rawURL, checker, HARDWARE, PALETTES, fitZoom, buildPalette, applyPalette, despeckle } from './core.js';
 import { icon } from './icons.js';
 import { Player, loadActor } from './player.js';
 import { MOTIONS } from './motion.js';
@@ -31,6 +31,7 @@ function blankActor(name = 'new_actor', w = 32, hh = 32, pal = null) {
 
 on('to-animate', d => { pending.push(['forge', d]); if (mounted) drain(); });
 on('open-actor', d => { pending.push(['open', d]); if (mounted) drain(); });
+on('shrink-actor', d => { pending.push(['shrink', d]); if (mounted) drain(); });
 on('slice-sheet', d => { pending.push(['slice', d]); if (mounted) drain(); });
 
 export const animate = {
@@ -59,6 +60,7 @@ async function drain() {
     const [k, d] = pending.shift();
     if (k === 'forge') fromForge(d);
     if (k === 'open') await openActorDir(d);
+    if (k === 'shrink') { const ok = await fetch('/api/project?id=actor-' + d).then(r => r.ok); if (ok) await openProject('actor-' + d); else await openActorDir(FS.root + '/sprites/' + d); shrinkCopy(); }
     if (k === 'slice') typeof d === 'string' ? sliceInto(rawURL(d), d.split('/').pop().replace(/\.\w+$/, '')) : sliceInto(d.url, d.name);
   }
 }
@@ -179,7 +181,9 @@ function drawLeft() {
       field('Name', nm),
       field('Frame', h('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, wIn, '×', hIn,
         h('button', { class: 'btn sm', title: 'Change the frame size. Art stays on the floor, centred.', onclick: () => resizeActor(+wIn.value, +hIn.value) }, 'Set'))),
-      h('p', { class: 'note' }, `${a.anims.length} animation${a.anims.length > 1 ? 's' : ''} · ${a.anims.reduce((s, n) => s + n.frames.length, 0)} frames`)),
+      h('p', { class: 'note' }, `${a.anims.length} animation${a.anims.length > 1 ? 's' : ''} · ${a.anims.reduce((s, n) => s + n.frames.length, 0)} frames`),
+      a.h > 128 || a.w > 128 ? h('div', { class: 'big-warn' }, `${a.w}×${a.h} is big for a game sprite (most are 16–96 px tall).`,
+        h('button', { class: 'btn sm', title: 'A copy with every frame shrunk by the same amount onto one shared palette; this actor stays as it is', onclick: shrinkCopy }, 'Make a game-size copy')) : ''),
     h('div', { class: 'sec' }, h('h3', {}, 'Tools'),
       h('div', { class: 'tools' }, ...TOOLS.map(([t, k, title]) => h('button', { class: A.tool === t ? 'on' : '', title: `${title} (${k})`, onclick: () => setTool(t) }, icon(t === 'pick' ? 'pick' : t), h('kbd', {}, k)))),
       h('div', { style: { display: 'flex', gap: '14px', marginTop: '10px', alignItems: 'center' } },
@@ -653,6 +657,36 @@ function guessHitboxes() {
     if (B.hit.length) made++;
   }
   changed(); toast(made ? `Hitboxes on ${made} of ${n.frames.length} frames (what sticks out past the body). Adjust by drawing / right-click` : 'Nothing sticks out past the body in this animation', made ? 'ok' : '');
+}
+// area-average downscale: each new pixel is the mean of the opaque pixels it covers (smooth on detailed art);
+// it is opaque when at least half of its block was
+function boxDown(im, tw, th) {
+  const o = newImg(tw, th), sw = im.width / tw, sh = im.height / th, d = im.data;
+  for (let y = 0; y < th; y++) for (let x = 0; x < tw; x++) {
+    let r = 0, g = 0, b = 0, n = 0, all = 0;
+    for (let yy = Math.floor(y * sh); yy < Math.max(Math.floor(y * sh) + 1, Math.floor((y + 1) * sh)); yy++)
+      for (let xx = Math.floor(x * sw); xx < Math.max(Math.floor(x * sw) + 1, Math.floor((x + 1) * sw)); xx++) {
+        const i = (yy * im.width + xx) * 4; all++;
+        if (d[i + 3] >= 128) { r += d[i]; g += d[i + 1]; b += d[i + 2]; n++; }
+      }
+    if (n * 2 >= all) o.data.set([r / n, g / n, b / n, 255], (y * tw + x) * 4);
+  }
+  return o;
+}
+// a copy of this actor at game size: every frame scaled by the same amount (area average, then despeckled)
+// and mapped onto one palette built from all frames, so the copy stays consistent across its animations
+function shrinkCopy() {
+  const a = A.actor, want = Math.round(+prompt(`Game-size copy of "${a.name}" (${a.w}×${a.h} now). Height in pixels:`, a.h > 200 ? 64 : 48) || 0);
+  if (!want || want >= a.h) return;
+  const k = want / a.h, small = a.anims.map(n => n.frames.map(f => boxDown(f, Math.max(1, Math.round(f.width * k)), want)));
+  const flat = small.flat(), all = newImg(flat.reduce((s, f) => s + f.width, 0), want);
+  let x = 0; for (const f of flat) { blit(all, f, x, 0); x += f.width; }
+  const pal = buildPalette(all, { hw: 'free', count: 15 });
+  const name = slug(a.name.slice(0, 40) + '_' + want);
+  A.actor = { ...a, id: uid(), name, w: Math.max(1, Math.round(a.w * k)), h: want, pal, identity: undefined, faces: undefined,
+    anims: a.anims.map((n, i) => ({ ...n, frames: small[i].map(f => despeckle(applyPalette(f, pal))) })) };
+  A.ai = A.fi = 0; A.undo = []; A.redo = []; changed(true);
+  toast(`Made "${name}": ${A.actor.w}×${want}, ${pal.length} colours. The big one is unchanged`, 'ok');
 }
 function dupFrame() { pushUndo(); anim().frames.splice(A.fi + 1, 0, cloneF(frame())); A.fi++; changed(true); }
 function delFrame() { const n = anim(); if (n.frames.length < 2) { pushUndo(); n.frames[0] = newImg(fw(n), A.actor.h); changed(true); return; } pushUndo(); n.frames.splice(A.fi, 1); changed(true); }

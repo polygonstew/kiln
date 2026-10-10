@@ -557,6 +557,69 @@ def check_script(root, rel, text):
         return {'ok': not errors, 'errors': errors, 'godot': True}
 
 
+# ------------------------------------------------- Doctor: what is wrong or odd in the asset folder ---
+def doctor(root):
+    """Findings: [{level: bad|warn|info, kind, msg, path, fix}] (fix = what the page can offer)."""
+    r = in_home(root)
+    groot = godot_root(str(r))
+    out = []
+    def rel(p):
+        return str(p.relative_to(r)) if str(p).startswith(str(r)) else str(p)
+    # 1. scenes / resources pointing at files that are not there
+    for f in list(r.rglob('*.tscn')) + list(r.rglob('*.tres')):
+        if any(x.startswith('.') for x in f.relative_to(r).parts):
+            continue
+        for m in re.finditer(r'path="([^"]+)"', f.read_text(errors='ignore')):
+            ref = m.group(1)
+            if ref.startswith('res://'):
+                if not groot:
+                    continue
+                target = Path(groot) / ref[6:]
+            elif ref.startswith('uid://'):
+                continue
+            else:
+                target = r / ref
+            if not target.exists():
+                out.append({'level': 'bad', 'kind': 'missing', 'msg': f'{f.name} needs {ref}, which is not there', 'path': rel(f), 'fix': 'show'})
+    # 2. actors: frame size and colour count
+    for man in sorted((r / 'sprites').glob('*/manifest.json')) if (r / 'sprites').exists() else []:
+        try:
+            m = json.loads(man.read_text())
+        except Exception:
+            continue
+        name, w, h = man.parent.name, m.get('w', 0), m.get('h', 0)
+        if max(w, h) > 128:
+            out.append({'level': 'warn', 'kind': 'big', 'msg': f'{name}: frames are {w}×{h}; game sprites are usually 16–96 px tall', 'path': rel(man.parent), 'fix': 'shrink', 'name': name})
+        pal = man.parent / 'palette.hex'
+        if pal.exists():
+            n = len([l for l in pal.read_text().split() if l.strip()])
+            if n > 32:
+                out.append({'level': 'warn', 'kind': 'colours', 'msg': f'{name}: {n} colours (retro consoles allowed 3–15 per sprite)', 'path': rel(man.parent), 'fix': 'shrink', 'name': name})
+    # 3. loose images directly in sprites/ (not part of an actor)
+    for img in sorted((r / 'sprites').glob('*.png')) if (r / 'sprites').exists() else []:
+        out.append({'level': 'info', 'kind': 'loose', 'msg': f'{img.name} is loose in sprites/ (not part of an actor)', 'path': rel(img), 'fix': 'show'})
+    # 4. Kiln projects: never saved for Godot (one line per kind), too big as sprites, or very large files
+    unsaved = {}
+    for pj in sorted((r / 'kiln').glob('*.json')) if (r / 'kiln').exists() else []:
+        kind, _, nm = pj.stem.partition('-')
+        folder = {'actor': 'sprites', 'scene': 'backgrounds', 'level': 'levels', 'hud': 'hud'}.get(kind)
+        if folder and nm and not (r / folder / nm).exists():
+            unsaved.setdefault(kind, []).append(nm)
+            if kind == 'actor' and pj.stat().st_size < 30e6:      # not exported, so no manifest: read its size from the project
+                try:
+                    a = json.loads(pj.read_text()).get('actor', {})
+                    if max(a.get('w', 0), a.get('h', 0)) > 128:
+                        out.append({'level': 'warn', 'kind': 'big', 'msg': f'{nm}: frames are {a["w"]}×{a["h"]}; game sprites are usually 16–96 px tall', 'path': rel(pj), 'fix': 'shrink', 'name': nm})
+                except Exception:
+                    pass
+    for kind, names in unsaved.items():
+        out.append({'level': 'info', 'kind': 'unsaved', 'msg': f'{len(names)} {kind}{"s" if len(names) > 1 else ""} only in Kiln, never saved for Godot: {", ".join(names[:6])}{"…" if len(names) > 6 else ""}', 'path': 'kiln', 'fix': 'open', 'kindOf': kind})
+    for pj in sorted((r / 'kiln').glob('*.json')) if (r / 'kiln').exists() else []:
+        if pj.stat().st_size > 40e6:
+            out.append({'level': 'info', 'kind': 'heavy', 'msg': f'{pj.name} is {pj.stat().st_size / 1e6:.0f} MB, which makes saving slow (big AI layers)', 'path': rel(pj), 'fix': 'show'})
+    return out
+
+
 # ------------------------------------------------- Godot plugin (godot/addons/kiln) ---
 PLUGIN = ROOT / 'godot' / 'addons' / 'kiln'
 
@@ -953,6 +1016,8 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/scripts':
                 root = q.get('root') or settings()['root']
                 return self.send(200, {'root': str(in_home(root)), 'scripts': list_scripts(root), 'godot': bool(GODOT)})
+            if u.path == '/api/doctor':
+                return self.send(200, doctor(q.get('root') or settings()['root']))
             if u.path == '/api/history':
                 return self.send(200, history(q.get('id', '')))
             if u.path == '/api/godot':
