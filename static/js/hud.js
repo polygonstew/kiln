@@ -7,6 +7,7 @@ import { icon } from './icons.js';
 import { loadOwners, claim } from './owners.js';
 import { saveFiles, S as FS } from './files.js';
 import { STYLE } from './style.js';
+import { buildGodotHud } from './hud_godot.js';
 
 /* ------------------------------------------------------------ glyphs ---- */
 const SHAPES = {
@@ -20,7 +21,7 @@ const SHAPES = {
   star: ['...X...', '...X...', 'XXXXXXX', '.XXXXX.', '..XXX..', '.XX.XX.', 'X.....X'],
   eye: ['.......', '..XXX..', '.XX.XX.', 'XX.X.XX', '.XX.XX.', '..XXX..', '.......'],
 };
-const NAMES = { bar: 'Bar', gauge: 'Gauge', pips: 'Pips', counter: 'Counter', text: 'Text', panel: 'Panel', slot: 'Slot', portrait: 'Portrait' };
+const NAMES = { bar: 'Bar', gauge: 'Gauge', pips: 'Pips', counter: 'Counter', text: 'Text', panel: 'Panel', slot: 'Slot', portrait: 'Portrait', inventory: 'Inventory', dialogue: 'Dialogue', prompt: 'Prompt' };
 
 /* ------------------------------------------------------------- state ---- */
 function palette() {
@@ -42,6 +43,10 @@ function defaults(type) {
     case 'panel': return { ...base, w: 120, h: 48, style: 'plate', corner: 4, fill: P.dark, edge: P.lit, edge2: P.mid };
     case 'slot': return { ...base, size: 20, style: 'plate', fill: P.dark, edge: P.lit, edge2: P.mid, count: 3, item: '' };
     case 'portrait': return { ...base, size: 36, style: 'double', fill: P.dark, edge: P.light, edge2: P.mid, img: '' };
+    case 'inventory': return { ...base, x: 120, y: 50, cols: 6, rows: 3, size: 22, gap: 2, pad: 7, title: 'INVENTORY', style: 'gothic', slotStyle: 'plate', fill: P.dark, edge: P.lit, edge2: P.mid,
+      cursor: P.accent, text: P.light, details: true, sel: 0, items: [{ id: 'flask', name: 'Ashen Flask', desc: 'Restores a little health.', icon: '', count: 3 }, { id: 'key', name: 'Bell Key', desc: 'Opens the belfry door.', icon: '', count: 1 }] };
+    case 'dialogue': return { ...base, x: 40, y: 196, w: 400, h: 58, style: 'double', fill: P.dark, edge: P.light, edge2: P.mid, img: '', speaker: 'MONK', text: 'The bells have not rung since the flood. Something sleeps in the tower.', font: 'small', color: P.light, nameColor: P.accent };
+    case 'prompt': return { ...base, x: 220, y: 150, key: 'E', text: 'Open', font: 'small', fill: P.dark, edge: P.light, color: P.light, keyColor: P.accent };
   }
 }
 let HUD = pref.get('hud.cur', null) || { id: uid(), name: 'hud', view: { w: 480, h: 270 }, bg: 'checker', widgets: [] };
@@ -123,8 +128,30 @@ const sizeOf = w => {
     case 'panel': return { w: w.w + 2, h: w.h + 6 };
     case 'slot': return { w: w.size + 2, h: w.size + 2 };
     case 'portrait': return { w: w.size + 2, h: w.size + 2 };
+    case 'inventory': { const g = invGeom(w); return { w: g.W + 2, h: g.H + 2 }; }
+    case 'dialogue': return { w: w.w + 2, h: w.h + 2 };
+    case 'prompt': { const m = measure(w.text || ' ', w.font), k = measure(w.key || ' ', w.font); return { w: k.w + 6 + 4 + m.w + 2, h: Math.max(k.h + 6, m.h) + 2 }; }
   }
 };
+// Inventory layout: frame padding, a title line, the slot grid, then a details box for the selected item.
+function invGeom(w) {
+  const tH = w.title ? FONTS.small.h + 4 : 0, gW = w.cols * w.size + (w.cols - 1) * w.gap, gH = w.rows * w.size + (w.rows - 1) * w.gap;
+  const dH = w.details ? FONTS.small.h + FONTS.tiny.h * 2 + 10 : 0;
+  return { tH, gW, gH, dH, W: gW + w.pad * 2, H: w.pad * 2 + tH + gH + (dH ? dH + w.pad : 0),
+    slot: i => ({ x: w.pad + (i % w.cols) * (w.size + w.gap), y: w.pad + tH + Math.floor(i / w.cols) * (w.size + w.gap) }) };
+}
+// nearest-neighbour fit of an icon into a box (sprites can be bigger than the slot)
+function fitIcon(it, box) {
+  const k = Math.min(1, box / Math.max(it.width, it.height)); if (k >= 1) return it;
+  const w = Math.max(1, Math.round(it.width * k)), hh = Math.max(1, Math.round(it.height * k)), o = newImg(w, hh);
+  for (let y = 0; y < hh; y++) for (let x = 0; x < w; x++) { const s = (Math.floor(y / k) * it.width + Math.floor(x / k)) * 4, d = (y * w + x) * 4; for (let c = 0; c < 4; c++) o.data[d + c] = it.data[s + c]; }
+  return o;
+}
+function wrap(text, font, maxW) {
+  const out = []; let line = '';
+  for (const word of String(text).split(/\s+/)) { const t = line ? line + ' ' + word : word; if (measure(t, font).w > maxW && line) { out.push(line); line = word; } else line = t; }
+  if (line) out.push(line); return out;
+}
 // Render one widget into its own image (so it can be exported alone). value overrides w.value.
 const imgCache = new Map();
 function render(w, value = w.value, part = 'all') {
@@ -178,6 +205,46 @@ function render(w, value = w.value, part = 'all') {
     frameBox(g, o, o, w.size, w.size, w.style, w.fill, w.edge, w.edge2, 3);
     const it = w.img && imgCache.get(w.img);
     if (it) { const cw = w.size - 6; const crop = cropTop(it, cw); blitIm(im, crop, o + 3, o + 3); }
+  } else if (w.type === 'inventory') {
+    const G = invGeom(w), ctx = imCtx(im);
+    if (part !== 'slots') frameBox(g, o, o, G.W, G.H, w.style, w.fill, w.edge, w.edge2, 4);
+    if (w.title && part === 'all') drawText(ctx, w.title, o + w.pad, o + w.pad - 1, { font: 'small', color: w.text, shadow: w.fill });
+    for (let i = 0; i < w.cols * w.rows; i++) {
+      const p = G.slot(i), it = w.items?.[i];
+      if (part !== 'frame') frameBox(g, o + p.x, o + p.y, w.size, w.size, w.slotStyle, hex(mix(C(w.fill), [0, 0, 0], .25)), w.edge2, w.edge2, 2);
+      if (part !== 'all') continue;
+      const ic = it?.icon && imgCache.get(it.icon);
+      if (ic) { const f = fitIcon(ic, w.size - 4); blitIm(im, f, o + p.x + Math.floor((w.size - f.width) / 2), o + p.y + Math.floor((w.size - f.height) / 2)); }
+      else if (it) { const c = C(w.edge); g.rect(o + p.x + w.size / 2 - 2, o + p.y + w.size / 2 - 3, 4, 6, c); g.rect(o + p.x + w.size / 2 - 1, o + p.y + w.size / 2 - 5, 2, 2, c); }     // a placeholder bottle
+      if (it && it.count > 1) drawText(ctx, String(it.count), o + p.x + w.size - 2, o + p.y + w.size - 7, { font: 'tiny', color: w.text, shadow: '#000000', align: 'right' });
+    }
+    if (part === 'all') {
+      const sp = G.slot(clamp(w._sel ?? w.sel ?? 0, 0, w.cols * w.rows - 1)), cur = C(w.cursor);
+      for (let k = -1; k <= w.size; k++) { g.put(o + sp.x + k, o + sp.y - 1, cur); g.put(o + sp.x + k, o + sp.y + w.size, cur); g.put(o + sp.x - 1, o + sp.y + k, cur); g.put(o + sp.x + w.size, o + sp.y + k, cur); }
+      if (w.details) {
+        const y0 = o + w.pad + G.tH + G.gH + w.pad, it = w.items?.[w._sel ?? w.sel ?? 0];
+        frameBox(g, o + w.pad, y0, G.gW, G.dH, 'line', hex(mix(C(w.fill), [0, 0, 0], .3)), w.edge2, null, 2);
+        if (it) {
+          drawText(ctx, it.name || '', o + w.pad + 4, y0 + 3, { font: 'small', color: w.cursor, shadow: '#000000' });
+          wrap(it.desc || '', 'tiny', G.gW - 8).slice(0, 2).forEach((ln, k) => drawText(ctx, ln, o + w.pad + 4, y0 + 5 + FONTS.small.h + k * (FONTS.tiny.h + 1), { font: 'tiny', color: w.text }));
+        }
+      }
+    }
+  } else if (w.type === 'dialogue') {
+    const ctx = imCtx(im), ps = w.h - 10, face = w.img && imgCache.get(w.img);
+    frameBox(g, o, o, w.w, w.h, w.style, w.fill, w.edge, w.edge2, 4);
+    frameBox(g, o + 5, o + 5, ps, ps, 'line', hex(mix(C(w.fill), [0, 0, 0], .3)), w.edge2, null, 2);
+    if (face) blitIm(im, cropTop(face, ps - 4), o + 7, o + 7);
+    const tx = o + ps + 12, tw = w.w - ps - 20;
+    drawText(ctx, w.speaker || '', tx, o + 5, { font: w.font, color: w.nameColor, shadow: '#000000' });
+    const shown = w._reveal == null ? w.text : String(w.text).slice(0, w._reveal);
+    wrap(shown, w.font, tw).slice(0, Math.max(1, Math.floor((w.h - 12 - FONTS[w.font].h) / (FONTS[w.font].h + 2)))).forEach((ln, k) => drawText(ctx, ln, tx, o + 8 + FONTS[w.font].h + k * (FONTS[w.font].h + 2), { font: w.font, color: w.color }));
+    if (w._reveal == null || w._reveal >= String(w.text).length) { const ax = o + w.w - 9, ay = o + w.h - 7 + ((w._blink || 0) & 1); for (let k = 0; k < 3; k++) g.rect(ax + k, ay + k, 5 - k * 2, 1, C(w.nameColor)); }
+  } else if (w.type === 'prompt') {
+    const ctx = imCtx(im), k = measure(w.key || ' ', w.font), kw = k.w + 6, kh = k.h + 5;
+    frameBox(g, o, o, kw, kh, 'bevel', w.fill, w.edge, null, 2);
+    drawText(ctx, w.key || '', o + 3, o + 2, { font: w.font, color: w.keyColor });
+    drawText(ctx, w.text || '', o + kw + 4, o + Math.floor((kh - FONTS[w.font].h) / 2), { font: w.font, color: w.color, shadow: '#000000' });
   }
   return im;
 }
@@ -222,7 +289,7 @@ export const hud = {
     const tick = t => { const dt = (t - last) / 1000; last = t; if (demo && el.classList.contains('on')) { demoT += dt; drawCanvas(); } requestAnimationFrame(tick); };
     requestAnimationFrame(tick);
     if (!HUD.widgets.length) starter();
-    for (const w of HUD.widgets) { loadImg(w.item); loadImg(w.img); }
+    for (const w of HUD.widgets) { loadImg(w.item); loadImg(w.img); for (const it of w.items || []) loadImg(it.icon); }
     loadBg(); drawLeft(); drawRight(); drawCanvas();
   },
   show() { drawCanvas(); },
@@ -278,8 +345,11 @@ function drawCanvas() {
     if (wd.hidden) return;
     const v = liveValue(wd, i);
     if (wd.type === 'counter' && demo) wd._num = wd._num == null ? wd.num : wd._num;
-    const im = render(wd.type === 'counter' && demo ? { ...wd, num: wd.num + Math.floor(demoT * 37) } : wd, v);
-    x.drawImage(toCanvas(im), wd.x - 1, wd.y - 1 - (wd.type === 'panel' ? 0 : 0));
+    let live = wd.type === 'counter' && demo ? { ...wd, num: wd.num + Math.floor(demoT * 37) } : wd;
+    if (demo && wd.type === 'dialogue') live = { ...wd, _reveal: Math.floor((demoT * 28) % (String(wd.text).length + 40)), _blink: Math.floor(demoT * 3) };
+    if (demo && wd.type === 'inventory') live = { ...wd, _sel: Math.floor(demoT * 1.5) % Math.max(1, Math.min(wd.items?.length || 1, wd.cols * wd.rows)) };
+    const im = render(live, v);
+    x.drawImage(toCanvas(im), wd.x - 1, wd.y - 1 + (demo && wd.type === 'prompt' ? Math.round(Math.sin(demoT * 4)) : 0));
   });
   const s = HUD.widgets.find(w => w.id === sel);
   if (s) { const sz = sizeOf(s); x.strokeStyle = '#ff5b2e'; x.lineWidth = 1 / zoom; x.setLineDash([2 / zoom, 2 / zoom]); x.strokeRect(s.x - .5, s.y - .5, sz.w + 1, sz.h + 1); x.setLineDash([]); }
@@ -319,7 +389,7 @@ function bindCanvas(el) {
 function drawLeft() {
   const nm = h('input', { type: 'text', value: HUD.name, onchange: () => { HUD.name = nm.value.toLowerCase().replace(/[^a-z0-9_-]+/g, '_') || 'hud'; nm.value = HUD.name; save(); } });
   const P = palette();
-  const btn = t => { const w = defaults(t); const im = render(w, .7); const c = toCanvas(im); c.style.height = Math.min(22, im.height * 2) + 'px'; return h('button', { onclick: () => { w.x = 20 + Math.floor(Math.random() * 60); w.y = 40 + Math.floor(Math.random() * 60); HUD.widgets.push(w); sel = w.id; save(); drawRight(); drawCanvas(); } }, c, NAMES[t]); };
+  const btn = t => { const w = defaults(t); const im = render(w, .7); const c = toCanvas(im); c.style.height = Math.min(22, im.height * 2) + 'px'; return h('button', { onclick: () => { if (!['inventory', 'dialogue', 'prompt'].includes(t)) { w.x = 20 + Math.floor(Math.random() * 60); w.y = 40 + Math.floor(Math.random() * 60); } HUD.widgets.push(w); sel = w.id; save(); drawRight(); drawCanvas(); } }, c, NAMES[t]); };
   const fontBox = h('div');
   const fst = { font: 'small', color: P.light, outline: '', shadow: P.dark };
   const drawFont = () => {
@@ -376,6 +446,25 @@ function drawRight() {
       if (w.type === 'slot') num('count', 'Count', 0, 99);
       F.push(field(w.type === 'slot' ? 'Item' : 'Face', h('button', { class: 'btn sm', onclick: () => pickSprite(p => { if (w.type === 'slot') w.item = p; else w.img = p; loadImg(p); r(); drawRight(); }) }, (w.item || w.img) ? (w.item || w.img).split('/').slice(-2).join('/') : 'Pick a sprite…')));
     }
+    if (w.type === 'inventory') {
+      num('cols', 'Columns', 1, 12); num('rows', 'Rows', 1, 8); num('size', 'Slot size', 12, 48); num('gap', 'Gap', 0, 8); num('pad', 'Padding', 2, 16); txt('title', 'Title');
+      opt('style', 'Frame', frames); opt('slotStyle', 'Slots', frames); col('fill', 'Fill'); col('edge', 'Light edge'); col('edge2', 'Dark edge'); col('cursor', 'Cursor'); col('text', 'Text');
+      F.push(field('Details', check('item name + description box', w.details, v => { w.details = v; r(); })));
+      F.push(h('div', { class: 'sec', style: { padding: '8px 0 0', borderBottom: 0 } }, h('h3', {}, 'Items', h('span', { class: 'grow' }),
+        h('button', { class: 'btn sm', title: 'Add an item to the next free slot', onclick: () => { (w.items = w.items || []).push({ id: 'item' + (w.items.length + 1), name: 'New item', desc: '', icon: '', count: 1 }); w.sel = w.items.length - 1; r(); drawRight(); } }, '+ Item')),
+        ...(w.items || []).map((it, i) => h('div', { class: 'invitem' + (i === w.sel ? ' on' : ''), onclick: () => { w.sel = i; r(); drawRight(); } },
+          h('button', { class: 'btn sm ghost', title: 'Pick an icon (first frame of a saved actor or sprite)', onclick: e => { e.stopPropagation(); pickSprite(p => { it.icon = p; loadImg(p); r(); drawRight(); }); } }, it.icon ? '🖼' : 'Icon…'),
+          h('input', { type: 'text', value: it.name, title: 'Item name', oninput: e => { it.name = e.target.value; it.id = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || it.id; r(); } }),
+          h('input', { type: 'number', value: it.count, min: 0, max: 999, title: 'How many', style: { width: '46px' }, oninput: e => { it.count = +e.target.value; r(); } }),
+          h('button', { class: 'ibtn', title: 'Remove this item', onclick: e => { e.stopPropagation(); w.items.splice(i, 1); r(); drawRight(); } }, '✕'),
+          i === w.sel ? h('textarea', { rows: 2, value: it.desc, placeholder: 'Description shown in the details box', oninput: e => { it.desc = e.target.value; r(); } }) : null))));
+    }
+    if (w.type === 'dialogue') {
+      num('w', 'Width', 80, 480); num('h', 'Height', 30, 140); txt('speaker', 'Speaker'); F.push(field('Line', h('textarea', { rows: 3, value: w.text, oninput: e => { w.text = e.target.value; r(); } })));
+      opt('font', 'Font', fonts); opt('style', 'Frame', frames); col('fill', 'Fill'); col('edge', 'Light edge'); col('edge2', 'Dark edge'); col('color', 'Text'); col('nameColor', 'Name');
+      F.push(field('Face', h('button', { class: 'btn sm', onclick: () => pickSprite(p => { w.img = p; loadImg(p); r(); drawRight(); }) }, w.img ? w.img.split('/').slice(-2).join('/') : 'Pick a sprite…')));
+    }
+    if (w.type === 'prompt') { txt('key', 'Key'); txt('text', 'Action'); opt('font', 'Font', fonts); col('fill', 'Key cap'); col('edge', 'Key edge'); col('keyColor', 'Key letter'); col('color', 'Text'); }
     if (['bar', 'gauge', 'pips'].includes(w.type)) F.push(field('Value', range(w.value, 0, 1, .01, v => { w.value = v; w._ghost = Math.max(w._ghost || 0, v); r(); }, v => Math.round(v * 100) + '%')));
     insp.append(h('div', { class: 'sec' }, h('h3', {}, NAMES[w.type], h('span', { class: 'grow' }),
       h('button', { class: 'btn sm ghost danger', onclick: () => { HUD.widgets = HUD.widgets.filter(x => x !== w); sel = null; save(); drawRight(); drawCanvas(); } }, 'Delete')), ...F));
@@ -449,8 +538,25 @@ async function exportHud() {
     json.widgets.push(entry);
   }
   files.push({ name: 'hud.json', text: JSON.stringify(json, null, 2) + '\n' });
-  try { await saveFiles(dir, files); toast(`Saved ${files.length} files to ${dir}/`, 'ok'); } catch (e) { toast('Save failed: ' + e.message, 'bad'); }
+  // Godot: a CanvasLayer scene of real Control nodes + hud.gd, and white bitmap fonts the labels tint
+  const g = await api('/api/godot?path=' + encodeURIComponent(FS.root)).catch(() => ({}));
+  const res = g.root ? 'res://' + (FS.root + '/' + dir).slice(g.root.length + 1) : dir, base = res.replace(/(^|\/)hud\/[^/]+$/, '');
+  const W2 = { ...HUD, widgets: HUD.widgets.map(w => ({ ...w, slotFill: w.fill ? hex(mix(rgb(w.fill), [0, 0, 0], .25)) : null, detFill: w.fill ? hex(mix(rgb(w.fill), [0, 0, 0], .3)) : null })) };
+  const G = buildGodotHud(W2, GT, res, base);
+  files.push(...G.files);
+  const fontFiles = G.fonts.flatMap(k => { const { canvas, fnt } = buildBMFont(k, { color: '#ffffff', name: `kiln_${k}_white` }); return [{ name: `kiln_${k}_white.png`, b64: canvas.toDataURL('image/png') }, { name: `kiln_${k}_white.fnt`, text: fnt }]; });
+  try {
+    await saveFiles(dir, files);
+    if (fontFiles.length) await saveFiles('fonts', fontFiles);
+    toast(`Saved ${files.length} files to ${dir}/ (Godot scene ${HUD.name}.tscn + hud.gd)`, 'ok');
+  } catch (e) { toast('Save failed: ' + e.message, 'bad'); }
 }
+// helpers the Godot builder needs
+function nineIm(style, fill, edge, edge2, c) { const im = newImg(c * 2 + 3, c * 2 + 3); frameBox(px(im), 1, 1, c * 2 + 1, c * 2 + 1, style, fill, edge, edge2, c); return im; }
+function stripIm(ims) { const s = newImg(ims[0].width * ims.length, ims[0].height); ims.forEach((im, i) => blitIm(s, im, i * im.width, 0)); return s; }
+function diffIm(a, b) { const o = newImg(a.width, a.height); for (let i = 0; i < a.data.length; i += 4) { if (a.data[i + 3] < 128) continue; if (b.data[i + 3] >= 128 && a.data[i] === b.data[i] && a.data[i + 1] === b.data[i + 1] && a.data[i + 2] === b.data[i + 2]) continue; o.data.set(a.data.subarray(i, i + 4), i); } return o; }
+function cursorIm(size, color) { const im = newImg(size + 2, size + 2), c = rgb(color); for (let k = 0; k < size + 2; k++) for (const [x, y] of [[k, 0], [k, size + 1], [0, k], [size + 1, k]]) im.data.set([...c, 255], (y * (size + 2) + x) * 4); return im; }
+const GT = { render, sizeOf, invGeom, toDataURL, FONTS, measure, nine: nineIm, strip: stripIm, diff: diffIm, cursor: cursorIm };
 async function exportFont(f) {
   const name = `kiln_${f.font}${f.outline ? '_outline' : f.shadow ? '_shadow' : ''}`;
   const { canvas, fnt } = buildBMFont(f.font, { color: f.color, outline: f.outline || null, shadow: f.shadow || null, name });
