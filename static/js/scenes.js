@@ -671,7 +671,10 @@ function drawRight() {
     insp,
     h('div', { class: 'sec' }, h('h3', {}, 'Save to asset folder'),
       h('p', { class: 'note', style: { marginTop: 0 } }, h('b', {}, `backgrounds/${SC.name}/`), ' gets a PNG per layer, scene.json (scroll speeds, offsets) and a Godot Parallax2D scene.'),
-      h('button', { class: 'btn go wide', onclick: exportScene }, 'Save ' + SC.name)));
+      h('button', { class: 'btn go wide', onclick: async e => {      // a scene takes a few seconds to write: say so on the button
+        const b = e.currentTarget, t = b.textContent; b.disabled = true; b.textContent = 'Saving…';
+        try { await exportScene(); } finally { b.disabled = false; b.textContent = t; }
+      } }, 'Save ' + SC.name)));
   drawLayers();
 }
 
