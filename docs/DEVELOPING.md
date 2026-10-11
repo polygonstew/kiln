@@ -26,6 +26,7 @@ the blank actor `new_actor`, the HUD `hud`; nothing saves until something is edi
 passes 1000 lines or has no header. It is the code map: run it instead of keeping a hand-written list here.
 Rules for keeping Kiln readable are in CLAUDE.md ("Stay understandable"). Rough shape:
 - **Shell:** app.js (tabs), core.js (DOM, API, pixel pipeline), menubar.js, wheel.js, quick.js, sendto.js, owners.js
+- **Logic:** logic.js (scripts + editor gdedit.js) + logic_graph.js (graphs: list, palette, variables, live script), graph_view.js (the board), graph_nodes.js (node types → GDScript), graph_compile.js (graph → script)
 - **Areas:** files, forge, animate (+ actor_save, workshop, motion, sheets, slicer, player), scenes (+ procgen), levels, hud, stage (playtest room: playbuild.js + play.py), concepts
 - **Godot writers:** actor_godot.js (actor scene + juice.gd/projectile.gd), hud_godot.js, the export parts of scenes.js / levels.js
 - **Server:** server.py (stdlib): files, projects, generation queue, cloud budget, Godot plugin endpoints; checks.py: GDScript list/check, Doctor, snapshots

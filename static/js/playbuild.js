@@ -16,6 +16,7 @@ const MAIN_GD = `extends Node2D
 @export var title_menu: PackedScene      ## Kiln Menus: shown first (else a plain title screen)
 @export var options_menu: PackedScene
 @export var pause_menu: PackedScene       ## Esc while playing
+@export var logic_scripts: Array[Script] = []   ## Kiln Logic graphs (logic/*.gd): each runs on its own node while playing
 @export var title := "Kiln demo"
 @export var show_title := true
 var playing := false
@@ -156,6 +157,11 @@ func _start() -> void:
 \t\t\tcam.limit_bottom = r.end.y * ts.y
 \tif hud_scene:
 \t\tadd_child(hud_scene.instantiate())
+\tfor s in logic_scripts:
+\t\tvar n := Node.new()
+\t\tn.name = s.resource_path.get_file().get_basename()
+\t\tn.set_script(s)
+\t\tadd_child(n)
 
 # ---- Kiln Stage: inside Kiln's Stage the sliders tune the player while you play, and the camera button asks
 # ---- for a screenshot. Web builds only; in Godot itself _web is null and none of this runs.
@@ -219,6 +225,10 @@ export async function buildGame(pick, onLog) {
   // saved Kiln menus (Menus area): the title menu if asked for, options from it, pause on Esc
   const mn = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/menus')).catch(() => ({ items: [] }));
   for (const k of ['title', 'options', 'pause']) if ((k !== 'title' || pick.start === 'menu') && (mn.items || []).some(i => i.name === k + '.tscn')) { ext.push(`[ext_resource type="PackedScene" path="res://menus/${k}.tscn" id="${k}m"]`); props.push(`${k}_menu = ExtResource("${k}m")`); }
+  // Logic graphs: every logic/*.gd runs while playing
+  const lg = ((await api('/api/fs?path=' + encodeURIComponent(FS.root + '/logic')).catch(() => ({ items: [] }))).items || []).filter(i => /\.gd$/.test(i.name));
+  lg.forEach((f, i) => ext.push(`[ext_resource type="Script" path="res://logic/${f.name}" id="lg${i}"]`));
+  if (lg.length) props.push(`logic_scripts = Array[Script]([${lg.map((_, i) => `ExtResource("lg${i}")`).join(', ')}])`);
   const main = `[gd_scene load_steps=${ext.length + 2} format=3]\n\n[ext_resource type="Script" path="res://main.gd" id="main"]\n${ext.join('\n')}\n\n`
     + `[node name="Main" type="Node2D"]\nscript = ExtResource("main")\n${props.join('\n')}\ntitle = ${JSON.stringify(pick.name || 'Kiln demo')}\nshow_title = ${pick.start !== 'none'}\n`;
   const files = { 'kiln_main.tscn': main, 'main.gd': MAIN_GD };

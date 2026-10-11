@@ -1,12 +1,13 @@
-// Logic: the game's GDScript in one place. Every .gd in the asset folder (Kiln's shared scripts, actor
-// brains, HUD scripts, your own in scripts/), an editor that checks with the real Godot, and a reference of
-// what Kiln's scripts offer (click to insert). Kiln makes the default decisions; this is where you overrule them.
+// Logic: the game's logic in one place. Graphs (logic_graph.js: events wired to actions, turned into GDScript) and
+// every .gd in the asset folder (Kiln's shared scripts, actor brains, HUD scripts, your own in scripts/), with an
+// editor that checks with the real Godot and a reference of what Kiln's scripts offer (click to insert).
 import { h, api, toast, pref, rawURL, select } from './core.js';
 import { saveFiles, S as FS } from './files.js';
 import { gdEditor } from './gdedit.js';
 import { BRAIN_GD, BRAINS } from './brains.js';
+import { graphArea } from './logic_graph.js';
 
-let V = {}, cur = null, saved = '', list = [];
+let V = {}, cur = null, saved = '', list = [], G = null, mode = pref.get('logic.mode', 'code');
 
 // what Kiln's scripts give you, for the reference panel: [call to insert, what it does]
 const REF = [
@@ -35,23 +36,32 @@ export const logic = {
   id: 'logic', title: 'Logic', key: '9',
   mount(el) {
     el.className = 'view ws';
-    V.ed = gdEditor({ onChange: t => dirty(t !== saved), onSave: save });
+    V.ed = gdEditor({ onChange: t => { dirty(t !== saved); clearTimeout(V.olT); V.olT = setTimeout(() => outline(t), 400); }, onSave: save });
     V.left = h('aside', { class: 'l' }); V.right = h('aside', { class: 'r' });
     V.path = h('span', { class: 'mono', style: { fontSize: '12px' } }, 'No script open');
     V.state = h('span', { class: 'mono dim', style: { fontSize: '11px' } });
     V.note = h('div', { class: 'note lg-note' });
-    el.append(V.left, h('section', { class: 'stage', style: { display: 'flex', flexDirection: 'column' } },
+    G = graphArea({ setMode, openScript: p => refresh().then(() => open(p)) });
+    V.codePane = h('div', { class: 'lg-pane' },
       h('div', { class: 'bar' }, V.path, V.state, h('span', { class: 'grow' }),
         h('button', { class: 'btn sm', title: 'Ask Godot whether this script is valid (also runs on save)', onclick: check }, 'Check'),
         h('button', { class: 'btn sm ghost', title: 'Throw away unsaved changes', onclick: () => { if (cur) { V.ed.set(saved); dirty(false); } } }, 'Revert'),
         h('button', { class: 'btn sm go', title: 'Save (Ctrl+S); Godot checks it straight after', onclick: save }, 'Save')),
       V.note, h('div', { style: { flex: 1, minHeight: 0 } }, V.ed.el),
-      h('div', { class: 'bar bot' }, h('span', { class: 'note', style: { margin: 0 } }, 'Tab / Shift+Tab indent · Enter keeps the indent · Ctrl+/ comments lines · Ctrl+S saves · Ctrl+F finds'))), V.right);
-    drawRight(); refresh();
+      h('div', { class: 'bar bot' }, h('span', { class: 'note', style: { margin: 0 } }, 'Tab / Shift+Tab indent · Enter keeps the indent · Ctrl+/ comments lines · Ctrl+S saves · Ctrl+F finds')));
+    el.append(V.left, h('section', { class: 'stage', style: { display: 'flex', flexDirection: 'column' } }, V.codePane, G.center), V.right);
+    drawRight(); refresh(); G.refresh().then(() => { if (mode === 'graph' && pref.get('logic.graph', '')) G.open(pref.get('logic.graph', '')); else setMode('code'); });
     window.addEventListener('beforeunload', e => { if (V.dirty) e.preventDefault(); });
   },
-  show() { refresh(); },
+  show() { refresh(); G?.refresh(); },
 };
+
+// graphs or scripts in the middle (and their panel on the right)
+function setMode(m) {
+  mode = m; pref.set('logic.mode', m);
+  V.codePane.style.display = m === 'code' ? 'flex' : 'none'; G.center.style.display = m === 'graph' ? 'flex' : 'none';
+  V.right.replaceChildren(m === 'graph' ? G.side : V.codeSide); drawLeft();
+}
 
 async function refresh() {
   const r = await api('/api/scripts?root=' + encodeURIComponent(FS.root)).catch(() => ({ scripts: [] }));
@@ -61,20 +71,29 @@ async function refresh() {
 }
 function drawLeft() {
   const groups = {};
-  for (const p of list) { const g = p.startsWith('sprites/_kiln/brains/') ? 'Brains (yours to change)' : p.startsWith('sprites/_kiln/') ? 'Kiln\'s scripts' : p.startsWith('scripts/') ? 'Your scripts' : p.split('/')[0]; (groups[g] ||= []).push(p); }
-  V.left.replaceChildren(h('div', { class: 'sec' }, h('h3', {}, 'Scripts', h('span', { class: 'grow' }), h('small', {}, list.length + ' .gd')),
+  for (const p of list) { const g = p.startsWith('sprites/_kiln/brains/') ? 'Brains (yours to change)' : p.startsWith('sprites/_kiln/') ? 'Kiln\'s scripts' : p.startsWith('scripts/') ? 'Your scripts' : p.startsWith('logic/') ? 'Written by graphs' : p.split('/')[0]; (groups[g] ||= []).push(p); }
+  V.left.replaceChildren(G.listSec, h('div', { class: 'sec' }, h('h3', {}, 'Scripts', h('span', { class: 'grow' }), h('small', {}, list.length + ' .gd')),
     list.length ? '' : h('p', { class: 'note' }, 'No scripts yet. Kiln writes them when you save an actor, level or HUD; or start your own below.'),
     ...Object.entries(groups).map(([g, ps]) => h('div', { class: 'lg-group' }, h('div', { class: 'lg-gh' }, g),
-      ...ps.map(p => h('button', { class: 'lg-file' + (p === cur ? ' on' : ''), title: p, onclick: () => open(p) }, p.split('/').pop().replace(/\.gd$/, ''), h('small', {}, p.split('/').slice(0, -1).join('/')))))),
+      ...ps.map(p => h('button', { class: 'lg-file' + (p === cur && mode === 'code' ? ' on' : ''), title: p, onclick: () => open(p) }, p.split('/').pop().replace(/\.gd$/, ''), h('small', {}, p.split('/').slice(0, -1).join('/')))))),
     h('div', { style: { marginTop: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' } },
       V.newSel = select(Object.entries(NEW).map(([k, [l]]) => [k, l]), 'empty', () => {}),
       h('button', { class: 'btn sm', title: 'A new script in scripts/', onclick: newScript }, 'New script'))));
 }
 function drawRight() {
-  V.right.replaceChildren(h('div', { class: 'sec' }, h('h3', {}, 'Problems'), V.probs = h('div', { class: 'lg-probs' }, h('p', { class: 'note' }, 'Godot checks the script when you save or press Check.'))),
+  V.codeSide = h('div', {}, h('div', { class: 'sec' }, h('h3', {}, 'Problems'), V.probs = h('div', { class: 'lg-probs' }, h('p', { class: 'note' }, 'Godot checks the script when you save or press Check.'))),
+    h('div', { class: 'sec' }, h('h3', {}, 'Outline', h('small', {}, 'click to jump')), V.outline = h('div', { class: 'lg-outline' })),
     h('div', { class: 'sec' }, h('h3', {}, 'Kiln reference', h('small', {}, 'click to insert')),
       ...REF.map(([g, rows]) => h('details', { class: 'lg-ref' }, h('summary', {}, g),
         ...rows.map(([code, what]) => h('button', { class: 'lg-r', title: 'Insert at the cursor', onclick: () => V.ed.insert(code) }, h('code', {}, code), h('span', {}, what)))))));
+  V.right.replaceChildren(mode === 'graph' ? G.side : V.codeSide);
+}
+// the script's functions, signals and exported settings, to jump to
+function outline(text) {
+  const rows = [];
+  text.split('\n').forEach((l, i) => { const m = l.match(/^(func|signal|@export var|var|const)\s+(\w+)/); if (m && (m[1] !== 'var' || i < 60)) rows.push([i + 1, m[1].replace('@export var', 'setting'), m[2]]); });
+  V.outline.replaceChildren(...(rows.length ? rows.filter(r => r[1] !== 'var').map(([ln, k, n]) => h('button', { class: 'lg-r', title: 'Line ' + ln, onclick: () => V.ed.goLine(ln) }, h('code', {}, n), h('span', {}, k)))
+    : [h('p', { class: 'note' }, 'No functions yet.')]));
 }
 function dirty(d) { V.dirty = d; V.state.textContent = d ? '● unsaved' : ''; }
 async function open(p) {
@@ -83,8 +102,11 @@ async function open(p) {
   if (t == null) return;
   cur = p; saved = t; pref.set('logic.cur', p);
   V.ed.set(t); dirty(false); V.path.textContent = p;
-  V.note.textContent = p.startsWith('sprites/_kiln/') && !p.includes('/brains/') ? 'Kiln writes this file again whenever it saves an actor or level, so changes here do not last. Brains (and your scripts/) are never overwritten.' : '';
+  const graph = p.match(/^logic\/(\w+)\.gd$/)?.[1];
+  V.note.replaceChildren(graph ? h('span', {}, `Written by the graph "${graph}" on every Save, so change the graph instead (or use its "Make it my script"). `, h('button', { class: 'btn sm', onclick: () => G.open(graph) }, 'Open the graph'))
+    : p.startsWith('sprites/_kiln/') && !p.includes('/brains/') ? 'Kiln writes this file again whenever it saves an actor or level, so changes here do not last. Brains (and your scripts/) are never overwritten.' : '');
   V.note.style.display = V.note.textContent ? '' : 'none';
+  outline(t); setMode('code');
   V.probs && V.probs.replaceChildren(h('p', { class: 'note' }, 'Not checked yet.'));
   drawLeft();
 }
