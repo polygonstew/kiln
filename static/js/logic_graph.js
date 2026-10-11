@@ -8,6 +8,7 @@ import { compile } from './graph_compile.js';
 import { graphView } from './graph_view.js';
 import { highlight } from './gdedit.js';
 import { listScenes } from './playbuild.js';
+import { openProjects } from './projects.js';
 
 const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_|_$/g, '');
 const VAR_TYPES = [['int', 'whole number'], ['float', 'number'], ['text', 'text'], ['bool', 'yes / no']];
@@ -40,7 +41,8 @@ export function graphArea({ setMode, openScript }) {
       graphs.length ? '' : h('p', { class: 'note', style: { marginTop: 0 } }, 'Game logic without code: events (a zone, a key, a timer…) wired to actions (say, spawn, heal…). Kiln turns each graph into a short GDScript.'),
       ...graphs.map(p => h('button', { class: 'lg-file' + (cur?.name === p.name ? ' on' : ''), title: `Open the graph (its script: logic/${p.name}.gd)`, onclick: () => open(p.name) }, h('i', { class: 'lg-gi' }), p.name, h('small', {}, 'graph'))),
       h('div', { style: { marginTop: '8px', display: 'flex', gap: '6px', flexWrap: 'wrap' } }, tpl,
-        h('button', { class: 'btn sm', title: 'A new graph, starting from the picked example', onclick: () => create(tpl.value) }, 'New graph')));
+        h('button', { class: 'btn sm', title: 'A new graph, starting from the picked example', onclick: () => create(tpl.value) }, 'New graph'),
+        graphs.length ? h('button', { class: 'btn sm ghost', title: 'Rename, copy, remove or bring back graphs', onclick: manage }, 'Manage…') : ''));
   }
   // what the node fields can pick from: zones in saved levels, saved actors, sounds
   async function lists() {
@@ -62,6 +64,11 @@ export function graphArea({ setMode, openScript }) {
     L = { zones: [...zones], actors: actors.map(([n, res]) => [res.replace(/^res:\/\//, ''), n]), sounds, voices, dialogues };
     gv.refresh();
   }
+  // rename / copy / remove / restore: a graph's script is named after it, so the old one goes to .trash (Save writes the new)
+  const trashScript = async n => { await api('/api/fs', { op: 'mkdir', path: FS.root + '/.trash' }); await api('/api/fs', { op: 'rename', path: `${FS.root}/logic/${n}.gd`, to: `${FS.root}/.trash/${new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15)}-logic__${n}.gd` }).catch(() => {}); };
+  const manage = () => openProjects('graph', { current: cur?.name, open: p => open(p.name),
+    renamed: n => { cur.name = n; written = ''; V.name.textContent = 'graph · ' + n; code(); }, removed: () => { cur = null; setMode('code'); },
+    afterRename: async old => { await trashScript(old); toast('Open the renamed graph and Save to write its script', 'ok'); refresh(); }, afterRemove: async n => { await trashScript(n); refresh(); } });
   async function create(tpl) {
     const name = slug(prompt('Name for the graph (its script is logic/<name>.gd)', tpl === 'empty' ? 'level_logic' : tpl) || '');
     if (!name) return;

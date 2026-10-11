@@ -8,6 +8,7 @@ import { icon } from './icons.js';
 import { saveFiles, S as FS } from './files.js';
 import { STYLE, stylePrompt, styleAvoid } from './style.js';
 import { loadActor } from './player.js';
+import { openProjects } from './projects.js';
 import { registerWheel, registerKeys } from './wheel.js';
 // a slider drag is one undo step: the first change records it, letting go ends it
 window.addEventListener('pointerup', () => { V.editing = false; });
@@ -530,7 +531,7 @@ function drawLeft() {
   const L0 = LOOKS[SC.look];
   V.left.replaceChildren(
     h('div', { class: 'sec' }, h('h3', {}, 'Scene', h('span', { class: 'grow' }),
-      h('button', { class: 'btn sm ghost', onclick: openMenu }, 'Open'), h('button', { class: 'btn sm ghost', title: 'Start a new empty scene (the current one is kept)', onclick: async () => { const n = prompt('Name for the new scene', 'scene'); if (!n) return; await loadOwners(); ++loads; SC = blankScene(); SC.name = freeName(n, SC.id); sel = 0; undoS = []; redoS = []; drawAll(); save(); } }, 'New')),
+      h('button', { class: 'btn sm ghost', title: 'Open, rename, copy or remove your scenes', onclick: openMenu }, 'Open'), h('button', { class: 'btn sm ghost', title: 'Start a new empty scene (the current one is kept)', onclick: async () => { const n = prompt('Name for the new scene', 'scene'); if (!n) return; await loadOwners(); ++loads; SC = blankScene(); SC.name = freeName(n, SC.id); sel = 0; undoS = []; redoS = []; drawAll(); save(); } }, 'New')),
       field('Name', nm),
       field('Screen', select(VIEWS, `${SC.view.w}x${SC.view.h}`, v => { const [w, hh] = v.split('x').map(Number); SC.view = { w, h: hh }; for (const L of SC.layers) { L.w = L.gen === 'sky' && L.kind === 'gen' ? w : w * 2; L.h = hh; } drawAll(); process(); })),
       field('Haze', h('span', { style: { display: 'flex', gap: '8px', alignItems: 'center' } }, h('input', { type: 'color', value: SC.haze, oninput: e => { SC.haze = e.target.value; process(); } }),
@@ -546,13 +547,10 @@ function drawLeft() {
       h('p', { class: 'note' }, 'Generated layers are instant and tile perfectly. Described layers are drawn by the generator from your words, matched to the layers already here.')));
 }
 async function openMenu() {
-  const list = (await api('/api/projects').catch(() => [])).filter(p => p.kind === 'scene');
-  const m = h('div', { class: 'modal', onclick: e => { if (e.target === m) m.remove(); } }, h('div', {},
-    h('header', {}, h('span', { class: 'grow' }, 'Open a scene'), h('button', { class: 'ibtn', onclick: () => m.remove() }, '✕')),
-    h('div', { class: 'body' }, list.length ? list.map(p => h('div', { class: 'palrow', onclick: async () => {
-      m.remove(); const t = ++loads; const d = await (await fetch('/api/project?id=' + encodeURIComponent(p.id))).json(); if (t !== loads) return; SC = d.scene; sel = 0; drawAll(); process(null, true);
-    } }, icon('folder'), h('span', {}, p.name))) : h('p', { class: 'note' }, 'No saved scenes yet. They save themselves as you work.'))));
-  document.body.append(m);
+  openProjects('scene', { current: SC.name,
+    open: async p => { const t = ++loads; const d = await (await fetch('/api/project?id=' + encodeURIComponent(p.id))).json(); if (t !== loads) return; SC = d.scene; sel = 0; undoS = []; redoS = []; drawAll(); process(null, true); },
+    renamed: n => { SC.name = n; drawAll(); },
+    removed: () => { ++loads; SC = blankScene(); sel = 0; undoS = []; redoS = []; drawAll(); } });
 }
 
 /* ---------------------------------------------------------- layer list ---- */

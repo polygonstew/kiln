@@ -7,6 +7,7 @@ import { saveFiles, S as FS } from './files.js';
 import { listScenes } from './playbuild.js';
 import { gameJSON, DIALOGUE_GD } from './dialogue_godot.js';
 import { dialoguePlayer } from './dialogue_play.js';
+import { openProjects } from './projects.js';
 
 const IFS = [['', 'always'], ['item', 'if has item'], ['noitem', 'if lacks item'], ['flag', 'if flag set'], ['noflag', 'if flag not set']];
 const DOS = [['', 'does nothing'], ['give', 'gives item'], ['take', 'takes item'], ['flag', 'sets flag'], ['unflag', 'clears flag'], ['message', 'messages Logic']];
@@ -48,7 +49,8 @@ async function refresh() {
 function drawLeft() {
   V.left.replaceChildren(h('div', { class: 'sec' }, h('h3', {}, 'Dialogues', h('span', { class: 'grow' }), h('small', {}, list.length || '')),
     ...list.map(p => h('button', { class: 'lg-file' + (D?.name === p.name ? ' on' : ''), title: `dialogue/${p.name}.json`, onclick: () => open(p.name) }, p.name)),
-    h('div', { style: { display: 'flex', gap: '6px', marginTop: '8px' } }, h('button', { class: 'btn sm', title: 'A new conversation', onclick: create }, 'New dialogue'),
+    h('div', { style: { display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' } }, h('button', { class: 'btn sm', title: 'A new conversation', onclick: create }, 'New dialogue'),
+      list.length ? h('button', { class: 'btn sm ghost', title: 'Rename, copy, remove or bring back dialogues', onclick: manage }, 'Manage…') : '',
       D ? h('button', { class: 'btn sm ghost danger', title: 'Delete this dialogue (its game file goes to .trash)', onclick: remove }, 'Delete') : '')),
     D ? h('div', { class: 'sec' }, h('h3', {}, 'Cast', h('span', { class: 'grow' }), h('button', { class: 'btn sm ghost', title: 'Someone who speaks', onclick: addCast }, '+ Speaker')),
       D.cast.length ? h('div', { class: 'dl-cast' }, ...D.cast.map(castRow)) : h('p', { class: 'note', style: { marginTop: 0 } }, 'Who speaks. Link a speaker to an actor and its voice lines (Puppet → Voice line…) and mouth come along.')) : '');
@@ -110,6 +112,12 @@ async function open(name) {
   drawLeft(); drawBeats(); V.play.load(D);
   requestAnimationFrame(() => V.list.querySelectorAll('.dl-text').forEach(grow));
 }
+// rename / copy / remove / restore: the game file is named after the dialogue, so the old one goes to .trash
+const trashGame = async n => { await api('/api/fs', { op: 'mkdir', path: FS.root + '/.trash' }); await api('/api/fs', { op: 'rename', path: `${FS.root}/dialogue/${n}.json`, to: `${FS.root}/.trash/${new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15)}-dialogue__${n}.json` }).catch(() => {}); };
+const manage = () => openProjects('dialogue', { current: D?.name, open: p => open(p.name),
+  renamed: n => { D.name = n; pref.set('dialogue.cur', n); V.state.textContent = '● not saved for the game yet'; drawBeats(); }, removed: () => { D = null; pref.set('dialogue.cur', ''); },
+  afterRename: async old => { await trashGame(old); toast('Save the renamed dialogue for the game, and pick it again in Logic nodes that started the old name', 'ok'); refresh(); },
+  afterRemove: async n => { await trashGame(n); refresh(); } });
 async function create() {
   const name = slug(prompt('Name for the dialogue (its game file is dialogue/<name>.json)', 'miner_greeting') || '');
   if (!name) return;

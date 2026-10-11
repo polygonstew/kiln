@@ -5,6 +5,7 @@ import { $, h, api, toast, on, pref, clamp, uid, field, range, select, check, se
 import { drawText, measure, buildBMFont, FONTS } from './text.js';
 import { icon } from './icons.js';
 import { loadOwners, claim } from './owners.js';
+import { openProjects } from './projects.js';
 import { saveFiles, S as FS } from './files.js';
 import { STYLE } from './style.js';
 import { buildGodotHud } from './hud_godot.js';
@@ -51,8 +52,23 @@ function defaults(type) {
 }
 let HUD = pref.get('hud.cur', null) || { id: uid(), name: 'hud', view: { w: 480, h: 270 }, bg: 'checker', widgets: [] };
 let sel = null, V = {}, mounted = false, demo = false, demoT = 0, bgImg = null;
+// undo / redo: snapshots of the whole HUD, one per burst of changes (taken when it saves), up to 60
+let hist = [], hi = -1;
+const snap = () => { const t = JSON.stringify(HUD); if (t === hist[hi]) return; hist = hist.slice(0, hi + 1); hist.push(t); if (hist.length > 60) hist.shift(); hi = hist.length - 1; };
+function undoHud(d) {
+  snap(); const j = hi + d; if (j < 0 || j >= hist.length) return;
+  hi = j; HUD = JSON.parse(hist[hi]); sel = null; save(); drawRight(); drawCanvas();
+}
+// another HUD on screen (opened, new, or the open one removed): its pictures, the bar, a fresh undo history
+function useHud(next) {
+  HUD = next; sel = null; pref.set('hud.cur', HUD); hist = [JSON.stringify(HUD)]; hi = 0;
+  for (const w of HUD.widgets) { loadImg(w.item); loadImg(w.img); loadFaces(w.faces); for (const it of w.items || []) loadImg(it.icon); }
+  if (V.sizeSel) { V.sizeSel.value = `${HUD.view.w}x${HUD.view.h}`; V.bgSel.value = HUD.bg; }
+  loadBg(); drawLeft(); drawRight(); drawCanvas();
+}
+const newHud = name => ({ id: uid(), name, view: { w: 480, h: 270 }, bg: 'checker', widgets: [] });
 const hslug = s => (s || 'hud').toLowerCase().replace(/[^a-z0-9_-]+/g, '_') || 'hud';
-const save = () => { pref.set('hud.cur', HUD); clearTimeout(save.t); save.t = setTimeout(async () => { await loadOwners('hud'); if (claim('hud', HUD, hslug)) { pref.set('hud.cur', HUD); drawLeft?.(); } api('/api/project', { id: 'hud-' + HUD.name, data: { meta: { kind: 'hud', name: HUD.name }, hud: HUD } }).catch(() => { }); }, 1200); };
+const save = () => { pref.set('hud.cur', HUD); clearTimeout(save.t); save.t = setTimeout(async () => { snap(); await loadOwners('hud'); if (claim('hud', HUD, hslug)) { pref.set('hud.cur', HUD); drawLeft?.(); } api('/api/project', { id: 'hud-' + HUD.name, data: { meta: { kind: 'hud', name: HUD.name }, hud: HUD } }).catch(() => { }); }, 1200); };
 
 /* ------------------------------------------------------------ drawing ---- */
 // A tiny pixel context: integer fills only, so exports are crisp.
@@ -296,11 +312,12 @@ export const hud = {
     el.append(V.left,
       h('section', { class: 'stage' },
         h('div', { class: 'bar' }, h('span', { class: 'lbl' }, 'Screen'),
-          select([['480x270', '480×270'], ['384x216', '384×216'], ['320x180', '320×180'], ['256x224', '256×224'], ['256x240', '256×240'], ['240x160', '240×160']], `${HUD.view.w}x${HUD.view.h}`, v => { const [w, hh] = v.split('x').map(Number); HUD.view = { w, h: hh }; save(); drawCanvas(); }),
-          h('span', { class: 'lbl' }, 'Behind'), select([['checker', 'Checker'], ['#000000', 'Black'], ['#5f6b5c', 'Field'], ['scene', 'Latest scene']], HUD.bg, v => { HUD.bg = v; save(); loadBg(); }),
-          V.demoBtn, h('span', { class: 'grow' }), V.info),
+          V.sizeSel = select([['480x270', '480×270'], ['384x216', '384×216'], ['320x180', '320×180'], ['256x224', '256×224'], ['256x240', '256×240'], ['240x160', '240×160']], `${HUD.view.w}x${HUD.view.h}`, v => { const [w, hh] = v.split('x').map(Number); HUD.view = { w, h: hh }; save(); drawCanvas(); }),
+          h('span', { class: 'lbl' }, 'Behind'), V.bgSel = select([['checker', 'Checker'], ['#000000', 'Black'], ['#5f6b5c', 'Field'], ['scene', 'Latest scene']], HUD.bg, v => { HUD.bg = v; save(); loadBg(); }),
+          V.demoBtn, h('button', { class: 'ibtn', title: 'Undo (Ctrl+Z)', onclick: () => undoHud(-1) }, '↶'), h('button', { class: 'ibtn', title: 'Redo (Ctrl+Y)', onclick: () => undoHud(1) }, '↷'),
+          h('span', { class: 'grow' }), V.info),
         V.vp,
-        h('div', { class: 'bar bot' }, h('span', { class: 'note', style: { margin: 0 } }, 'Drag widgets to place them. Arrows nudge 1px, Shift+arrows 8px, Delete removes, Ctrl+D duplicates.'))),
+        h('div', { class: 'bar bot' }, h('span', { class: 'note', style: { margin: 0 } }, 'Drag widgets to place them. Arrows nudge 1px, Shift+arrows 8px, Delete removes, Ctrl+D duplicates, Ctrl+Z / Ctrl+Y undo and redo.'))),
       V.right);
     bindCanvas(el);
     new ResizeObserver(() => drawCanvas()).observe(V.vp);
@@ -309,6 +326,7 @@ export const hud = {
     requestAnimationFrame(tick);
     if (!HUD.widgets.length) starter();
     for (const w of HUD.widgets) { loadImg(w.item); loadImg(w.img); loadFaces(w.faces); for (const it of w.items || []) loadImg(it.icon); }
+    hist = [JSON.stringify(HUD)]; hi = 0;
     loadBg(); drawLeft(); drawRight(); drawCanvas();
   },
   show() { drawCanvas(); },
@@ -395,6 +413,8 @@ function bindCanvas(el) {
   el.tabIndex = -1;
   el.addEventListener('keydown', e => {
     if (e.target.matches('input,textarea,select')) return;
+    const ctrl = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
+    if (ctrl && (k === 'z' || k === 'y')) { e.preventDefault(); return undoHud(k === 'y' || e.shiftKey ? 1 : -1); }
     const w = HUD.widgets.find(w => w.id === sel); if (!w) return;
     const d = e.shiftKey ? 8 : 1;
     if (e.key === 'ArrowLeft') w.x -= d; else if (e.key === 'ArrowRight') w.x += d; else if (e.key === 'ArrowUp') w.y -= d; else if (e.key === 'ArrowDown') w.y += d;
@@ -425,7 +445,12 @@ function drawLeft() {
   };
   drawFont();
   V.left.replaceChildren(
-    h('div', { class: 'sec' }, h('h3', {}, 'HUD'), field('Name', nm),
+    h('div', { class: 'sec' }, h('h3', {}, 'HUD', h('span', { class: 'grow' }),
+      h('button', { class: 'btn sm ghost', title: 'Open, rename, copy or remove your HUDs', onclick: () => openProjects('hud', { current: HUD.name,
+        open: async p => { const d = await fetch('/api/project?id=' + encodeURIComponent(p.id)).then(r => r.json()).catch(() => null); if (d?.hud) useHud(d.hud); },
+        renamed: n => { HUD.name = n; pref.set('hud.cur', HUD); drawLeft(); }, removed: () => { HUD = newHud('hud'); starter(); useHud(HUD); } }) }, 'Open'),
+      h('button', { class: 'btn sm ghost', title: 'Start a new HUD (this one is kept)', onclick: () => { const n = prompt('Name for the new HUD', 'hud_2'); if (n) { HUD = newHud(hslug(n)); starter(); useHud(HUD); save(); } } }, 'New')),
+      field('Name', nm),
       h('p', { class: 'note' }, 'Colours start from the style bible palette, so the HUD matches the sprites and scenes.')),
     h('div', { class: 'sec' }, h('h3', {}, 'Add'), h('div', { class: 'widgets' }, ...Object.keys(NAMES).map(btn))),
     h('div', { class: 'sec' }, h('h3', {}, 'Bitmap font'), fontBox,

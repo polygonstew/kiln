@@ -21,12 +21,13 @@ export async function loadSettings() {
 }
 function drawRootChip() {
   const c = $('#rootchip');
-  c.replaceChildren(h('b', {}, 'Asset folder'), short(S.root)); c.dataset.root = S.root;
+  // just the folder's name, so every tab fits; the full path is in the tooltip
+  c.replaceChildren(h('b', {}, 'Folder'), S.root.split('/').pop()); c.dataset.root = S.root;
   // is this folder inside a Godot project? Then every export uses res:// paths and Godot picks it up directly
   api('/api/godot?path=' + encodeURIComponent(S.root)).then(g => {
     c.append(h('i', { class: 'godot ' + (g.root ? 'ok' : 'no') }, g.root ? 'Godot ✓' : 'not in Godot'));
-    c.title = g.root ? `Inside the Godot project ${g.root}: saves land in it with res:// paths. Click to browse.`
-      : 'Not inside a Godot project yet: saves work, but use File → Asset folder… to point Kiln into your Godot project (see Help → Into Godot).';
+    c.title = `Asset folder: ${short(S.root)}\n` + (g.root ? `Inside the Godot project ${g.root}: saves land in it with res:// paths. Click to browse.`
+      : 'Not inside a Godot project yet: saves work, but use File → Asset folder… to point Kiln into your Godot project (see Help → Into Godot).');
   }).catch(() => {});
 }
 export const rootPath = (...p) => [S.root, ...p].join('/');

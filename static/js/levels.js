@@ -3,6 +3,7 @@
 import { h, api, toast, on, pref, clamp, field, range, select, seg, check, imgData, toCanvas, toDataURL, newImg, rawURL, checker, uid, fitZoom } from './core.js';
 import { saveFiles, S as FS } from './files.js';
 import { loadActor } from './player.js';
+import { openProjects } from './projects.js';
 import { registerWheel } from './wheel.js';
 import { registerKeys } from './wheel.js';
 import { loadOwners, claim } from './owners.js';
@@ -320,7 +321,7 @@ function drawLeft() {
   const cols = h('input', { type: 'number', value: L.cols, min: 4, max: 400, style: { width: '60px' } }), rows = h('input', { type: 'number', value: L.rows, min: 4, max: 200, style: { width: '60px' } });
   V.left.replaceChildren(
     h('div', { class: 'sec' }, h('h3', {}, 'Level', h('span', { class: 'grow' }),
-        h('button', { class: 'btn sm ghost', title: 'Open a level you made before', onclick: openMenu }, 'Open'),
+        h('button', { class: 'btn sm ghost', title: 'Open, rename, copy or remove your levels', onclick: openMenu }, 'Open'),
         h('button', { class: 'btn sm ghost', title: 'Start a new empty level (this one is kept)', onclick: () => { const n = prompt('Name for the new level', 'room'); if (!n) return; L = { ...blank(slug(n)), ts: L.ts, tile: L.tile, solid: L.solid, kinds: { ...(L.kinds || {}) } }; loadTiles().then(() => { changed(); drawLeft(); drawRight(); draw(); }); } }, 'New')),
       field('Name', name),
       field('Size', h('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, cols, '×', rows,
@@ -393,11 +394,10 @@ function pickTileset() {
   i.onchange = () => { const f = i.files[0]; if (!f) return; const r = new FileReader(); r.onload = async () => { L.ts = r.result; L.solid = []; L.kinds = {}; L.terrains = []; await loadTiles(); L.pick = 0; changed(); drawLeft(); draw(); toast(`Tileset: ${tileCount()} tiles of ${L.tile} px. Pick a tile, then set what it does`); }; r.readAsDataURL(f); };
   i.click();
 }
-async function openMenu() {
-  const list = (await api('/api/projects').catch(() => [])).filter(p => p.kind === 'level');
-  if (!list.length) return toast('No saved levels yet');
-  const n = prompt('Open which level?\n\n' + list.map(p => p.name).join('\n'), list[0].name);
-  const p = list.find(p => p.name === n); if (p) openLevel(p.id);
+function openMenu() {
+  openProjects('level', { current: L.name, open: p => openLevel(p.id),
+    renamed: n => { L.name = n; pref.set('level.cur', L); drawLeft(); drawRight(); },
+    removed: () => { L = blank(); pref.set('level.cur', L); loadTiles().then(() => { drawLeft(); drawRight(); draw(); }); } });
 }
 async function openLevel(id) {
   const d = await (await fetch('/api/project?id=' + encodeURIComponent(id))).json();

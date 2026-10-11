@@ -9,6 +9,7 @@ import { SETS, makeTemplate, readTemplate, download as downloadSheet } from './s
 import { registerWheel, registerMenu } from './wheel.js';
 import { loadOwners, claim } from './owners.js';
 import { openWorkshop } from './workshop.js';
+import { openProjects } from './projects.js';
 import { saveActor } from './actor_save.js';
 import { shrinkActor, bodyBoxOf, guessHits } from './actor_tools.js';
 import { openPuppet } from './puppet.js';
@@ -188,7 +189,7 @@ function drawLeft() {
     h('i', { style: { width: '22px', height: '22px', display: 'block', border: '1px solid var(--line2)', background: c ? hex(c) : 'repeating-conic-gradient(#555 0 25%, #333 0 50%) 0 0/8px 8px' } }), label);
   V.left.replaceChildren(
     h('div', { class: 'sec' }, h('h3', {}, 'Actor', h('span', { class: 'grow' }),
-      h('button', { class: 'btn sm ghost', onclick: openMenu }, 'Open'), h('button', { class: 'btn sm ghost', onclick: newActor }, 'New')),
+      h('button', { class: 'btn sm ghost', title: 'Open, rename, copy or remove your actors', onclick: openMenu }, 'Open'), h('button', { class: 'btn sm ghost', title: 'Start a new actor (this one is kept)', onclick: newActor }, 'New')),
       field('Name', nm),
       field('Frame', h('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, wIn, '×', hIn,
         h('button', { class: 'btn sm', title: 'Change the frame size. Art stays on the floor, centred.', onclick: () => resizeActor(+wIn.value, +hIn.value) }, 'Set'))),
@@ -279,19 +280,14 @@ function newActor() {
   A.ai = A.fi = 0; A.undo = []; A.redo = []; changed(true);
 }
 async function openMenu() {
-  const list = (await api('/api/projects').catch(() => [])).filter(p => p.kind === 'actor');
+  // the exported actors in sprites/ (made elsewhere, or saved without a project) open from below the list
   const sprites = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/sprites')).catch(() => ({ items: [] }));
-  const dirs = sprites.items.filter(i => i.dir && i.ok);
-  const m = h('div', { class: 'modal', onclick: e => { if (e.target === m) m.remove(); } }, h('div', {},
-    h('header', {}, h('span', { class: 'grow' }, 'Open an actor'), h('button', { class: 'ibtn', onclick: () => m.remove() }, '✕')),
-    h('div', { class: 'body' },
-      h('h3', { class: 'lbl', style: { margin: '0 0 6px' } }, 'Kiln projects (editable, keep your palette)'),
-      list.length ? list.map(p => h('div', { class: 'palrow', onclick: async () => { m.remove(); await openProject(p.id); } },
-        p.thumb ? h('img', { src: p.thumb, style: { width: '32px', height: '32px', imageRendering: 'pixelated', objectFit: 'contain', background: 'var(--p3)' } }) : null,
-        h('span', {}, p.name), h('span', { class: 'faint mono', style: { marginLeft: 'auto', fontSize: '11px' } }, new Date(p.mtime * 1000).toLocaleString()))) : h('p', { class: 'note' }, 'None yet.'),
-      h('h3', { class: 'lbl', style: { margin: '16px 0 6px' } }, 'Exported actors in sprites/'),
-      dirs.length ? dirs.map(d => h('div', { class: 'palrow', onclick: () => { m.remove(); openActorDir(d.path); } }, icon('folder'), h('span', {}, d.name), h('span', { class: 'faint mono', style: { marginLeft: 'auto', fontSize: '11px' } }, d.info))) : h('p', { class: 'note' }, 'None yet.'))));
-  document.body.append(m);
+  const dirs = sprites.items.filter(i => i.dir && i.ok && !i.name.startsWith('_'));
+  const extra = h('div', {}, h('h3', { class: 'lbl', style: { margin: '16px 0 6px' } }, 'Exported actors in sprites/'),
+    dirs.length ? dirs.map(d => h('div', { class: 'palrow', title: 'Open from its exported files', onclick: () => { document.querySelector('.modal')?.remove(); openActorDir(d.path); } }, icon('folder'), h('span', {}, d.name), h('span', { class: 'faint mono', style: { marginLeft: 'auto', fontSize: '11px' } }, d.info))) : h('p', { class: 'note' }, 'None yet.'));
+  openProjects('actor', { current: A.actor.name, extra, open: p => openProject(p.id),
+    renamed: n => { A.actor.name = n; drawLeft(); if (V.saveBtn) V.saveBtn.textContent = 'Save ' + n; },
+    removed: () => { A.actor = blankActor(); A.ai = A.fi = 0; A.undo = []; A.redo = []; opened(); } });
 }
 async function openProject(id) {
   try {
