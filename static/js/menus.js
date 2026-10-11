@@ -9,7 +9,7 @@ import { MENU_GD, SETTINGS_GD, menuScene } from './menus_godot.js';
 
 const ACTIONS = [['start', 'Start the game'], ['open:options', 'Open options'], ['back', 'Back'], ['resume', 'Resume'], ['title', 'Quit to title'], ['quit', 'Quit the game'],
   ['volume', 'Volume slider'], ['fullscreen', 'Fullscreen on/off'], ['toggle', 'On/off option'], ['controls', 'Show the controls']];
-const DEFAULTS = () => ({
+export const DEFAULTS = () => ({
   title: { id: 'title', on: true, title: 'My Game', items: [{ label: 'Play', action: 'start' }, { label: 'Options', action: 'open:options' }, { label: 'Quit', action: 'quit' }] },
   options: { id: 'options', on: true, title: 'Options', items: [{ label: 'Master', action: 'volume', bus: 'Master' }, { label: 'Music', action: 'volume', bus: 'Music' }, { label: 'Sound', action: 'volume', bus: 'SFX' },
     { label: 'Fullscreen', action: 'fullscreen' }, { label: 'Screen shake', action: 'toggle', key: 'screen_shake' }, { label: 'Controls', action: 'controls' }, { label: 'Back', action: 'back' }] },
@@ -32,6 +32,8 @@ export const menus = {
     draw();
   },
   show() { if (M) draw(); },
+  // Save all / the demo game: the saved menus, written for Godot
+  async saveProject(id) { const d = await fetch('/api/project?id=' + encodeURIComponent(id)).then(r => r.json()); M = d.menus; draw(); await exportMenus(); },
 };
 function changed() { clearTimeout(saveT); saveT = setTimeout(() => api('/api/project', { id: 'menus-game', data: { meta: { kind: 'menus', name: 'game' }, menus: M } }).catch(() => {}), 800); drawPreview(); }
 function draw() { drawLeft(); drawRight(); drawPreview(); }

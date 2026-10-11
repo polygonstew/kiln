@@ -54,6 +54,8 @@ export const animate = {
     drain();
   },
   show() { refreshAll(); },
+  // Save all / the demo game: open a saved actor and save it for Godot
+  async saveProject(id) { await openProject(id); return exportActor(); },
 };
 
 async function drain() {

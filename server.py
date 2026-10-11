@@ -891,6 +891,7 @@ class H(BaseHTTPRequestHandler):
                 s = settings()
                 s['layout'] = LAYOUT
                 s['home'] = str(HOME)
+                s['games'] = str(LIB / 'games')      # where new asset folders go (the demo game)
                 return self.send(200, s)
             if u.path == '/godot-plugin.zip':
                 return self.send(200, plugin_zip(), 'application/zip')

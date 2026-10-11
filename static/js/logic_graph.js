@@ -156,5 +156,6 @@ export function graphArea({ setMode, openScript }) {
     v.name = n; varsChanged();
   }
 
-  return { listSec, center, side, refresh, open, lists, current: () => cur?.name, remove: async name => { await open(name); remove(); } };
+  return { listSec, center, side, refresh, open, lists, current: () => cur?.name, remove: async name => { await open(name); remove(); },
+    saveGraph: async name => { await lists(); await open(name); await save(); } };
 }

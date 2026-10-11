@@ -117,6 +117,8 @@ export const levels = {
     new ResizeObserver(() => draw()).observe(V.vp);
     loadTiles().then(() => { drawLeft(); drawRight(); draw(); takeTs(); loadBg(); takeOpen(); });
   },
+  // Save all / the demo game: open a saved level and save it for Godot
+  async saveProject(id) { await openLevel(id); await exportLevel(); },
   show() { draw(); },
 };
 

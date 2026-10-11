@@ -55,6 +55,8 @@ export const logic = {
     window.addEventListener('beforeunload', e => { if (V.dirty) e.preventDefault(); });
   },
   show() { refresh(); G?.refresh(); },
+  // Save all / the demo game: open a saved graph and write its script
+  async saveProject(id) { await G.saveGraph(id.replace(/^graph-/, '')); },
 };
 
 // graphs or scripts in the middle (and their panel on the right)

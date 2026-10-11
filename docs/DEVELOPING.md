@@ -25,7 +25,7 @@ the blank actor `new_actor`, the HUD `hud`; nothing saves until something is edi
 `python3 tools/map.py` prints every module with its size and purpose (from its header comment) and fails if one
 passes 1000 lines or has no header. It is the code map: run it instead of keeping a hand-written list here.
 Rules for keeping Kiln readable are in CLAUDE.md ("Stay understandable"). Rough shape:
-- **Layout:** layout.js says where every file Kiln writes goes (content folders + the _kiln/ runtime); generators take paths from it. tidy.py moves an older layout. projects.js: the shared Open dialog.
+- **Layout:** layout.js says where every file Kiln writes goes (content folders + the _kiln/ runtime); generators take paths from it. tidy.py moves an older layout. projects.js: the shared Open dialog. saveall.js: Save all (each area's saveProject(id) hook). demo.js: the demo game (procedural hero / slime / miner, scene, level, HUD, menus, dialogue, graph → saveAll → Stage). input_godot.js: KilnInput.
 - **Shell:** app.js (tabs), core.js (DOM, API, pixel pipeline), menubar.js, wheel.js, quick.js, sendto.js, owners.js
 - **Logic:** logic.js (scripts + editor gdedit.js) + logic_graph.js (graphs: list, palette, variables, live script), graph_view.js (the board), graph_nodes.js (node types → GDScript), graph_compile.js (graph → script)
 - **Dialogue:** dialogue.js (area: dialogues, cast, lines), dialogue_play.js (preview), dialogue_godot.js (game JSON + kiln_dialogue.gd runner)

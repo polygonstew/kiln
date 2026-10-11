@@ -63,6 +63,13 @@ export const scenes = {
     const t = ++loads;
     restore(t).then(() => { if (t === loads && !SC.layers.length) usePreset('pallid', true); drain(); });
   },
+  // Save all / the demo game: open a saved scene, draw every layer, save it for Godot
+  async saveProject(id) {
+    const d = await (await fetch('/api/project?id=' + encodeURIComponent(id))).json();
+    ++loads; SC = d.scene; sel = 0; undoS = []; redoS = [];
+    for (const [i, L] of SC.layers.entries()) await renderLayer(L, i);
+    drawAll(); await exportScene();
+  },
   show() { drawAll(); },
 };
 async function drain() {
@@ -220,15 +227,16 @@ function nearestLab(c, pal) {
 const sat = c => { const mx = Math.max(...c), mn = Math.min(...c); return mx ? (mx - mn) / mx : 0; };
 let procT;
 // quiet = just opened: draw it, but don't write it back to disk until something actually changes
+// one layer's pixels: its source (generator, image…) → haze → the scene's look
+async function renderLayer(L, i) {
+  if (L.kind === 'weather') { L.out = null; return; }
+  L.out = look(haze(await source(L), L), L, i);
+  L.tiles = tileCount(L.out);
+}
 function process(only, quiet) {
   clearTimeout(procT);
   procT = setTimeout(async () => {
-    for (const [i, L] of SC.layers.entries()) {
-      if (only != null && only !== L) continue;
-      if (L.kind === 'weather') { L.out = null; continue; }
-      L.out = look(haze(await source(L), L), L, i);
-      L.tiles = tileCount(L.out);
-    }
+    for (const [i, L] of SC.layers.entries()) if (only == null || only === L) await renderLayer(L, i);
     drawLayers(); drawPreview(); if (!quiet) save();
   }, 40);
 }

@@ -222,6 +222,9 @@ svg text { font-family: 'IBM Plex Sans Condensed'; }
 <li><b>Background</b>: a saved scene drawn behind the map and placed behind it in Godot.</li></ul>
 </section>
 
+<section id="demo"><h2>The demo game, and Save all</h2>
+<p><b>File → Make a demo game…</b> makes a small, complete game in a new asset folder (yours stays as it is) the way you would, area by area: a hero drawn and rigged in Puppet (idle, walk, run, jump, attack with hit boxes, hurt, death), a patrolling slime, an old miner, a parallax night wood (Scenes), a two-screen level with planks, a ladder, a spike pit, a checkpoint and zones (Levels), a HUD with a dialogue box, title / options / pause menus, a conversation with a choice that gives you a lamp (Dialogue), a Logic graph that greets you, starts the talk and pays out the gold on the ledge, and a coin sound. Then it builds it in the Stage. Open any area afterwards to see (and change) how its part was made; File → Asset folder… takes you back to yours.</p>
+<p><b>File → Save all for Godot</b> saves every actor, scene, HUD, level, menu, dialogue and graph again, each by its own area, in an order where later things find earlier ones.</p></section>
 <section id="controls"><h2>Controls: keys and gamepads</h2>
 <p>Every Kiln game knows the same actions, each on the keyboard and on a gamepad (Xbox names; any pad works), from <code>_kiln/game/input.gd</code> (<code>KilnInput.ensure()</code> adds the ones your project doesn't have; set your own in Godot's Project Settings → Input Map and they win):</p>
 <table><tr><th>Action</th><th>Keys</th><th>Gamepad</th></tr>

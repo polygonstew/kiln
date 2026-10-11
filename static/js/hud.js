@@ -332,10 +332,15 @@ export const hud = {
     loadBg(); drawLeft(); drawRight(); drawCanvas();
   },
   show() { drawCanvas(); },
+  // Save all / the demo game: open a saved HUD and save it for Godot
+  async saveProject(id) { const d = await fetch('/api/project?id=' + encodeURIComponent(id)).then(r => r.json()); useHud(d.hud); await exportHud(); },
 };
-function starter() {
+// Kiln's starting HUD (portrait, health, stamina, flasks, score, madness) into a HUD (the open one unless given)
+// a new HUD with the starting widgets plus any extra kinds (the demo game adds a dialogue box)
+export function starterHud(name, extra = []) { const x = newHud(name); starter(x); for (const t of extra) x.widgets.push(defaults(t)); return x; }
+function starter(target = HUD) {
   const P = palette();
-  const add = (t, o) => { const w = { ...defaults(t), ...o }; HUD.widgets.push(w); return w; };
+  const add = (t, o) => { const w = { ...defaults(t), ...o }; target.widgets.push(w); return w; };
   add('portrait', { name: 'portrait', x: 8, y: 8 });
   add('bar', { name: 'health', x: 50, y: 10, w: 100, h: 8, fill: P.accent, value: .72 });
   add('bar', { name: 'stamina', x: 50, y: 21, w: 70, h: 5, style: 'segments', segments: 12, fill: P.lit, ghost: false, value: .5 });

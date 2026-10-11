@@ -35,6 +35,8 @@ export const dialogue = {
   },
   show() { refresh(); },
   hide() { V.play?.stop(); },
+  // Save all / the demo game: open a saved dialogue and save its game file
+  async saveProject(id) { await open(id.replace(/^dialogue-/, '')); await save(); },
 };
 
 /* -------------------------------------------------------------- lists ---- */
