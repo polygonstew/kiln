@@ -1,6 +1,7 @@
 # Kiln: notes for Claude
 
-Read `docs/RESUME.md` first (live state, machine limits, gotchas), then `docs/ARCHITECTURE.md`.
+Read `docs/HANDOFF.md` first (state, safe testing, what is next), then `docs/ARCHITECTURE.md`; `docs/RESUME.md` is the
+long running log (machine limits, engines, gotchas).
 Timed improvement runs: follow `docs/LOOP.md` (rules, backlog, log). Code map, events, API, safe testing:
 `docs/DEVELOPING.md`; run `tools/smoke.py` after changes. Keep `static/help.html` (the in-app guide) current.
 The user's priority is **consistency** (characters/items/styles staying on-model), see

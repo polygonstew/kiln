@@ -10,31 +10,41 @@ engine and runtime; Kiln is the authoring layer (art, actors, boxes, levels, HUD
 and every part feeds the others (an actor's faces drive the HUD portrait, its boxes drive combat, a scene becomes a
 level background). Everything it writes is plain Godot (`.tscn`, `.tres`, `.gd`), so a project never depends on Kiln.
 
-- **Open:** http://192.168.0.105:8510 on the LAN (`http://localhost:8510` locally). Guide: **`/help`** (or F1, Help menu)
+- **Open:** http://192.168.0.105:8510 on the LAN, or **https://cachyos-x8664.taila1da5d.ts.net:8519** (Tailscale, secure: needed for ▶ Play / Stage off this machine). Guide: **`/help`** (or F1)
 - **Services:** `kiln` (port 8510), `kiln-fast` (8511, local Fast generator), `comfyui` (8188, local models)
 - **Stack:** `server.py` (Python stdlib only) + `static/` (vanilla ES modules, no build step)
-- **Test:** `.venv-test/bin/python tools/smoke.py` (see docs/DEVELOPING.md)
+- **Test:** `tools/smoke.py` with a Playwright venv (see docs/DEVELOPING.md); risky flows on an isolated copy (docs/HANDOFF.md)
 
 ## Areas
 
 | Key | Area | What it does |
 |---|---|---|
-| 1 | **Files** | The asset folder as a file manager: tree, thumbnails, animated sprite previews, drop-in import, rename, trash |
-| 2 | **Forge** | Generate (Cloud / Fast / local) or bring an image; turn it into real sprite pixels on the art's own grid; guide images; dice; actor from one click |
-| 3 | **Animate** | Pixel editor (left adds, right removes, wheel rolls colours), timeline, onion skin, 1/2-wide boxes, animation sets, box templates, colour cycles, juice preview, sheet cutter (grid/rows/figures/custom, untangle, erase) |
-| 4 | **Scenes** | Parallax layers (generators incl. ground, foreground, weather; described layers; images), opacity/blend/tint/haze, undo, depth sort, review tools, Godot Parallax2D export |
-| 5 | **HUD** | Bars, gauges, pips, counters, text, 9-slice panels, slots, portraits, bitmap fonts |
-| 6 | **Stage** | Play an exported actor over a scene with the HUD; animation timing |
-| 7 | **Levels** | Tile maps with solid tiles, background scene, actors and a player start → Godot TileSet + TileMapLayer scene |
-| 8 | **Concepts** | Concept boards: images from meta.ai and others (paste/drop/upload), notes, batch → consistent sprites |
+| 1 | **Files** | The asset folder as a file manager: tree, thumbnails, animated previews, drop-in import, rename, trash |
+| 2 | **Forge** | *What are you making?* Sprites (characters, creatures, items, props, effects, portraits, vehicles, UI pieces) from a description or an image, on the art's own pixel grid; **Background** (depth layers → Scenes), **Tileset** (→ Levels), **Icon set** (one palette) |
+| 3 | **Animate** | Pixel editor, timeline, onion skin, animation sets, sheet cutter, Workshop (roles, faces, hit reactions, brains, sounds, effects, projectiles), **Puppet** (bones, Flash-style timeline, image / parts-kit import, swappable heads, pixel mouths, lip sync from voice lines) |
+| 4 | **Scenes** | Parallax layers (generators, described layers, images, weather), look per layer, review tools, Godot Parallax2D export |
+| 5 | **HUD** | Bars, gauges, pips, counters, text, panels, slots, portraits, inventory, dialogue box, prompts, bitmap fonts; undo |
+| 6 | **Stage** | The playtest room: the real Godot web build of your game, live player tuning, screenshot / video, game log |
+| 7 | **Levels** | Tiles with behaviours (solid, one-way, slopes, ladder, hazard, water), autotile, things, zones, background scene |
+| 8 | **Concepts** | Concept boards from any site, notes, batch → consistent sprites |
+| 9 | **Logic** | **Graphs** (events wired to actions, ~55 nodes, compiled to plain GDScript) and every script in an editor checked by Godot |
+| – | **Dialogue** | Conversations with a cast, voice lines, choices, conditions and effects; live preview with a talking portrait |
+| 0 | **Menus** | Title, options and pause screens → Godot scenes + saved settings |
 
-Everywhere: the KILN logo opens File/Edit/View/Tools/Help, **Ctrl+K** find anything, **Shift+A** command wheel, right-click
-menu with **Send to…** on every image, **?** shortcuts. Extra pages: **`/desk`** (home apps as windows),
-**Kiln Studio** (`kiln-studio`, a desktop window with meta.ai beside Kiln; local screen only).
+Everywhere: **▶ Play** builds the game into the Stage (keys or a **gamepad**); the **Your game** chip shows the next step;
+**File → Make a demo game** (a complete small game made with every area), **Save all for Godot**, **Tidy game files**,
+**Open…** (rename / copy / remove / restore anything you made), History, Doctor. **Ctrl+K** finds anything, **Shift+A**
+command wheel, right-click **Send to…** on every image, **?** shortcuts, tooltips on every control. Extra pages:
+**`/desk`** (home apps as windows), **Kiln Studio** (`kiln-studio`, a desktop window with meta.ai beside Kiln).
+
+What a game folder holds: your content (`sprites/`, `backgrounds/`, `levels/`, `hud/`, `menus/`, `dialogue/`, `logic/`,
+`icons/`, `sfx/`…) and Kiln's small commented runtime in **`_kiln/`** (actor, brains, level, ui, game/input.gd), plus
+Kiln's editable projects in `kiln/`. Everything is plain Godot; a game never depends on Kiln.
 
 ## Docs
 
-- `docs/RESUME.md`: current state, machine limits, gotchas. **Read first when resuming.**
+- `docs/HANDOFF.md`: **start here** in a new session: state, how to work safely, what is next
+- `docs/RESUME.md`: the running log of the build, machine limits, engines, gotchas
 - `docs/DEVELOPING.md`: code map, events, API, how to add an area, testing safely
 - `docs/ARCHITECTURE.md`: files and data flow · `docs/FORMATS.md`: everything Kiln writes
 - `docs/CONSISTENCY.md`: how things stay on-model · `docs/LOOP.md`: the timed improvement runs (rules, backlog, log)

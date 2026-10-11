@@ -21,6 +21,9 @@ delete them (`kiln/<kind>-zz_*.json`, `sprites/zz_*`, …) afterwards. A fresh b
 the blank actor `new_actor`, the HUD `hud`; nothing saves until something is edited, and the name guard
 (`owners.js`) renames clashes, but tests that edit must still use their own items.
 
+Anything that saves, deletes, renames or generates: run it on an **isolated copy** instead, `tools/iso.sh <tmpdir>`
+(Kiln's code, an empty asset folder, port 8521, paid cloud budget 0; `tools/iso.sh stop <tmpdir>` removes it).
+
 ## Code map
 `python3 tools/map.py` prints every module with its size and purpose (from its header comment) and fails if one
 passes 1000 lines or has no header. It is the code map: run it instead of keeping a hand-written list here.
@@ -55,9 +58,9 @@ Rules for keeping Kiln readable are in CLAUDE.md ("Stay understandable"). Rough 
 | `to-animate` | {mode: new/add, img, pal, name, identity, set} | Animate |
 | `forge-for` | identity | Forge locked to an actor |
 | `slice-sheet` | path | Animate: sheet cutter |
-| `open-actor` / `open-scene` | folder | Animate / Scenes |
+| `open-actor` / `open-scene` | folder, or {id} of a scene project (Forge → Background) | Animate / Scenes |
 | `scene-layer` | path or URL | Scenes: image layer |
-| `level-tileset` | {url, tile, name} | Levels |
+| `level-tileset` | {url, tile, name} | Levels (also Forge → Tileset "Use in Levels") |
 | `open-level` | level name | Levels: open its project |
 | `play` | | Stage: build the game and play it (the ▶ Play button) |
 | `tune-actor` | {name, brain, react} | Animate: Stage's "Keep in actor" (sets the numbers, saves) |

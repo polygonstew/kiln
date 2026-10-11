@@ -12,9 +12,13 @@
   palettes/             <name>.hex + <name>.png
   levels/<level>/       tileset.png, <level>.tres (TileSet), <level>.tscn (background + TileMapLayer + actors + PlayerStart), level.json
   concepts/<session>/   concept images + notes.md (Concepts area, Kiln Studio)
-  sprites/_kiln/        juice.gd + hit_flash.gdshader shared by every actor scene
-  tiles/                (reserved)
-  kiln/                 editable sources: actor-*.json, scene-*.json, hud-*.json, style.json
+  menus/                title / options / pause scenes (Menus)
+  dialogue/             <name>.json conversations (Dialogue); voice lines live in sprites/<actor>/voice/
+  logic/                <graph>.gd compiled Logic graphs and your own scripts (Play runs every logic/*.gd)
+  icons/<set>/          <item>.png + sheet.png + sheet.json (Forge → Icon set: one palette, one size)
+  tiles/                <name>.png tileset sheets (Forge → Tileset: row 1 four fills, row 2 two lit tops, platform, underside)
+  _kiln/                Kiln's runtime scripts (below)
+  kiln/                 editable sources: actor-*, scene-*, level-*, hud-*, graph-*, dialogue-*, menus-*.json, style.json, history/
   .trash/               things "deleted" in Files
   ASSETS.md             layout description
 ```

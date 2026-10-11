@@ -51,6 +51,13 @@ Kiln must stay small and plain enough for a person to read and debug by hand. Ev
 
 ## Backlog (top first)
 
+**Next up (2026-10-11, see docs/HANDOFF.md):**
+- [ ] **Export functions (user: set these up once demos, a real game and controller support exist; they do now):** File →
+  Export game: Web (zip of build/web, ready for itch.io), Linux and Windows desktop builds (Godot export templates, check
+  they are installed), a project zip for Godot; name, icon, version, window size; one screen with what each target needs.
+- [ ] **Godot skeleton export** lacks head swaps and mouths (Puppet → rig_godot.js): add the head views and LipSync node.
+- [ ] Items database (Toolset 6), 2D lighting (Toolset 7), Cutscenes, Menus backgrounds, lore bible + writing help (below).
+
 **User, 2026-10-10: "create tools that are not available that make things flow easier". These come first, top to bottom.**
 
 - [x] **Flow 1** DONE: Concepts card "Actor" and Forge "+ animations" (set chooser): pixelize → actor with identity → full set,
@@ -109,7 +116,7 @@ override everything; each gets a Help section and a Godot export):**
   (split into Size / Colour / Clean-up tabs or collapsible groups); Animate's right panel stacks too much (preview,
   identity, motions, sheet, import, save: make collapsible with remembered state); Stage needs a "pick actor" hint inline;
   HUD fine; Files fine. One area per run, screenshot before/after.
-- [ ] **Flow 4: Save all + project health.** One button (top bar) exports every changed actor/scene/level/HUD for Godot, then
+- [x] DONE 2026-10-11 (File → Save all for Godot = saveall.js; health = Doctor) **Flow 4: Save all + project health.** One button (top bar) exports every changed actor/scene/level/HUD for Godot, then
   a health report: unsaved items, actors missing animations from their set, frames touching box edges, colours over the
   hardware limit, levels whose background or actors aren't exported. Each line has a "fix / go there" link.
 - [ ] **Flow 5: Recent strip.** Top-bar dropdown of the last 12 things touched across tabs (thumbnails), one click back.
@@ -287,7 +294,7 @@ override everything; each gets a Help section and a Godot export):**
   parent = selected) for "piece by piece", facing right/left, preset buttons → poses, timeline with keyframes (lerpPose
   between), play, Bake into an animation of the actor (name, fps, loop); save rig on the actor (a.rig: src, parts as
   partsToB64, bones, motions). Help + tour + Playwright test on a zz actor.
-- [ ] **User 2026-10-11 (after Logic graphs):** head control in Animate/Puppet (head swaps: front/side/back/expressions per
+- [x] DONE 2026-10-11 (head views, mouths, lip sync, Dialogue area) **User 2026-10-11 (after Logic graphs):** head control in Animate/Puppet (head swaps: front/side/back/expressions per
   keyframe, look/tilt), dialogue (trees for the HUD box), mouth ↔ audio sync (voice line → mouth shapes per frame, in
   Animate and in Godot while a line plays).
 - [x] DONE 2026-10-11 **Logic node system** (graph_nodes / graph_compile / graph_view / logic_graph; ~50 nodes; Play runs logic/*.gd; verified in Godot) (visual event → action graphs compiled to plain GDScript, editable in the GDScript editor).
@@ -302,4 +309,11 @@ override everything; each gets a Help section and a Godot export):**
 - 2026-10-11: Logic graphs shipped: board editor (wire by drag, drop-on-board menu filtered to fitting nodes, box select, copy/paste, undo), 8 events / 6 flow / 22 actions / 14 values, variables, 5 templates, live GDScript + Godot check on Save, Make it my script, scripts Outline. Godot-checked a 253-node all-types graph; ran a graph in headless Godot (start, timer+once, message → HUD say, frame+cooldown+if). Bug found by running: text inputs fed by variables needed str().
 - 2026-10-11: Head control + lip sync: face.js (swap heads per keyframe on the head bone, 9 pixel mouths in the head's colours), puppet_face.js (Head & mouth card), lipsync.js (voice line → cues in the browser: loudness + spectral centre), Puppet Voice line… (say_<line> motion, nods, plays with sound), Bake mouth set → Godot LipSync node (_kiln/lipsync.gd, verified headless: mouth frames follow the sound), Logic "Speak a voice line". Fixed: Puppet layout overflowed with long timelines. Next: dialogue.
 - 2026-10-11: Dialogue area (dialogue.js / dialogue_play.js / dialogue_godot.js): cast linked to actors, lines with voice lines, next / jump / end / choices with if (items, flags) and does (items, flags, message Logic), live preview with talking portrait, Save → dialogue/<name>.json + kiln_dialogue.gd runner (HUD box or its own plain box, holds the player). Logic: Start a dialogue, When a dialogue ends, Dialogue flag is set. Verified in headless Godot (choice → item → end event). Found by running: a HUD without a dialogue widget hung the runner (now its own box).
-
+- 2026-10-11: Usability run across every area: one shared Open dialog (open / rename / copy / remove / restore), HUD undo,
+  tooltips on every control, Logic script Delete + Restore, head views (front/back/left/right/¾) with Look / Turn around,
+  Try mouths / Try heads. Readable output: Kiln's runtime in _kiln/ (layout.js) + File → Tidy game files (tidy.py).
+  Controller support (KilnInput, _kiln/game/input.gd: keys + gamepad, pause works without a pause menu). File → Make a
+  demo game (every area → a playable game) and Save all. "Your game" journey chip (10 steps, Do it, nudges after saves).
+- 2026-10-11: Forge makes every kind of asset: What are you making? → Sprite (+ UI pieces), Background in depth layers
+  (→ Scenes), Tileset (seamless material → fills, tops, platform → Levels), Icon set (one palette → icons/). Server takes a
+  picture-kind hint (layer / texture) so scenery comes without a figure in the middle. Tested on an isolated copy (free quota).

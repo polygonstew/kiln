@@ -1,6 +1,7 @@
 # RESUME: Kiln state of build
 
-Last updated: 2026-10-10 night (session 3: Stage playtest room + Puppet image import; the 45-min loop is PAUSED by the user).
+Last updated: 2026-10-11 (session 4). **New session: read docs/HANDOFF.md first**; this file is the long log.
+The 45-min loop is PAUSED by the user (don't re-create it unless asked).
 
 ## At a glance (newest first)
 
@@ -18,9 +19,11 @@ Last updated: 2026-10-10 night (session 3: Stage playtest room + Puppet image im
   delete/restore, head views + Try mouths, **_kiln/ runtime layout** (layout.js; File → Tidy game files, tidy.py), **KilnInput**
   controller support (input_godot.js), **Save all** (saveall.js + each area's saveProject) and **demo game** (demo.js, File menu),
   **Your game** journey chip (journey.js). Test risky flows on an isolated Kiln copy (KILN_PORT=8521 in a tmp copy).
-- NEXT: Forge makes every asset kind (user ask: layered backgrounds, tiles, UI, items; friendly but powerful), docs pass.
-- **START HERE (next session):** docs/LOOP.md backlog order = more Menus backgrounds, then items DB / 2D lighting /
-  cutscenes; dialogue's lore bible + writing help. Secure address for Stage: https://cachyos-x8664.taila1da5d.ts.net:8519. A one-shot session-only timer may start a build at 22:04.
+- 2026-10-11 (end): **Forge makers** (forge_kit / forge_bg / forge_sets): What are you making? → Background in depth layers
+  (→ Scenes), Tileset (→ Levels), Icon set (one palette → icons/), UI pieces; server picture-kind hints (layer / texture).
+  Docs pass (README, ARCHITECTURE, FORMATS, LOOP "Next up"), **docs/HANDOFF.md**, tools/iso.sh (isolated test copy).
+- **START HERE (next session):** docs/HANDOFF.md. Next = export functions (File → Export game), then Godot skeleton
+  head views + mouths, items DB, 2D lighting, cutscenes, Menus backgrounds, lore bible. Secure address for Stage: https://cachyos-x8664.taila1da5d.ts.net:8519. A one-shot session-only timer may start a build at 22:04.
   The user's asset folder is now **library/games/untitled_demo** (they work in it live): read the root from
   library/settings.json, sha1 it before/after every test, only create zz_ items and delete them (a zz actor's save also
   creates sprites/_kiln/ in an empty folder: remove it too). Restart `kiln` only when /api/status queue is 0.
