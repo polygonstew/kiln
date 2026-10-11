@@ -276,3 +276,5 @@ override everything; each gets a Help section and a Godot export):**
 - 2026-10-10: smoke caught /api/fs 500 on a missing folder (fresh asset folder has no concepts/) → empty listing. Scenes' starting preset was saved on mere opening (smoke wrote scene-pallid.json into the user's new folder; removed) → now saved only after a change. Tabs made very small (10px, no key badges; keys in tooltips).
 - 2026-10-10: user at 94% usage (resets 22:00): stopped after the rig engine + hand-off. Next session: build puppet.js first.
 
+- 2026-10-10: loop run (low-usage mode, user at ~94% until 22:00): smoke only, all clean. Puppet UI waits for the reset.
+
