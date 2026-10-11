@@ -14,6 +14,11 @@ Last updated: 2026-10-10 night (session 3: Stage playtest room + Puppet image im
   line → cues, Bake mouth set → Godot LipSync / lipsync.gd) · **Dialogue** area (dialogue.js, dialogue_play.js preview,
   dialogue_godot.js runner kiln_dialogue.gd). Logic nodes: Speak a voice line, Start a dialogue, When a dialogue ends,
   Dialogue flag is set. All verified by running real Godot headless (build/game + a test probe appended to a logic script).
+- 2026-10-11 (late): shared Open dialog (projects.js: rename/copy/remove/restore), HUD undo, tooltips everywhere, Logic script
+  delete/restore, head views + Try mouths, **_kiln/ runtime layout** (layout.js; File → Tidy game files, tidy.py), **KilnInput**
+  controller support (input_godot.js), **Save all** (saveall.js + each area's saveProject) and **demo game** (demo.js, File menu),
+  **Your game** journey chip (journey.js). Test risky flows on an isolated Kiln copy (KILN_PORT=8521 in a tmp copy).
+- NEXT: Forge makes every asset kind (user ask: layered backgrounds, tiles, UI, items; friendly but powerful), docs pass.
 - **START HERE (next session):** docs/LOOP.md backlog order = more Menus backgrounds, then items DB / 2D lighting /
   cutscenes; dialogue's lore bible + writing help. Secure address for Stage: https://cachyos-x8664.taila1da5d.ts.net:8519. A one-shot session-only timer may start a build at 22:04.
   The user's asset folder is now **library/games/untitled_demo** (they work in it live): read the root from

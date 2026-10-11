@@ -638,4 +638,16 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .pj-thumb { width: 32px; height: 32px; image-rendering: pixelated; object-fit: contain; background: var(--p3); flex: none; display: inline-block; }
 .pj-name { flex: 1; font: 13px var(--mono); } .pj-name small { color: var(--ember); font-size: 10px; } .pj-when { color: var(--faint); font: 11px var(--mono); white-space: nowrap; }
 .pj-acts { display: flex; gap: 2px; opacity: .55; } .pj-row:hover .pj-acts { opacity: 1; }
+/* Your game (journey.js): the chip, its path panel, and the card after a save */
+#journey { margin-left: 6px; white-space: nowrap; }
+.jr-panel { position: fixed; top: 50px; left: 50%; transform: translateX(-50%); z-index: 60; width: min(560px, 94vw); background: #0f0e0d; border: 1px solid #6b5a2a; border-radius: 4px; box-shadow: 0 18px 50px #000c; padding: 14px 16px; }
+.jr-head { display: flex; align-items: center; gap: 8px; } .jr-head b { font: 600 16px var(--cond); letter-spacing: .06em; text-transform: uppercase; color: #f0c24b; }
+.jr-steps { display: flex; flex-direction: column; gap: 4px; margin: 10px 0; }
+.jr-step { display: flex; align-items: center; gap: 10px; padding: 6px 8px; border-radius: 3px; border: 1px solid transparent; }
+.jr-step > i { font-style: normal; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font: 600 11px var(--mono); background: #1c1b19; color: var(--dim); flex: none; }
+.jr-step.done { opacity: .55; } .jr-step.done > i { background: #2c3a26; color: #9fd08a; }
+.jr-step.next { border-color: #6b5a2a; background: #191611; } .jr-step.next > i { background: var(--ember); color: #111; }
+.jr-t { flex: 1; display: flex; flex-direction: column; } .jr-t b { font-size: 13px; } .jr-t small { color: var(--faint); font-size: 12px; }
+.jr-nudge { position: fixed; left: 16px; bottom: 16px; z-index: 60; display: flex; align-items: center; gap: 8px; background: #12110f; border: 1px solid #6b5a2a; border-left: 3px solid #f0c24b; border-radius: 3px; padding: 10px 12px; box-shadow: 0 10px 30px #000a; font-size: 13px; animation: jrin .35s ease-out; }
+.jr-nudge b { color: #f0c24b; } @keyframes jrin { from { transform: translateY(20px); opacity: 0; } }
 

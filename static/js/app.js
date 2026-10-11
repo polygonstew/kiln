@@ -9,6 +9,7 @@ import './quick.js';
 import './sendto.js';
 import { initMenus } from './menubar.js';
 import { offerTour, endTour } from './tour.js';
+import { initJourney } from './journey.js';
 
 const mods = [files];
 const optional = ['forge', 'animate', 'scenes', 'levels', 'hud', 'stage', 'concepts', 'logic', 'dialogue', 'menus'];
@@ -47,6 +48,7 @@ async function boot() {
   on('tab', id => show(id));
   $('#stylechip').onclick = editStyle;
   $('#tabs').after(h('button', { id: 'playbtn', class: 'btn sm go', title: 'Build a playable game from your asset folder and play it in the Stage', onclick: () => emit('play') }, '▶ Play'));
+  initJourney();         // the "Your game" chip: how far the game has come, and what to make next
   // cross-tab requests switch to the tab that handles them
   const route = { 'open-actor': 'animate', 'slice-sheet': 'animate', 'forge-image': 'forge', 'open-scene': 'scenes', 'scene-layer': 'scenes', 'use-palette': 'forge', 'to-animate': 'animate', 'forge-for': 'forge', 'level-tileset': 'levels', 'forge-guide': 'forge', 'make-actor': 'forge', 'open-level': 'levels', 'tune-actor': 'animate', 'play': 'stage' };
   for (const [ev, tab] of Object.entries(route)) on(ev, () => { if (mods.some(m => m.id === tab)) show(tab); });
