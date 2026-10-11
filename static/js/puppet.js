@@ -110,7 +110,7 @@ export async function openPuppet(host, api) {
       if (showParts) { const o = new ImageData(im.width, im.height); for (let i = 0; i < parts.length; i++) if (parts[i]) { const c = HUES[(parts[i] - 1) % HUES.length]; o.data.set(hsl(c), i * 4); } x.globalAlpha = .5; x.drawImage(toCanvas(o), OX * Z, 0, im.width * Z, H * Z); x.globalAlpha = 1; }
       T = transforms(R, {});
     } else {
-      const pose = poseAt(M(), f);
+      const pose = { ...poseAt(M(), f), ...(peek || {}) };      // peek: a head or mouth being tried out (Try mouths / heads)
       if (onion && M().n > 1) { const pv = render(P, R, poseAt(M(), (f - 1 + M().n) % M().n), W, H, face); x.globalAlpha = .28; x.drawImage(toCanvas(pv), 0, 0, W * Z, H * Z); x.globalAlpha = 1; }
       x.drawImage(toCanvas(render(P, R, pose, W, H, face)), 0, 0, W * Z, H * Z);
       T = transforms(R, pose);
@@ -240,7 +240,7 @@ export async function openPuppet(host, api) {
         h('div', { class: 'pp-row' }, h('span', { class: 'lbl' }, 'Facing'), h('div', { class: 'seg' }, ...[[1, 'Right'], [-1, 'Left']].map(([v, l]) => h('button', { class: R.facing === v ? 'on' : '', onclick: () => { R.facing = v; save(); drawRight(); } }, l))))),
       R.bones.some(b => b.name === 'head') ? faceCard(Object.assign(FC, { R, im, parts, motion: () => M(), frame: () => f, push, save, redraw: drawAll, pickFile: pickURL,
         key: (row, v) => { mode = 'pose'; setKey(M(), row, f, v); save(); drawAll(); }, refaced: async () => { face = await buildFace(R); drawCanvas(); drawTl(); },
-        voice: () => pickURL(voiceLine, 'audio/*'), bakeMouths })) : '',
+        voice: () => pickURL(voiceLine, 'audio/*'), bakeMouths, tryOut })) : '',
       h('div', { class: 'wk-card' }, h('h3', {}, 'Make a motion', h('small', {}, 'from the rig, no AI')),
         h('div', { class: 'pp-presets' }, ...Object.keys(PRESETS).map(k => h('button', { class: 'btn sm', title: `${PRESETS[k].n} frames at ${PRESETS[k].fps} fps${PRESETS[k].span === 2 ? ', 2 boxes wide' : ''}`, onclick: () => usePreset(k) }, k))),
         h('p', { class: 'note' }, 'Uses the bone names of the auto rig (hip, torso, head, arm_front…). Each frame becomes a keyframe you can adjust.')),
@@ -316,6 +316,9 @@ export async function openPuppet(host, api) {
   }
   const step = d => { f = (f + d + M().n) % M().n; mode = 'pose'; drawCanvas(); drawTl(); };
   // a motion with a voice line plays its sound too, and follows the sound's clock so the mouth stays in time
+  // Try mouths / Try heads: flash through a list of overrides on the canvas without touching the timeline
+  let peek = null, peekT = 0;
+  const tryOut = list => { clearInterval(peekT); mode = 'pose'; let i = 0; peekT = setInterval(() => { peek = list[i++] || null; drawCanvas(); if (!peek) clearInterval(peekT); }, 260); };
   let audio = null;
   function togglePlay() {
     if (playing) { clearInterval(playing); playing = null; audio?.pause(); audio = null; drawTl(); return; }

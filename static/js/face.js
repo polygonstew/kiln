@@ -2,8 +2,10 @@
 // look around and talk. The nine mouth shapes are the usual lip-sync set (as in Rhubarb Lip Sync / Preston Blair):
 //   X rest · A closed (M B P) · B slightly open (K S T EE) · C open (EH AE) · D wide (AA) · E round (AO ER)
 //   F pucker (UW OO W) · G teeth on lip (F V) · H tongue up (L)
-// Heads: rig.heads = [{ id, name, src, ax, ay, mouth: [x, y] | null }] (ax, ay = the neck point in the head picture).
-// The drawn head (the rig's own pixels) is id "drawn"; its mouth spot is rig.mouthAt (drawing coordinates).
+// Heads: rig.heads = [{ id, name, view, src, ax, ay, mouth: [x, y] | null }] (ax, ay = the neck point in the head picture;
+// view = front | back | left | right | 3l | 3r | up | down | '' for an expression).
+// The drawn head (the rig's own pixels) is id "drawn"; its mouth spot is rig.mouthAt (drawing coordinates), its name and
+// view rig.drawnName / rig.drawnView.
 // Poses carry _head (a head id) and _mouth (a shape letter); rig.js render() draws them (face from buildFace()).
 import { newImg, imgData, bbox, crop, luma } from './core.js';
 import { prepImage } from './rig.js';

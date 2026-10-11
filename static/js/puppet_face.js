@@ -1,10 +1,14 @@
 // Puppet's "Head & mouth" card: the rig's heads (its own drawn head plus any added: other views, expressions) and
 // its pixel mouths. Click a head or a mouth to show it from the current frame on (a key on the head / mouth row of
-// the timeline). The big preview places the mouth (click) and a swapped head's neck (Shift+click).
+// the timeline). The big preview places the mouth (click) and a swapped head's neck (Shift+click). Each head can say
+// which way it looks (front, back, left, right…): Look around / Turn around use that; Try mouths / heads test them.
 import { h, toast, toCanvas, toDataURL, imgData, checker, newImg } from './core.js';
 import { SHAPES, mouthShapes, faceColours, headFromImage, mirror } from './face.js';
 
-// ctx: { R, im, parts, motion(), frame(), key(row, value), push(), save(), redraw(), refaced(), pickFile(cb), voice(), bakeMouths() }
+const VIEWS = [['', 'other (an expression…)'], ['front', 'Front'], ['back', 'Back'], ['left', 'Left'], ['right', 'Right'], ['3l', '¾ left'], ['3r', '¾ right'], ['up', 'Up'], ['down', 'Down']];
+const viewName = v => VIEWS.find(x => x[0] === v)?.[1] || '';
+
+// ctx: { R, im, parts, motion(), frame(), key(row, value), push(), save(), redraw(), refaced(), pickFile(cb), voice(), bakeMouths(), tryOut(list) }
 export function faceCard(ctx) {
   const { R } = ctx, headIdx = R.bones.findIndex(b => b.name === 'head');
   let sel = ctx.sel || 'drawn';
@@ -18,7 +22,11 @@ export function faceCard(ctx) {
     for (let y = y0; y <= y1; y++) for (let x = x0; x <= x1; x++) if (parts[y * im.width + x] === headIdx + 1) o.data.set(im.data.subarray((y * im.width + x) * 4, (y * im.width + x) * 4 + 4), ((y - y0) * o.width + x - x0) * 4);
     return { im: o, x0, y0 };
   };
-  const thumb = (im, on, title, click) => { const c = toCanvas(im); c.className = 'pp-headt' + (on ? ' on' : ''); c.title = title; c.onclick = click; return c; };
+  const thumb = (im, on, title, caption, click) => h('div', { class: 'pp-headw' + (on ? ' on' : ''), title, onclick: click }, Object.assign(toCanvas(im), { className: 'pp-headt' }), h('small', {}, caption));
+  // the drawn head's name and view live on the rig; added heads carry their own
+  const metaOf = id => id === 'drawn' ? { name: R.drawnName || 'drawn head', view: R.drawnView ?? (R.facing === -1 ? 'left' : 'right') } : (R.heads || []).find(x => x.id === id) || {};
+  const setMeta = (id, k, v) => { ctx.push(); if (id === 'drawn') R[k === 'name' ? 'drawnName' : 'drawnView'] = v; else (R.heads || []).find(x => x.id === id)[k] = v; ctx.save(); draw(); };
+  const headFor = view => ['drawn', ...(R.heads || []).map(x => x.id)].find(id => metaOf(id).view === view);
 
   async function draw() {
     const dh = drawnHead(), heads = R.heads || [];
@@ -45,8 +53,15 @@ export function faceCard(ctx) {
       };
     }
     card.replaceChildren(h('h3', {}, 'Head & mouth', h('span', { class: 'grow' }), h('small', {}, 'click: from this frame on')),
-      h('div', { class: 'pp-heads' }, dh ? thumb(dh.im, sel === 'drawn', 'The drawn head', () => useHead('drawn')) : '',
-        ...heads.map((hd, i) => thumb(imgs[i], sel === hd.id, hd.name, () => useHead(hd.id)))),
+      h('div', { class: 'pp-heads' }, dh ? thumb(dh.im, sel === 'drawn', 'The drawn head: show it from this frame on', viewName(metaOf('drawn').view) || metaOf('drawn').name, () => useHead('drawn')) : '',
+        ...heads.map((hd, i) => thumb(imgs[i], sel === hd.id, `${hd.name}: show it from this frame on`, viewName(hd.view) || hd.name, () => useHead(hd.id)))),
+      h('div', { class: 'pp-row' }, h('span', { class: 'lbl' }, 'This head'),
+        h('input', { type: 'text', value: metaOf(sel).name || '', title: 'Its name', style: { width: '100px' }, onchange: e => setMeta(sel, 'name', e.target.value.trim() || 'head') }),
+        Object.assign(h('select', { onchange: e => setMeta(sel, 'view', e.target.value) }, ...VIEWS.map(([k, l]) => h('option', { value: k, selected: k === (metaOf(sel).view || '') }, l))), { title: 'Which way it looks: Look around and Turn around use this' })),
+      h('div', { class: 'pp-row' },
+        h('button', { class: 'btn sm ghost', title: 'Key the head track: front, left, right, front (heads marked with those views)', onclick: () => look(['front', 'left', 'right', 'front']) }, 'Look around'),
+        h('button', { class: 'btn sm ghost', title: 'Key the head track: right, ¾ right, front, ¾ left, left, back (the ones you have)', onclick: () => look(['right', '3r', 'front', '3l', 'left', 'back']) }, 'Turn around'),
+        h('button', { class: 'btn sm ghost', title: 'Flash through every head on the figure (nothing is keyed)', onclick: () => ctx.tryOut(['drawn', ...heads.map(x => x.id), 'drawn'].map(id => ({ _head: id }))) }, 'Try heads')),
       h('div', { class: 'pp-row' },
         h('button', { class: 'btn sm', title: 'Add a head from a picture (another view or expression); kits bring their spare heads by themselves', onclick: () => ctx.pickFile(addHead) }, '+ Head…'),
         h('button', { class: 'btn sm ghost', title: 'Add a mirrored copy of this head (for looking the other way)', onclick: mirrorHead }, 'Mirror'),
@@ -57,7 +72,8 @@ export function faceCard(ctx) {
         h('input', { type: 'range', min: 3, max: 12, value: R.mouths?.w || 5, title: 'Width of the mouth in pixels', onchange: e => { ctx.push(); makeMouths(+e.target.value); ctx.save(); ctx.refaced(); draw(); } })),
       R.mouths ? h('div', { class: 'pp-mouths' }, ...SHAPES.map(([k, say]) => h('button', { class: 'pp-mouth', title: `${k}: ${say} (key it here)`, onclick: () => { ctx.push(); ctx.key('_mouth', k); } },
         mouthThumb(R.mouths.shapes[k]), h('small', {}, k)))) : '',
-      R.mouths ? h('div', { class: 'pp-row' }, h('button', { class: 'btn sm ghost', title: 'Fill this motion with simple talking (no sound): mouths that open and close', onclick: flap }, 'Talk without sound'),
+      R.mouths ? h('div', { class: 'pp-row' }, h('button', { class: 'btn sm ghost', title: 'Flash through all nine mouths on the figure, with the head showing now (nothing is keyed)', onclick: () => ctx.tryOut([...SHAPES.map(([k]) => ({ _head: sel, _mouth: k })), { _head: sel, _mouth: 'X' }]) }, 'Try mouths'),
+        h('button', { class: 'btn sm ghost', title: 'Fill this motion with simple talking (no sound): mouths that open and close', onclick: flap }, 'Talk without sound'),
         h('button', { class: 'btn sm go', title: 'Lip sync: pick a voice line (WAV, OGG, MP3); its mouth shapes are worked out from the sound', onclick: ctx.voice }, 'Voice line…'),
         h('button', { class: 'btn sm ghost', title: 'An animation "mouths" with one frame per mouth shape, for lip sync in Godot', onclick: ctx.bakeMouths }, 'Bake mouth set')) : '');
   }
@@ -87,6 +103,17 @@ export function faceCard(ctx) {
     ctx.push(); R.heads = R.heads.filter(x => x.id !== sel);
     for (const m of R.motions || []) for (const [f, k] of Object.entries(m.keys?._head || {})) if (k.v === sel) delete m.keys._head[f];
     sel = 'drawn'; ctx.sel = sel; ctx.save(); ctx.refaced(); draw();
+  }
+  // Look around / Turn around: the heads with those views, keyed in turn across the motion (it grows if too short)
+  function look(views) {
+    const m = ctx.motion(); if (!m) return;
+    const ids = views.map(headFor).filter(Boolean).filter((id, i, a) => id !== a[i - 1]);
+    if (new Set(ids).size < 2) return toast('Mark at least two heads with their view first (This head: Front, Left, Right…)', 'bad');
+    ctx.push();
+    if (m.n < ids.length * 4) m.n = ids.length * 4;
+    const step = Math.floor(m.n / ids.length);
+    m.keys._head = {}; ids.forEach((id, i) => { m.keys._head[i * step] = { v: id, tween: false, ease: 0 }; });
+    ctx.save(); ctx.redraw(); toast(`Head track: ${ids.map(id => viewName(metaOf(id).view)).join(' → ')}`, 'ok');
   }
   // simple talking without a sound: a mouth every two frames, never the same twice
   function flap() {

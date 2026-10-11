@@ -599,7 +599,8 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .lg-outline { display: flex; flex-direction: column; max-height: 220px; overflow: auto; }
 /* Puppet: Head & mouth card (puppet_face.js) */
 .pp-heads { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; }
-.pp-headt { height: 40px; image-rendering: pixelated; background: #5c5c66; border: 2px solid transparent; border-radius: 2px; cursor: pointer; } .pp-headt.on { border-color: var(--ember); }
+.pp-headw { display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; } .pp-headw small { font: 10px var(--mono); color: var(--faint); max-width: 64px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pp-headt { height: 40px; image-rendering: pixelated; background: #5c5c66; border: 2px solid transparent; border-radius: 2px; } .pp-headw.on .pp-headt { border-color: var(--ember); } .pp-headw.on small { color: var(--ember); }
 .pp-headbox { display: grid; place-items: center; margin-top: 8px; background: #121211; border: 1px solid var(--line); padding: 6px; } .pp-headpv { image-rendering: pixelated; cursor: crosshair; max-width: 100%; }
 .pp-mouths { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-top: 6px; }
 .pp-mouth { display: flex; flex-direction: column; align-items: center; gap: 1px; background: #1c1b19; border: 1px solid var(--line); border-radius: 2px; padding: 3px 0; cursor: pointer; color: var(--dim); } .pp-mouth:hover { border-color: var(--ember); }
