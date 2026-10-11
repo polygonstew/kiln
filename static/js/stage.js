@@ -12,7 +12,10 @@ const GAME = { w: 480, h: 270 };
 const BODY = [['max_health', 'Health', 1, 20, 1, 3, 'hits'], ['knockback', 'Knockback', 0, 240, 5, 60, 'px/s'], ['invulnerable_time', 'Safe after a hit', 0, 2, .05, .6, 's']];
 const START = [['none', 'Straight into the level'], ['title', 'A plain title screen'], ['menu', 'Your title menu (Menus)']];
 const V = {};
-let mounted = false, wantBuild = false, busy = false, built = false, live = false, stale = false, rec = null;
+let mounted = false, wantBuild = false, busy = false, built = false, live = false, stale = false, rec = null, secureURL = '';
+// browsers only run Godot web games on a secure page (https, or http on localhost): elsewhere the Stage links to
+// Kiln's https address (tailscale serve in front of Kiln; play.py secure_url) instead of showing Godot's error
+const SECURE = window.isSecureContext;
 let lists = { levels: [], scenes: [], actors: [], huds: [] }, file = { brain: {}, body: {} };
 const picks = () => pref.get('stage.build', { start: 'none' });
 const setPick = (k, v) => { pref.set('stage.build', { ...picks(), [k]: v }); markStale(true); };
@@ -47,7 +50,7 @@ export const stage = {
   async show() {
     await drawLeft();
     const st = await api('/api/play/status').catch(() => ({}));
-    built = !!st.built;
+    built = !!st.built; secureURL = st.secure || '';
     if (st.running && !busy) follow();      // a build started elsewhere (or before a reload)
     else if (built && !live && !busy) load();
     drawBar(); drawEmpty();
@@ -56,7 +59,7 @@ export const stage = {
 };
 
 /* ------------------------------------------------------- the game frame ---- */
-function load() { live = true; V.frame.src = '/play/?t=' + Date.now(); V.frame.style.display = ''; V.empty.style.display = 'none'; fit(); }
+function load() { if (!SECURE) return drawEmpty(); live = true; V.frame.src = '/play/?t=' + Date.now(); V.frame.style.display = ''; V.empty.style.display = 'none'; fit(); }
 function unload() { live = false; V.frame.src = 'about:blank'; V.frame.style.display = 'none'; drawEmpty(); }
 function fit() {
   if (!V.frame) return;
@@ -67,6 +70,13 @@ function fit() {
 function drawEmpty() {
   if (!V.empty) return;
   V.empty.style.display = live ? 'none' : '';
+  if (!SECURE && !busy) {
+    const here = secureURL && secureURL + location.pathname + '#stage';
+    return V.empty.replaceChildren(h('h2', {}, 'Play on Kiln\'s secure address'),
+      h('p', {}, 'Browsers only run Godot games on a secure (https) page, and this one is plain http. ' + (here ? 'Kiln is also at the address below: everything works there, so bookmark it.' : 'Open Kiln on this machine at http://localhost:8510, or put https in front of it (tailscale serve).')),
+      here ? h('a', { class: 'btn go', href: here, title: 'Kiln over https (only your own devices on Tailscale can reach it)' }, 'Open ' + secureURL.replace('https://', '')) : '',
+      built ? h('p', { class: 'note' }, 'The last build is ready there.') : '');
+  }
   V.empty.replaceChildren(busy ? h('h2', {}, 'Building…') : h('h2', {}, built ? 'The game is paused' : 'Nothing built yet'),
     h('p', {}, busy ? 'Godot is exporting your asset folder for the web. Watch the log below.' : built ? 'It stops while you are in another area.' : 'Build a small game from your asset folder (the level, player and HUD on the left) and play it right here. It takes 10 s to a minute; your files are only read.'),
     busy ? '' : h('button', { class: 'btn go', title: built ? 'Start the last build again' : 'Build the game with Godot and play it here', onclick: () => built ? load() : build() }, built ? '▶ Play' : '▶ Build and play'));
@@ -79,7 +89,7 @@ function drawBar() {
     h('button', { class: 'btn sm', disabled: !built || busy, title: 'Start the game over (no rebuild)', onclick: load }, 'Restart'),
     h('button', { class: 'btn sm', disabled: !live, title: 'Save a screenshot of the game (PNG, 3× size)', onclick: () => send('cmd', 'shot') }, 'Screenshot'),
     h('button', { class: 'btn sm' + (rec ? ' go' : ''), disabled: !live, title: rec ? 'Stop and save the video' : 'Record the playtest as a video (WebM, up to 30 s)', onclick: record }, rec ? '■ Stop' : '● Record'),
-    h('a', { class: 'btn sm ghost', href: '/play/', target: '_blank', title: 'Open the last build in its own tab' }, 'Open in a tab'));
+    h('a', { class: 'btn sm ghost', href: (SECURE ? '' : secureURL) + '/play/', target: '_blank', title: 'Open the last build in its own tab' }, 'Open in a tab'));
 }
 function markStale(v) { stale = v && built; drawBar(); }
 const send = (kiln, v) => V.frame.contentWindow?.postMessage({ kiln, v }, location.origin);
@@ -138,7 +148,8 @@ async function follow() {      // a build already running: show its log until it
 }
 function done(ok) {
   busy = false; built = built || ok; stale = false;
-  if (ok && V.vp.offsetParent) { load(); toast('Built: playing in the Stage', 'ok'); } else if (ok) toast('The game is built: open Stage to play', 'ok'); else toast('The build failed: see the log', 'bad');
+  if (ok && !SECURE) toast('Built: play it on the secure address', 'ok');
+  else if (ok && V.vp.offsetParent) { load(); toast('Built: playing in the Stage', 'ok'); } else if (ok) toast('The game is built: open Stage to play', 'ok'); else toast('The build failed: see the log', 'bad');
   drawBar(); drawEmpty();
 }
 

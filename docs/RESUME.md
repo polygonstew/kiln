@@ -35,6 +35,9 @@ Last updated: 2026-10-10 night (session 3: Stage playtest room + Puppet image im
 ## Where things are
 
 - Code: `~/.jcodes/kiln` (git, private GitHub `polygonstew/kiln`, branch `main`)
+- Secure address: **https://cachyos-x8664.taila1da5d.ts.net:8519** (`tailscale serve --bg --https=8519 http://127.0.0.1:8510`,
+  tailnet only, real cert; off: `sudo tailscale serve --https=8519 off`). Needed for ▶ Play / Stage: Godot web games only run in a
+  secure context, and the LAN http address is not one (play.py `secure_url` finds it; Stage links there).
 - Running: `kiln.service` (user unit), port **8510**, binds 0.0.0.0. Restart after server.py
   changes: `systemctl --user restart kiln`. Static files are served from disk (no cache), so a
   browser reload picks up JS/CSS edits.

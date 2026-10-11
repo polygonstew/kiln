@@ -1,7 +1,7 @@
 """Kiln play builds: turn the asset folder into a small Godot game and export it for the web, to play in a browser.
 Everything happens in build/ (a copy): the asset folder is only read. The page sends the generated main scene
 and scripts; this module copies the assets, writes project.godot and export settings, runs Godot and reports."""
-import json, re, shutil, subprocess, time
+import json, os, re, shutil, subprocess, time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
@@ -120,6 +120,27 @@ for (const k of ['log', 'warn', 'error']) { const o = console[k].bind(console); 
 addEventListener('error', e => kilnSend('log', { k: 'error', t: e.message }));
 if (parent !== window) kilnSend('ready');
 </script>"""
+
+
+_SECURE = {}
+
+
+def secure_url(port):
+    """Kiln's https address, when `tailscale serve` puts one in front of this port (browsers only run Godot web
+    games on a secure page; plain http works only on localhost). '' when there is none. Checked once a minute."""
+    if time.time() - _SECURE.get('at', 0) < 60:
+        return _SECURE['url']
+    url = os.environ.get('KILN_SECURE_URL', '')
+    if not url and shutil.which('tailscale'):
+        try:
+            r = subprocess.run(['tailscale', 'serve', 'status', '--json'], capture_output=True, text=True, timeout=5)
+            for host, web in (json.loads(r.stdout or '{}').get('Web') or {}).items():
+                if any(str(h.get('Proxy', '')).rstrip('/').endswith(f':{port}') for h in (web.get('Handlers') or {}).values()):
+                    url = 'https://' + host.removesuffix(':443')
+        except Exception:
+            pass
+    _SECURE.update(at=time.time(), url=url)
+    return url
 
 
 def built():

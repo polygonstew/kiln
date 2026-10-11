@@ -871,7 +871,7 @@ class H(BaseHTTPRequestHandler):
                 root = q.get('root') or settings()['root']
                 return self.send(200, {'root': str(in_home(root)), 'scripts': list_scripts(in_home(root)), 'godot': bool(GODOT)})
             if u.path == '/api/play/status':
-                return self.send(200, {**play.STATE, 'built': play.built()})
+                return self.send(200, {**play.STATE, 'built': play.built(), 'secure': play.secure_url(PORT)})
             if u.path == '/play' or u.path.startswith('/play/'):
                 got = play.serve(u.path[6:].lstrip('/'))
                 return self.send(200, *got) if got else self.send(404, {'err': 'no build yet: press Play in Kiln'})
