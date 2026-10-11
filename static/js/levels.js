@@ -113,7 +113,7 @@ export const levels = {
     document.addEventListener('keyup', e => { if (e.key === ' ') { spaceDown = false; V.cv.style.cursor = 'crosshair'; } });
     drawBar();
     new ResizeObserver(() => draw()).observe(V.vp);
-    loadTiles().then(() => { drawLeft(); drawRight(); draw(); takeTs(); loadBg(); });
+    loadTiles().then(() => { drawLeft(); drawRight(); draw(); takeTs(); loadBg(); takeOpen(); });
   },
   show() { draw(); },
 };
@@ -397,9 +397,20 @@ async function openMenu() {
   const list = (await api('/api/projects').catch(() => [])).filter(p => p.kind === 'level');
   if (!list.length) return toast('No saved levels yet');
   const n = prompt('Open which level?\n\n' + list.map(p => p.name).join('\n'), list[0].name);
-  const p = list.find(p => p.name === n); if (!p) return;
-  const d = await (await fetch('/api/project?id=' + encodeURIComponent(p.id))).json();
-  L = d.level; await loadTiles(); pref.set('level.cur', L); drawLeft(); drawRight(); draw();
+  const p = list.find(p => p.name === n); if (p) openLevel(p.id);
+}
+async function openLevel(id) {
+  const d = await (await fetch('/api/project?id=' + encodeURIComponent(id))).json();
+  L = d.level; await loadTiles(); pref.set('level.cur', L); drawLeft(); drawRight(); draw(); loadBg();
+}
+// Stage's "open this level": by its saved name
+let pendingOpen = null;
+on('open-level', n => { pendingOpen = n; if (mounted) takeOpen(); });
+async function takeOpen() {
+  if (!pendingOpen) return;
+  const n = pendingOpen; pendingOpen = null;
+  const p = (await api('/api/projects').catch(() => [])).find(p => p.kind === 'level' && p.name === n);
+  p ? openLevel(p.id) : toast(`No Kiln project for level "${n}"`, 'bad');
 }
 
 /* ---------------------------------------------------------- export ---- */

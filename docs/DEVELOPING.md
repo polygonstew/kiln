@@ -26,14 +26,14 @@ the blank actor `new_actor`, the HUD `hud`; nothing saves until something is edi
 passes 1000 lines or has no header. It is the code map: run it instead of keeping a hand-written list here.
 Rules for keeping Kiln readable are in CLAUDE.md ("Stay understandable"). Rough shape:
 - **Shell:** app.js (tabs), core.js (DOM, API, pixel pipeline), menubar.js, wheel.js, quick.js, sendto.js, owners.js
-- **Areas:** files, forge, animate (+ workshop, motion, sheets, slicer, player), scenes (+ procgen), levels, hud, stage, concepts
+- **Areas:** files, forge, animate (+ actor_save, workshop, motion, sheets, slicer, player), scenes (+ procgen), levels, hud, stage (playtest room: playbuild.js + play.py), concepts
 - **Godot writers:** actor_godot.js (actor scene + juice.gd/projectile.gd), hud_godot.js, the export parts of scenes.js / levels.js
 - **Server:** server.py (stdlib): files, projects, generation queue, cloud budget, Godot plugin endpoints; checks.py: GDScript list/check, Doctor, snapshots
 - **Actor extras:** workshop.js, actor_tools.js (CHARACTER.md, game-size copy), brains.js, sfx.js, vfx.js; **Level extras:** tilekinds.js, zones.js, autotile.js
 
 ## Adding an area
 
-1. `static/js/<area>.js` exporting `export const <area> = { id, title, key, mount(el), show() }`.
+1. `static/js/<area>.js` exporting `export const <area> = { id, title, key, mount(el), show(), hide()? }` (hide runs when you leave it).
 2. Add its name to `optional` in `app.js` (and to the generic-wheel exclusion list if it registers its own).
 3. Optional: `registerWheel(id, () => ({ tools, guides }))`, `registerKeys(id, [[key, what]])`,
    `registerMenu(selector, el => items)` from `wheel.js`; projects saved via `POST /api/project` with
@@ -54,6 +54,9 @@ Rules for keeping Kiln readable are in CLAUDE.md ("Stay understandable"). Rough 
 | `open-actor` / `open-scene` | folder | Animate / Scenes |
 | `scene-layer` | path or URL | Scenes: image layer |
 | `level-tileset` | {url, tile, name} | Levels |
+| `open-level` | level name | Levels: open its project |
+| `play` | | Stage: build the game and play it (the ▶ Play button) |
+| `tune-actor` | {name, brain, react} | Animate: Stage's "Keep in actor" (sets the numbers, saves) |
 | `saved` / `root` | folder | Files refresh |
 | `job-done`, `health`, `style` | | queue, budget tags, style bible |
 

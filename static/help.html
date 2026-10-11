@@ -218,7 +218,7 @@ svg text { font-family: 'IBM Plex Sans Condensed'; }
 </section>
 
 <section id="play"><h2>Play: a test build of your game</h2>
-<p><b>▶ Play</b> (top bar) builds a small game from your asset folder with Godot and opens it in a new browser tab: a title screen, then the level you pick with the player actor (the one whose Workshop role is Player), a camera that follows it, and your HUD. No level yet? You get a long floor in front of a scene. The build is a copy in <code>kiln/build/</code>: your files are only read. The last build stays at <code>/play/</code>.</p></section>
+<p><b>▶ Play</b> (top bar) builds a small game from your asset folder with Godot and plays it in the <a href="#stage">Stage</a>: the level you pick with the player actor (the one whose Workshop role is Player), a camera that follows it, and your HUD. No level yet? You get a long floor in front of a scene. The build is a copy in <code>kiln/build/</code>: your files are only read. The last build stays at <code>/play/</code>.</p></section>
 <section id="menus"><h2>Menus: title, options, pause</h2>
 <p>The <b>Menus</b> area (key <kbd class="k">0</kbd>) makes the game's <b>title menu</b>, <b>options</b> (volume sliders for all sound, music and effects, fullscreen, on/off options like screen shake, the list of controls) and <b>pause menu</b>. Each screen: a title, a scene or colour behind it, dim, text size, colours, and a list of items, each a button with an action (start, open options, back, resume, quit to title, quit) or a setting. The preview is at game size.</p>
 <p><b>Save menus</b> writes <code>menus/title.tscn</code>, <code>options.tscn</code>, <code>pause.tscn</code>, <code>kiln_menu.gd</code> (builds a screen from its items and emits <code>action(name)</code>) and <code>kiln_settings.gd</code> (<code>KilnSettings.volume("Music")</code>, <code>KilnSettings.flag("screen_shake")</code>, saved for the player). <b>▶ Play</b> uses them: the title menu first, Esc pauses.</p></section>
@@ -255,9 +255,14 @@ svg text { font-family: 'IBM Plex Sans Condensed'; }
 
 <section id="stage" data-title="Stage">
 <h2>Stage <kbd>6</kbd></h2>
-<p class="lead">Play an actor in a scene with the HUD on top, to check scale, timing and contrast before it goes into the game.</p>
-<figure><img src="/help/stage.jpg" alt="Stage"><figcaption>Stage: pick actor, scene and HUD; map animations to actions.</figcaption></figure>
-<p>← → walk, Shift run, Space/↑ jump, Z attack, X hurt, ↓ crouch, K death. If feet slide, the walk fps and walk speed disagree.</p>
+<p class="lead">The playtest room: your real game, built by Godot from the asset folder, running right here, with the player's numbers on sliders.</p>
+<ul>
+<li><b>In the game</b>: the level, player, HUD (and a background when there is no level) that go into the build, and what it starts with (straight into the level, a plain title screen, or your title menu from Menus). <b>↗</b> opens that thing in its area to fix it. After changes here or saving elsewhere, <b>Rebuild</b> (it shows • when the build is out of date). A build takes 10 s to a minute; your files are only read.</li>
+<li><b>Tune the player</b>: run speed, jump height, time to the top of a jump (floatiness), coyote time, health, knockback and safe time after a hit. They change the game <i>while you play</i>, no rebuild. Nothing is saved until <b>Keep in &lt;actor&gt;</b>, which writes them into the actor's Workshop settings and saves it; <b>Reset</b> goes back to the saved numbers.</li>
+<li>Click the game for the keys: arrows move, Space jumps (hold for higher), X attacks, C shoots, Esc pauses (with a pause menu). <b>Restart</b> starts over without rebuilding, <b>Screenshot</b> saves a PNG at 3×, <b>Record</b> saves a WebM video (up to 30 s), <b>Open in a tab</b> plays it on its own.</li>
+<li>Below the game: the build log and the game's own output (errors in red). The game stops while you are in another area.</li>
+</ul>
+<p>In Godot: the build's <code>main.gd</code> reads the Stage's numbers through <code>JavaScriptBridge</code> (web builds only) and sets them on the player's <code>Brain</code> and <code>juice.gd</code>; the player brain's <code>retune()</code> works out gravity and jump speed again.</p>
 </section>
 
 <section id="plugin" data-title="Godot plugin">

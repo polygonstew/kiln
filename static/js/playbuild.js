@@ -1,7 +1,7 @@
-// Play: build a small playable game from what is in the asset folder (a level, the player actor, a HUD, a title
-// screen) and export it for the web with Godot, so it can be played in a browser tab. The build happens in a
-// copy (server: play.py); this file picks what goes in and writes the main scene + main.gd that ties it together.
-import { h, api, toast } from './core.js';
+// Play builds: a small playable game from what is in the asset folder (a level, the player actor, a HUD, menus),
+// exported for the web with Godot and played in the Stage (stage.js). The build happens in a copy (server: play.py);
+// this file writes the main scene + main.gd that ties it together and runs the build.
+import { api } from './core.js';
 import { S as FS } from './files.js';
 import { BRAIN_GD } from './brains.js';
 
@@ -20,9 +20,14 @@ const MAIN_GD = `extends Node2D
 @export var show_title := true
 var playing := false
 var menus: Array[Node] = []               # open menu screens, top last
+var player: Node2D
+var _web: JavaScriptObject                # the page around a web build (Kiln's Stage talks through it)
+var _tuned := ""
 const BRAIN := "res://sprites/_kiln/brains/player.gd"
 
 func _ready() -> void:
+\tif OS.has_feature("web"):
+\t\t_web = JavaScriptBridge.get_interface("window")
 \tif title_menu:
 \t\t_open(title_menu)
 \telif show_title:
@@ -127,7 +132,6 @@ func _start() -> void:
 \tif player_scene:
 \t\tvar p := player_scene.instantiate() as Node2D
 \t\tp.position = start
-\t\tworld.add_child(p)
 \t\tif not p.is_in_group("player"):
 \t\t\tp.add_to_group("player")
 \t\tif p.get_node_or_null("Brain") == null and ResourceLoader.exists(BRAIN):
@@ -135,6 +139,10 @@ func _start() -> void:
 \t\t\tb.name = "Brain"
 \t\t\tb.set_script(load(BRAIN))
 \t\t\tp.add_child(b)
+\t\tplayer = p
+\t\tif _web:
+\t\t\t_retune()   # the Stage's numbers go in before the player starts
+\t\tworld.add_child(p)
 \t\tvar cam := Camera2D.new()
 \t\tcam.position_smoothing_enabled = true
 \t\tp.add_child(cam)
@@ -148,9 +156,42 @@ func _start() -> void:
 \t\t\tcam.limit_bottom = r.end.y * ts.y
 \tif hud_scene:
 \t\tadd_child(hud_scene.instantiate())
+
+# ---- Kiln Stage: inside Kiln's Stage the sliders tune the player while you play, and the camera button asks
+# ---- for a screenshot. Web builds only; in Godot itself _web is null and none of this runs.
+func _process(_delta: float) -> void:
+\tif _web == null:
+\t\treturn
+\tif player and str(_web.kilnTune) != _tuned:
+\t\t_retune()
+\t\tprint("Kiln Stage: player numbers ", _tuned)
+\tif str(_web.kilnCmd) == "shot":
+\t\t_web.kilnCmd = ""
+\t\tvar png := get_viewport().get_texture().get_image().save_png_to_buffer()
+\t\t_web.kilnSend("shot", Marshalls.raw_to_base64(png))
+
+## kilnTune is JSON: {"brain": {"speed": 90, "jump_height": 40, …}, "body": {"max_health": 3, "knockback": 60, …}}
+func _retune() -> void:
+\t_tuned = str(_web.kilnTune)
+\tif not _tuned.begins_with("{"):
+\t\treturn
+\tvar t = JSON.parse_string(_tuned)
+\tif not t is Dictionary:
+\t\treturn
+\tvar brain := player.get_node_or_null("Brain")
+\tfor k in t.get("brain", {}):
+\t\tif brain and brain.get(k) != null:
+\t\t\tbrain.set(k, t["brain"][k])
+\tif brain and brain.is_inside_tree() and brain.has_method("retune"):
+\t\tbrain.retune()
+\tfor k in t.get("body", {}):
+\t\tif player.get(k) != null:
+\t\t\tplayer.set(k, t["body"][k])
+\tif player.is_inside_tree() and player.has_method("heal"):
+\t\tplayer.heal(player.max_health)   # back to full health with the new numbers
 `;
 
-async function listScenes(folder) {      // [name, res path] of folder/<name>/<name>.tscn
+export async function listScenes(folder) {      // [name, res path] of folder/<name>/<name>.tscn
   const r = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/' + folder)).catch(() => ({ items: [] }));
   const out = [];
   for (const d of (r.items || []).filter(i => i.dir && !i.name.startsWith('_'))) {
@@ -160,49 +201,35 @@ async function listScenes(folder) {      // [name, res path] of folder/<name>/<n
   return out;
 }
 
-export async function openPlay() {
-  const [levels, actors, scenes, huds] = await Promise.all(['levels', 'sprites', 'backgrounds', 'hud'].map(listScenes));
-  // the player: an actor saved with the Player role (its scene joins the "player" group), else the first one
-  let player = actors[0]?.[1] || '';
-  for (const [n, p] of actors) { const t = await fetch('/api/fs/raw?path=' + encodeURIComponent(`${FS.root}/sprites/${n}/${n}.tscn`)).then(r => r.text()).catch(() => ''); if (t.includes('groups=["player"]')) { player = p; break; } }
-  const sel = (opts, val, none) => h('select', {}, ...(none ? [h('option', { value: '' }, none)] : []), ...opts.map(([n, p]) => h('option', { value: p, selected: p === val }, n)));
-  const S = { level: sel(levels, levels[0]?.[1], 'No level (a flat floor)'), bg: sel(scenes, scenes[0]?.[1], 'None'), player: sel(actors, player, 'Nobody'), hud: sel(huds, huds[0]?.[1], 'None') };
-  const name = h('input', { type: 'text', value: 'Kiln demo' }), title = h('input', { type: 'checkbox', checked: true });
-  const logEl = h('pre', { class: 'play-log' }), go = h('button', { class: 'btn go' }, '▶ Build and play');
-  const row = (l, c, hint) => h('label', { class: 'fld' }, h('span', { class: 'fl' }, l), c, hint ? h('small', { class: 'hint' }, hint) : '');
-  const m = h('div', { class: 'modal', onclick: e => { if (e.target === m && !busy) m.remove(); } }, h('div', { style: { width: 'min(560px, 94vw)' } },
-    h('header', {}, h('span', { class: 'grow' }, 'Play your game'), h('button', { class: 'ibtn', onclick: () => m.remove() }, '✕')),
-    h('div', { class: 'body' },
-      h('p', { class: 'note', style: { marginTop: 0 } }, 'Builds a small game from your asset folder with Godot and opens it in a new tab. Your files are only read: the build is a copy.'),
-      row('Game name', name), row('Title screen', title, 'A Play button before the level'),
-      row('Level', S.level, levels.length ? '' : 'No levels saved yet: you get a flat floor'), row('Background', S.bg, 'Used when there is no level (a level brings its own)'),
-      row('Player', S.player, 'Arrows, Space, X attack, C shoot (the Player brain)'), row('HUD', S.hud),
-      h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', margin: '10px 0' } }, go, h('a', { class: 'btn ghost', href: '/play/', target: '_blank' }, 'Open the last build')),
-      logEl)));
-  document.body.append(m);
-  let busy = false;
-  go.onclick = async () => {
-    busy = true; go.disabled = true; go.textContent = 'Building…'; logEl.textContent = '';
-    const ext = [], props = [];
-    const add = (key, path) => { if (!path) return; ext.push(`[ext_resource type="PackedScene" path="${path}" id="${key}"]`); props.push(`${key}_scene = ExtResource("${key}")`); };
-    add('level', S.level.value); add('background', S.level.value ? '' : S.bg.value); add('player', S.player.value); add('hud', S.hud.value);
-    // saved Kiln menus (Menus area): title first, options from it, pause on Esc
-    const mn = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/menus')).catch(() => ({ items: [] }));
-    for (const k of ['title', 'options', 'pause']) if ((mn.items || []).some(i => i.name === k + '.tscn')) { ext.push(`[ext_resource type="PackedScene" path="res://menus/${k}.tscn" id="${k}m"]`); props.push(`${k}_menu = ExtResource("${k}m")`); }
-    const main = `[gd_scene load_steps=${ext.length + 2} format=3]\n\n[ext_resource type="Script" path="res://main.gd" id="main"]\n${ext.join('\n')}\n\n`
-      + `[node name="Main" type="Node2D"]\nscript = ExtResource("main")\n${props.join('\n')}\ntitle = ${JSON.stringify(name.value || 'Kiln demo')}\nshow_title = ${title.checked}\n`;
-    const files = { 'kiln_main.tscn': main, 'main.gd': MAIN_GD };
-    const have = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/sprites/_kiln/brains')).catch(() => ({ items: [] }));
-    if (!(have.items || []).some(i => i.name === 'player.gd')) files['sprites/_kiln/brains/player.gd'] = BRAIN_GD.player;
-    const r = await api('/api/play/build', { root: FS.root, files, opts: { name: name.value, w: 480, h: 270 } }).catch(e => ({ err: e.message }));
-    if (r.err) { logEl.textContent = r.err; busy = false; go.disabled = false; go.textContent = '▶ Build and play'; return; }
-    const poll = async () => {
-      const st = await api('/api/play/status').catch(() => null);
-      if (st) logEl.textContent = st.log.join('\n');
-      if (st?.running) return setTimeout(poll, 1500);
-      busy = false; go.disabled = false; go.textContent = '▶ Build and play';
-      if (st?.ok) { window.open('/play/', '_blank'); toast('Built: playing in a new tab', 'ok'); }
-    };
-    setTimeout(poll, 1000);
-  };
+// the player: an actor saved with the Player role (its scene joins the "player" group), else the first one
+export async function findPlayer(actors) {
+  for (const [n, p] of actors) {
+    const t = await fetch('/api/fs/raw?path=' + encodeURIComponent(`${FS.root}/sprites/${n}/${n}.tscn`)).then(r => r.text()).catch(() => '');
+    if (t.includes('groups=["player"]')) return p;
+  }
+  return actors[0]?.[1] || '';
+}
+
+// Build: pick = { level, bg, player, hud (res:// scene paths or ''), name, start: 'menu' | 'title' | 'none' }.
+// onLog(lines) gets the build log as it grows; resolves true when the game is ready at /play/.
+export async function buildGame(pick, onLog) {
+  const ext = [], props = [];
+  const add = (key, path) => { if (!path) return; ext.push(`[ext_resource type="PackedScene" path="${path}" id="${key}"]`); props.push(`${key}_scene = ExtResource("${key}")`); };
+  add('level', pick.level); add('background', pick.level ? '' : pick.bg); add('player', pick.player); add('hud', pick.hud);
+  // saved Kiln menus (Menus area): the title menu if asked for, options from it, pause on Esc
+  const mn = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/menus')).catch(() => ({ items: [] }));
+  for (const k of ['title', 'options', 'pause']) if ((k !== 'title' || pick.start === 'menu') && (mn.items || []).some(i => i.name === k + '.tscn')) { ext.push(`[ext_resource type="PackedScene" path="res://menus/${k}.tscn" id="${k}m"]`); props.push(`${k}_menu = ExtResource("${k}m")`); }
+  const main = `[gd_scene load_steps=${ext.length + 2} format=3]\n\n[ext_resource type="Script" path="res://main.gd" id="main"]\n${ext.join('\n')}\n\n`
+    + `[node name="Main" type="Node2D"]\nscript = ExtResource("main")\n${props.join('\n')}\ntitle = ${JSON.stringify(pick.name || 'Kiln demo')}\nshow_title = ${pick.start !== 'none'}\n`;
+  const files = { 'kiln_main.tscn': main, 'main.gd': MAIN_GD };
+  const have = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/sprites/_kiln/brains')).catch(() => ({ items: [] }));
+  if (!(have.items || []).some(i => i.name === 'player.gd')) files['sprites/_kiln/brains/player.gd'] = BRAIN_GD.player;
+  const r = await api('/api/play/build', { root: FS.root, files, opts: { name: pick.name, w: 480, h: 270 } }).catch(e => ({ err: e.message }));
+  if (r.err) { onLog([r.err]); return false; }
+  for (;;) {
+    await new Promise(ok => setTimeout(ok, 1200));
+    const st = await api('/api/play/status').catch(() => null);
+    if (st) onLog(st.log);
+    if (st && !st.running) return !!st.ok;
+  }
 }

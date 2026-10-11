@@ -110,9 +110,28 @@ MIME = {'.html': 'text/html', '.js': 'application/javascript', '.wasm': 'applica
         '.png': 'image/png', '.svg': 'image/svg+xml', '.json': 'application/json', '.ico': 'image/x-icon'}
 
 
+# Put into the game page when it is served, so Kiln's Stage (the page around it) can talk to the game: the tuning
+# numbers and screenshot requests go in (main.gd reads kilnTune / kilnCmd), game output and screenshots come out.
+BRIDGE = b"""<script>
+window.kilnTune = ''; window.kilnCmd = '';
+window.kilnSend = (k, v) => parent.postMessage({ kiln: k, v }, location.origin);
+addEventListener('message', e => { const d = e.data || {}; if (d.kiln === 'tune') kilnTune = d.v; if (d.kiln === 'cmd') kilnCmd = d.v; });
+for (const k of ['log', 'warn', 'error']) { const o = console[k].bind(console); console[k] = (...a) => { kilnSend('log', { k, t: a.map(String).join(' ') }); o(...a); }; }
+addEventListener('error', e => kilnSend('log', { k: 'error', t: e.message }));
+if (parent !== window) kilnSend('ready');
+</script>"""
+
+
+def built():
+    return (WEB / 'index.html').exists()
+
+
 def serve(rel):
-    """A file of the last web build: (bytes, content type) or None."""
+    """A file of the last web build: (bytes, content type) or None. The game page gets the Stage bridge."""
     p = (WEB / (rel or 'index.html')).resolve()
     if not str(p).startswith(str(WEB.resolve())) or not p.is_file():
         return None
-    return p.read_bytes(), MIME.get(p.suffix, 'application/octet-stream')
+    data = p.read_bytes()
+    if p.name == 'index.html':
+        data = data.replace(b'<head>', b'<head>' + BRIDGE, 1)
+    return data, MIME.get(p.suffix, 'application/octet-stream')

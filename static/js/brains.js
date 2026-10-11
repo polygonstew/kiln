@@ -36,10 +36,14 @@ var _coyote := 0.0
 var _climbing := false
 
 func _ready() -> void:
-\tgravity = 2.0 * jump_height / (jump_time * jump_time)   # the jump reaches jump_height in jump_time
-\tjump_velocity = -gravity * jump_time
+\tretune()
 \t_add_key("attack", KEY_X)
 \t_add_key("shoot", KEY_C)
+
+## Work out gravity and jump speed from the jump numbers (call again after changing them, as Kiln's Stage does).
+func retune() -> void:
+\tgravity = 2.0 * jump_height / (jump_time * jump_time)   # the jump reaches jump_height in jump_time
+\tjump_velocity = -gravity * jump_time
 
 func _physics_process(delta: float) -> void:
 \tif actor.get("dead"):
@@ -135,7 +139,7 @@ func _physics_process(delta: float) -> void:
 \t\tsprite.play("walk")
 \tfor i in actor.get_slide_collision_count():
 \t\tvar other := actor.get_slide_collision(i).get_collider()
-\t\tif other and other.is_in_group("player") and other.has_method("hurt"):
+\t\tif other and other.is_in_group("player") and not actor.is_in_group("player") and other.has_method("hurt"):
 \t\t\tother.hurt(actor.global_position)
 
 func _ground_ahead() -> bool:
@@ -168,7 +172,7 @@ func _physics_process(delta: float) -> void:
 \t\tsprite.flip_h = actor.velocity.x < 0.0
 \tfor i in actor.get_slide_collision_count():
 \t\tvar other := actor.get_slide_collision(i).get_collider()
-\t\tif other and other.is_in_group("player") and other.has_method("hurt"):
+\t\tif other and other.is_in_group("player") and not actor.is_in_group("player") and other.has_method("hurt"):
 \t\t\tother.hurt(actor.global_position)
 `,
 };
