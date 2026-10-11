@@ -261,6 +261,11 @@ override everything; each gets a Help section and a Godot export):**
 - 2026-10-10: user: 'Levels needs more controls' → leveltools.js (brush 1–3, rect, line, fill, pick, select + copy/cut/stamp/clear, undo/redo 60 steps over tiles/things/zones) + tool bar, keys (document-level while Levels is on screen: clicking the map gives no focus), Space+drag pan, +/− zoom, Clear level. Tested every tool + undo. Tour step added.
 - 2026-10-10: user: "demo compiled version to test-run; logic node system; main menu building and settings; shrink tabs". Done now: compact tabs (scroll if needed); ▶ Play = play.py (copy assets to build/game, rewrite paths to res://, project.godot gl_compatibility 480×270, Web preset no threads, godot --import + --export-debug, served at /play/) + playbuild.js (pick level/player/HUD/title, writes kiln_main.tscn + main.gd). Built the user's real assets (room + creepy_miner + hud) in 9 s, played in headless Chromium.
 - [x] DONE **Menus area** (menus.js + menus_godot.js: title/options/pause, KilnSettings, used by Play; verified title → play → Esc pause → resume in the web build).
+- [ ] **Stage redesign (user, 2026-10-10: "basically no use, zero usable tools")**: turn Stage into the playtest room:
+  the real ▶ Play build embedded (iframe of /play/), pickers for level / player / HUD / menus beside it, Rebuild,
+  live tuning sliders (run speed, jump height, gravity, health, knockback) that rewrite the actor's Brain/juice values
+  and rebuild, a log pane (Godot errors), screenshot / record GIF of the playtest, and "jump to the thing" links (open
+  this level in Levels, this actor in Animate). Retire the old canvas mock-up once the embed covers it.
 - [ ] **Menus: more backgrounds (user, 2026-10-10)**: besides a scene or a plain colour: gradient (2–3 colours, angle),
   an image from the asset folder (fit / fill / tile, pixel-scaled), a scene that slowly pans (camera drift), a looping
   actor animation on the side (title-screen hero idling), weather on top (snow, embers), a vignette, and a slow colour
