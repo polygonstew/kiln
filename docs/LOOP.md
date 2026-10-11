@@ -261,6 +261,13 @@ override everything; each gets a Help section and a Godot export):**
 - 2026-10-10: user: 'Levels needs more controls' → leveltools.js (brush 1–3, rect, line, fill, pick, select + copy/cut/stamp/clear, undo/redo 60 steps over tiles/things/zones) + tool bar, keys (document-level while Levels is on screen: clicking the map gives no focus), Space+drag pan, +/− zoom, Clear level. Tested every tool + undo. Tour step added.
 - 2026-10-10: user: "demo compiled version to test-run; logic node system; main menu building and settings; shrink tabs". Done now: compact tabs (scroll if needed); ▶ Play = play.py (copy assets to build/game, rewrite paths to res://, project.godot gl_compatibility 480×270, Web preset no threads, godot --import + --export-debug, served at /play/) + playbuild.js (pick level/player/HUD/title, writes kiln_main.tscn + main.gd). Built the user's real assets (room + creepy_miner + hud) in 9 s, played in headless Chromium.
 - [x] DONE **Menus area** (menus.js + menus_godot.js: title/options/pause, KilnSettings, used by Play; verified title → play → Esc pause → resume in the web build).
+- [ ] **Flash-style timeline (user, 2026-10-10)**, built together with the puppet screen (one timeline for both):
+  layers as rows (each a part/bone or a drawn layer, eye/lock/onion toggles), frames as columns; keyframes (●),
+  blank keyframes (○), held frames (grey spans), drag to move/extend, F5 insert frame, F6 keyframe, F7 blank keyframe;
+  **motion tween** between two keyframes (position, rotation, scale, alpha) with **easing** (in/out slider, like Flash's
+  ease -100..100) and a curve preview; tween rotation CW/CCW + turns; **frame labels**; onion skin with range markers;
+  playhead scrub; loop range. Puppet poses are keyframes on bone rows; tweens = lerpPose with easing. Bake = render
+  every frame into Animate frames (pixel-snapped). Keep it in its own module (timeline.js).
 - [ ] **TOP PRIORITY: Bones / puppet animation (user: "could be a game changer")**. Engine DONE: static/js/rig.js
   (autoRig: 11-bone side-view humanoid fitted to the sprite's box + leg runs; skin: pixel → nearest bone with body-layout
   rules; prepare: EPX ×8 + "behind the limb" parent fill; render: RotSprite-style per bone back→front; PRESETS idle,
