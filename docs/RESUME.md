@@ -9,8 +9,13 @@ Last updated: 2026-10-10 night (session 3: Stage playtest room + Puppet image im
   Keep → Animate (`tune-actor`), screenshot / WebM, log pane; ▶ Play = emit('play'). **Puppet import** (rig_import.js +
   rig_kit.js): drop a picture or Import image… → one drawing is auto-rigged, a parts kit opens the kit screen.
   animate.js saving moved to actor_save.js (animate.js ≈920 lines).
-- **START HERE (next session):** docs/LOOP.md backlog order = more Menus backgrounds, Logic node
-  system, then items DB / 2D lighting / dialogue / cutscenes. A one-shot session-only timer may start a build at 22:04.
+- 2026-10-11: **Logic graphs** (graph_nodes / graph_compile / graph_view / logic_graph: node board → plain GDScript in
+  logic/<name>.gd, ▶ Play runs them) · **talking puppets** (face.js heads + pixel mouths, puppet_face.js, lipsync.js voice
+  line → cues, Bake mouth set → Godot LipSync / lipsync.gd) · **Dialogue** area (dialogue.js, dialogue_play.js preview,
+  dialogue_godot.js runner kiln_dialogue.gd). Logic nodes: Speak a voice line, Start a dialogue, When a dialogue ends,
+  Dialogue flag is set. All verified by running real Godot headless (build/game + a test probe appended to a logic script).
+- **START HERE (next session):** docs/LOOP.md backlog order = more Menus backgrounds, then items DB / 2D lighting /
+  cutscenes; dialogue's lore bible + writing help. Secure address for Stage: https://cachyos-x8664.taila1da5d.ts.net:8519. A one-shot session-only timer may start a build at 22:04.
   The user's asset folder is now **library/games/untitled_demo** (they work in it live): read the root from
   library/settings.json, sha1 it before/after every test, only create zz_ items and delete them (a zz actor's save also
   creates sprites/_kiln/ in an empty folder: remove it too). Restart `kiln` only when /api/status queue is 0.

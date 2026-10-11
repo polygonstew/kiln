@@ -20,7 +20,7 @@ const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').repl
 const num = v => { const n = Number(v); return !isFinite(n) ? '0.0' : Number.isInteger(n) ? n + '.0' : String(n); };
 
 // ports: [id, type, label, default]  (type exec|num|text|bool|any; data inputs with a default get a field)
-// fields: [id, label, kind, default, options]  (kind num|text|check|sel|var|zone|actor|sound|voice|key)
+// fields: [id, label, kind, default, options]  (kind num|text|check|sel|var|zone|actor|sound|voice|dialogue|key)
 export const NODES = {
   /* ------------------------------------------------------------------ events ---- */
   start: { cat: 'event', label: 'When the level starts', hint: 'Runs once, when the level (with the player and HUD) is ready',
@@ -39,6 +39,9 @@ export const NODES = {
     ev: n => ({ name: slug(n.f.who) + '_died', params: 'who: Node', hook: f => [`_connect_actors(${JSON.stringify(n.f.who)}, "died", ${f})`], use: ['_connect_actors'] }), out: { who: () => 'who' } },
   hit: { cat: 'event', label: 'When the player is hit', outs: [['then', 'exec']],
     ev: () => ({ name: 'player_hit', params: '_from: Vector2, _who: Node', hook: f => [`_connect_actors("player", "hurt_started", ${f})`], use: ['_connect_actors'] }) },
+  talked: { cat: 'event', label: 'When a dialogue ends', hint: 'A conversation from the Dialogue area finished', fields: [['dlg', 'Dialogue', 'dialogue', '']], outs: [['then', 'exec']],
+    ev: (n, c) => { const name = n.f.dlg.split('/').pop().replace(/\.json$/, ''); return { name: 'dialogue_' + slug(name) + '_ended', use: ['_dialogue_runner'],
+      hook: f => n.f.dlg ? [`_dialogue_runner(${JSON.stringify(c.res(n.f.dlg))}).finished.connect(func(done: String) -> void:`, `\tif done == ${JSON.stringify(name)}:`, `\t\t${f}()`, ')'] : ['pass  # pick a dialogue'] }; } },
   message: { cat: 'event', label: 'When a message arrives', hint: '"Send a message" in any graph sends it', fields: [['name', 'Message', 'text', 'open_gate']],
     outs: [['then', 'exec']], ev: n => ({ name: 'message_' + slug(n.f.name), message: n.f.name }) },
 
@@ -59,6 +62,8 @@ export const NODES = {
   /* ----------------------------------------------------------------- actions ---- */
   say: { cat: 'act', label: 'Say', hint: 'A line in the HUD dialogue box (printed if there is no HUD)', ins: [['who', 'text', 'who', ''], ['line', 'text', 'line', 'Hello!']],
     run: c => [`_say(${c.in('who')}, ${c.in('line')})`], use: ['_hud', '_say'] },
+  talk: { cat: 'act', label: 'Start a dialogue', hint: 'A conversation from the Dialogue area, in the HUD box; the player waits until it ends', fields: [['dlg', 'Dialogue', 'dialogue', '']],
+    run: c => c.f.dlg ? [`_dialogue_runner(${JSON.stringify(c.res(c.f.dlg))}).start(${JSON.stringify(c.res(c.f.dlg))})`] : ['pass  # pick a dialogue'], use: ['_dialogue_runner'] },
   voice: { cat: 'act', label: 'Speak a voice line', hint: 'An actor says a voice line (Puppet → Voice line…), mouth in time; the words (if any) show in the HUD',
     fields: [['who', 'Who', 'text', 'player'], ['line', 'Line', 'voice', '']], ins: [['words', 'text', 'words', '']],
     run: c => c.f.line ? [`_voice(${JSON.stringify(c.f.who)}, ${JSON.stringify(c.res(c.f.line))})`, ...(c.wired('words') || c.f.words ? [`_say(${JSON.stringify(c.f.who === 'player' ? '' : c.f.who)}, ${c.in('words')})`] : [])] : ['pass  # pick a voice line'],
@@ -116,6 +121,7 @@ export const NODES = {
   held: { cat: 'val', label: 'Key held', fields: [['key', '', 'key', 'ui_right']], outs: [['v', 'bool']], out: { v: c => keyHeld(c.f.key) } },
   has: { cat: 'val', label: 'Has an item', ins: [['id', 'text', 'item', 'key']], outs: [['v', 'bool']], out: { v: c => `(_hud() != null and _hud().has_item(${c.in('id')}))` }, use: ['_hud'] },
   join: { cat: 'val', label: 'Join text', ins: [['a', 'text', '', 'Score: '], ['b', 'text', '', '']], outs: [['v', 'text']], out: { v: c => `(${c.in('a')} + ${c.in('b')})` } },
+  flag: { cat: 'val', label: 'Dialogue flag is set', hint: 'A flag a dialogue line or choice set', fields: [['name', 'Flag', 'text', 'met_miner']], outs: [['v', 'bool']], out: { v: c => `_flag(${JSON.stringify(c.f.name)})` }, use: ['_flag'] },
   level: { cat: 'val', label: 'Level is', fields: [['name', 'Level', 'text', '']], outs: [['v', 'bool']], out: { v: c => `_level_is(${JSON.stringify(c.f.name)})` }, use: ['_level_is'] },
 };
 export const CATS = [['event', 'Events', 'Start a chain'], ['flow', 'Flow', 'Steer a chain'], ['act', 'Actions', 'Do something'], ['val', 'Values', 'Feed a value in']];
@@ -145,6 +151,15 @@ export const HELPERS = {
 \tvar d = JSON.parse_string(FileAccess.get_file_as_string(lipsync_json))   # nobody to move: just the sound
 \tif d is Dictionary:
 \t\t_sound(lipsync_json.get_base_dir().path_join(d.get("sound", "")))`,
+  _dialogue_runner: `func _dialogue_runner(a_dialogue: String) -> Node:   # the game's one dialogue runner, made when first needed
+\tvar r := get_tree().get_first_node_in_group("kiln_dialogue")
+\tif r == null:
+\t\tr = load(a_dialogue.get_base_dir().path_join("kiln_dialogue.gd")).new()
+\t\tget_tree().current_scene.add_child(r)
+\treturn r`,
+  _flag: `func _flag(flag: String) -> bool:   # set by a dialogue line or choice
+\tvar r := get_tree().get_first_node_in_group("kiln_dialogue")
+\treturn r != null and r.flags.has(flag)`,
   _hud: `func _hud() -> Node:   # the Kiln HUD, or null
 \treturn get_tree().get_first_node_in_group("kiln_hud")`,
   _say: `func _say(who: String, line: String) -> void:   # the HUD dialogue box, or the output if there is no HUD

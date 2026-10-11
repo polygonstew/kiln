@@ -75,7 +75,7 @@ export function compile(g, { name = 'logic', resPrefix = 'res://' } = {}) {
   // events → functions, and the calls that start them
   const ready = [], frame = [], input = [], message = [], funcs = [], taken = new Set();
   for (const n of nodes.filter(n => NODES[n.type].cat === 'event')) {
-    const ev = NODES[n.type].ev({ ...n, f: fieldsOf(n) });
+    const ev = NODES[n.type].ev({ ...n, f: fieldsOf(n) }, { res: p => resPrefix + p });
     let fn = '_on_' + ev.name, k = 2; while (taken.has(fn)) fn = `_on_${ev.name}_${k++}`; taken.add(fn);
     for (const u of ev.use || []) uses.add(u);
     const body = chain(n.id, 'then', new Set([n.id]));

@@ -88,6 +88,12 @@ feet) with `Sprite` (AnimatedSprite2D, hit-flash ShaderMaterial) and `Body` (Rec
 - Rig (Kiln project only): `rig.heads` [{ id, name, src, ax, ay, mouth }], `rig.mouths` { w, shapes: { X…H: png } }, `rig.mouthAt`;
   motions key `_head` (head id) and `_mouth` (shape) rows; `motion.voice` { file, cues, duration }.
 
+## Dialogue
+- `kiln/dialogue-<name>.json` (project: cast [{ name, actor }], beats [{ id, who, text, voice, next, choices, do }]) → on Save
+  `dialogue/<name>.json` { name, start, beats: { id: { who, actor, text, voice (res://…lipsync.json), next (id | "end"),
+  choices [{ text, next, if: { item|noitem|flag|noflag: v }, do: [{ give|take|flag|unflag|message: v }] }], do } } }
+  and `dialogue/kiln_dialogue.gd` (the runner, group "kiln_dialogue": start(path), flags, signal finished(name)).
+
 ## Logic graphs
 - `kiln/graph-<name>.json` (the graph: nodes, wires, vars, view) → `logic/<name>.gd` on Save (extends Node; ▶ Play runs every one).
 
