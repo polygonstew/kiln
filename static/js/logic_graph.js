@@ -36,7 +36,7 @@ export function graphArea({ setMode, openScript }) {
     drawList(); lists();
   }
   function drawList() {
-    const tpl = select(Object.entries(TEMPLATES).map(([k, [l]]) => [k, l]), 'empty', () => {});
+    const tpl = Object.assign(select(Object.entries(TEMPLATES).map(([k, [l]]) => [k, l]), 'empty', () => {}), { title: 'What the new graph starts as (a working example to change)' });
     listSec.replaceChildren(h('h3', {}, 'Graphs', h('span', { class: 'grow' }), h('small', {}, graphs.length || '')),
       graphs.length ? '' : h('p', { class: 'note', style: { marginTop: 0 } }, 'Game logic without code: events (a zone, a key, a timer…) wired to actions (say, spawn, heal…). Kiln turns each graph into a short GDScript.'),
       ...graphs.map(p => h('button', { class: 'lg-file' + (cur?.name === p.name ? ' on' : ''), title: `Open the graph (its script: logic/${p.name}.gd)`, onclick: () => open(p.name) }, h('i', { class: 'lg-gi' }), p.name, h('small', {}, 'graph'))),

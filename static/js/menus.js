@@ -38,15 +38,15 @@ function draw() { drawLeft(); drawRight(); drawPreview(); }
 function drawLeft() {
   const m = M[cur];
   const items = h('div', { class: 'mn-items' }, ...m.items.map((it, i) => h('div', { class: 'mn-item' },
-    h('input', { type: 'text', value: it.label, oninput: e => { it.label = e.target.value; changed(); } }),
-    select(ACTIONS, it.action, v => { it.action = v; if (v === 'volume') it.bus ||= 'Master'; if (v === 'toggle') it.key ||= it.label.toLowerCase().replace(/\W+/g, '_'); changed(); drawLeft(); }),
+    h('input', { type: 'text', value: it.label, title: 'What the button says', oninput: e => { it.label = e.target.value; changed(); } }),
+    Object.assign(select(ACTIONS, it.action, v => { it.action = v; if (v === 'volume') it.bus ||= 'Master'; if (v === 'toggle') it.key ||= it.label.toLowerCase().replace(/\W+/g, '_'); changed(); drawLeft(); }), { title: 'What pressing it does' }),
     it.action === 'volume' ? select([['Master', 'all sound'], ['Music', 'music'], ['SFX', 'effects']], it.bus, v => { it.bus = v; changed(); }) : '',
     it.action === 'toggle' ? h('input', { type: 'text', value: it.key, title: 'Name your code reads: KilnSettings.flag("…")', style: { width: '90px' }, onchange: e => { it.key = e.target.value.replace(/\W+/g, '_'); changed(); } }) : '',
     h('button', { class: 'ibtn', title: 'Up', onclick: () => { if (i) { [m.items[i - 1], m.items[i]] = [m.items[i], m.items[i - 1]]; changed(); drawLeft(); } } }, '↑'),
     h('button', { class: 'ibtn', title: 'Remove', onclick: () => { m.items.splice(i, 1); changed(); drawLeft(); } }, '✕'))));
   V.left.replaceChildren(
     h('div', { class: 'sec' }, h('h3', {}, 'Screens'),
-      h('div', { class: 'seg' }, ...Object.values(M).map(s => h('button', { class: s.id === cur ? 'on' : '', onclick: () => { cur = s.id; draw(); } }, s.id[0].toUpperCase() + s.id.slice(1) + (s.on ? '' : ' (off)')))),
+      h('div', { class: 'seg' }, ...Object.values(M).map(s => h('button', { class: s.id === cur ? 'on' : '', title: { title: 'The first screen: start, options, quit', options: 'Volumes, fullscreen and your own switches', pause: 'What Esc shows while playing' }[s.id] || 'Edit this screen', onclick: () => { cur = s.id; draw(); } }, s.id[0].toUpperCase() + s.id.slice(1) + (s.on ? '' : ' (off)')))),
       field('Use it', check(cur === 'title' ? 'show before the game' : cur === 'pause' ? 'Esc pauses the game' : 'reachable from the menus', m.on, v => { m.on = v; changed(); drawLeft(); }))),
     h('div', { class: 'sec' }, h('h3', {}, 'This screen'),
       field('Title', h('input', { type: 'text', value: m.title || '', oninput: e => { m.title = e.target.value; changed(); } })),
@@ -56,8 +56,8 @@ function drawLeft() {
       field('Colours', h('span', { style: { display: 'flex', gap: '6px' } }, h('input', { type: 'color', value: m.accent || '#ff5b2e', title: 'Title and the chosen item', oninput: e => { m.accent = e.target.value; changed(); } }),
         h('input', { type: 'color', value: m.text || '#ebe3d0', title: 'Text', oninput: e => { m.text = e.target.value; changed(); } }))),
       field('Layout', check('left-aligned', !!m.left, v => { m.left = v; changed(); }))),
-    h('div', { class: 'sec' }, h('h3', {}, 'Items', h('span', { class: 'grow' }), h('button', { class: 'btn sm', onclick: () => { m.items.push({ label: 'New item', action: 'start' }); changed(); drawLeft(); } }, '+ Item')), items,
-      h('button', { class: 'btn sm ghost', style: { marginTop: '8px' }, onclick: () => { if (confirm(`Put "${cur}" back to Kiln's default?`)) { M[cur] = DEFAULTS()[cur]; changed(); draw(); } } }, 'Reset this screen')));
+    h('div', { class: 'sec' }, h('h3', {}, 'Items', h('span', { class: 'grow' }), h('button', { class: 'btn sm', title: 'Add a button, slider or option to this screen', onclick: () => { m.items.push({ label: 'New item', action: 'start' }); changed(); drawLeft(); } }, '+ Item')), items,
+      h('button', { class: 'btn sm ghost', style: { marginTop: '8px' }, title: 'Put this screen back the way Kiln first made it', onclick: () => { if (confirm(`Put "${cur}" back to Kiln's default?`)) { M[cur] = DEFAULTS()[cur]; changed(); draw(); } } }, 'Reset this screen')));
 }
 
 // the preview: the same layout the Godot script builds, in HTML at 480×270, scaled up crisply

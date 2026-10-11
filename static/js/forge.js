@@ -84,7 +84,7 @@ export const forge = {
     el.append(V.left,
       h('section', { class: 'stage' },
         h('div', { class: 'bar' }, V.fits, h('span', { class: 'grow' }),
-          h('span', { class: 'lbl' }, 'Zoom'), select([[0, 'Fit'], [2, '2×'], [4, '4×'], [6, '6×'], [8, '8×'], [12, '12×']], st.zoom, v => { st.zoom = +v; save(); paint(); }),
+          h('span', { class: 'lbl' }, 'Zoom'), Object.assign(select([[0, 'Fit'], [2, '2×'], [4, '4×'], [6, '6×'], [8, '8×'], [12, '12×']], st.zoom, v => { st.zoom = +v; save(); paint(); }), { title: 'How big the source and the sprite show (Fit fills the space)' }),
           h('button', { class: 'btn sm', title: 'Open an image from your computer as the source (or paste with Ctrl+V)', onclick: () => V.file.click() }, 'Open image'),
           V.file = h('input', { type: 'file', accept: 'image/*', style: { display: 'none' }, onchange: e => e.target.files[0] && loadLocal(e.target.files[0]) })),
         h('div', { class: 'split' }, srcBox, outBox),
@@ -154,8 +154,8 @@ function roll() {
 }
 function chips(list, key, multi, onChange) {
   const box = h('div', { class: 'chips' });
-  const draw = () => box.replaceChildren(...list.map(([k, l]) => h('button', {
-    class: (multi ? st[key].includes(k) : st[key] === k) ? 'on' : '',
+  const draw = () => box.replaceChildren(...list.map(([k, l, tip]) => h('button', {
+    class: (multi ? st[key].includes(k) : st[key] === k) ? 'on' : '', title: tip || '',
     onclick: () => { if (multi) st[key] = st[key].includes(k) ? st[key].filter(x => x !== k) : [...st[key], k]; else st[key] = k; save(); draw(); onChange?.(); },
   }, l)));
   draw(); return box;
@@ -206,9 +206,9 @@ function drawLeft() {
     V.left.replaceChildren(...[
       h('div', { class: 'sec' }, h('h3', {}, 'Describe it', h('span', { class: 'grow' }),
         h('button', { class: 'btn sm ghost dice', title: 'Roll the dice: a random enemy idea from parts (D). Roll again until one grabs you', onclick: roll }, '⚂ Roll')), ta,
-        h('div', { style: { marginTop: '8px' } }, chips(KINDS.map(k => [k[0], k[1]]), 'kind')),
-        h('div', { style: { marginTop: '8px' } }, chips(VIEWS.map(v => [v[0], v[1]]), 'view')),
-        h('div', { style: { marginTop: '8px' } }, chips(MOODS.map(m => [m, m]), 'moods', true)),
+        h('div', { style: { marginTop: '8px' } }, chips(KINDS.map(k => [k[0], k[1], `What it is: adds "${k[2]}" to the description`]), 'kind')),
+        h('div', { style: { marginTop: '8px' } }, chips(VIEWS.map(v => [v[0], v[1], `Seen from: ${v[2]}`]), 'view')),
+        h('div', { style: { marginTop: '8px' } }, chips(MOODS.map(m => [m, m, `Mood: ${m} (pick any number; click again to drop it)`]), 'moods', true)),
         field('Leave out', neg),
         h('p', { class: 'note' }, 'The style bible (top bar) is added to every prompt so new things match the rest of the game.')),
       guideSec(),
@@ -488,7 +488,7 @@ function drawRight() {
     h('div', { class: 'sec' }, h('h3', {}, 'Hardware'), hwBtns, h('p', { class: 'note' }, H.note)),
     h('div', { class: 'sec' }, h('h3', {}, 'Size'),
       h('div', { class: 'chips' }, h('button', { class: st.auto ? 'on' : '', title: 'Keep the size the art was drawn at: one art pixel = one sprite pixel', onclick: () => { st.auto = true; save(); drawRight(); run(); } }, 'Auto'),
-        ...[16, 24, 32, 48, 64, 96, 128].map(s => h('button', { class: !st.auto && st.w === s && st.h === s ? 'on' : '', onclick: () => { st.auto = false; st.w = st.h = s; save(); drawRight(); run(); } }, s))),
+        ...[16, 24, 32, 48, 64, 96, 128].map(s => h('button', { class: !st.auto && st.w === s && st.h === s ? 'on' : '', title: `Shrink the sprite to fit a ${s}×${s} frame`, onclick: () => { st.auto = false; st.w = st.h = s; save(); drawRight(); run(); } }, s))),
       st.auto ? h('p', { class: 'note' }, 'Auto keeps every pixel the art was drawn with. Pick a size to shrink it to a fixed frame.') : null,
       st.auto ? null : field('Frame', h('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, wIn, '×', hIn)),
       field('Fit', seg([['contain', 'Keep shape'], ['stretch', 'Fill frame']], st.fit, v => { st.fit = v; save(); run(); })),
@@ -504,7 +504,7 @@ function drawRight() {
     h('div', { class: 'sec' }, h('h3', {}, 'Use it'),
       h('button', { class: 'btn go wide', onclick: () => sendToAnimate('new') }, 'New actor in Animate'),
       h('div', { style: { display: 'flex', gap: '6px', marginTop: '6px', alignItems: 'center' } },
-        V.setSel = select([['hero', 'Hero set'], ['enemy', 'Enemy set'], ['flyer', 'Flyer set'], ['boss', 'Boss set'], ['npc', 'NPC set'], ['prop', 'Prop set']], st.kind === 'creature' ? 'enemy' : 'hero', () => {}),
+        V.setSel = Object.assign(select([['hero', 'Hero set'], ['enemy', 'Enemy set'], ['flyer', 'Flyer set'], ['boss', 'Boss set'], ['npc', 'NPC set'], ['prop', 'Prop set']], st.kind === 'creature' ? 'enemy' : 'hero', () => {}), { title: 'Which animations the new actor gets laid out (a hero runs, jumps and attacks; a prop just idles)' }),
         h('button', { class: 'btn', title: 'New actor with every animation of the chosen set already laid out, each frame starting from this sprite to pose', onclick: () => sendToAnimate('new', V.setSel.value) }, '+ animations')),
       h('p', { class: 'note' }, 'Makes this the actor\'s reference: its description, palette, size and scale are kept for every later frame.'),
       h('div', { class: 'btns' },

@@ -485,7 +485,10 @@ export const pref = {
 /* ------------------------------------------------------ number fields ---- */
 // A labelled control row. kind: range|number|select|color|check|text
 export function field(label, input, hint) {
-  return h('label', { class: 'fld' }, h('span', { class: 'fl' }, label), input, hint ? h('span', { class: 'fh' }, hint) : null);
+  const el = h('label', { class: 'fld' }, h('span', { class: 'fl' }, label), input, hint ? h('span', { class: 'fh' }, hint) : null);
+  // every control in a row explains itself on hover: the row's label (and hint) unless it has its own tooltip
+  if (label && typeof label === 'string') for (const c of el.querySelectorAll('input, select')) if (!c.title) c.title = hint && typeof hint === 'string' ? `${label}: ${hint}` : label;
+  return el;
 }
 export function range(val, min, max, step, onInput, fmt = v => v) {
   const out = h('output', {}, fmt(val));

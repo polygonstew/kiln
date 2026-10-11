@@ -152,7 +152,7 @@ function build(el) {
         V.boxBtn = h('button', { class: 'btn sm' + (A.boxes ? ' on' : ' ghost'), title: 'Hit and hurt boxes: drag to draw (red hits, blue gets hit), right-click removes. Exported to Godot frame by frame', onclick: () => { A.boxes = !A.boxes; V.boxBtn.className = 'btn sm' + (A.boxes ? ' on' : ' ghost'); drawTimeline(); drawEditor(); } }, 'Boxes'),
         h('span', { class: 'grow' }), V.status,
         h('span', { class: 'lbl' }, 'Zoom'),
-        V.zoomSel = select([[0, 'Fit'], ...[2, 3, 4, 6, 8, 10, 12, 16, 20].map(z => [z, z + '×'])], A.zoom, v => { A.zoom = +v; pref.set('anim.zoom', A.zoom); drawEditor(); })),
+        V.zoomSel = Object.assign(select([[0, 'Fit'], ...[2, 3, 4, 6, 8, 10, 12, 16, 20].map(z => [z, z + '×'])], A.zoom, v => { A.zoom = +v; pref.set('anim.zoom', A.zoom); drawEditor(); }), { title: 'Editor zoom (Fit fills the space)' })),
       V.vp,
       h('div', { class: 'timeline' }, V.tabs, V.animCtl, V.frames)),
     V.right);
@@ -172,8 +172,8 @@ function drawLeft() {
   const used = new Set();
   for (const n of a.anims) for (const f of n.frames) for (const c of colorsOf(f)) used.add(hex(c));
   const nm = h('input', { type: 'text', value: a.name, onchange: () => { a.name = slug(nm.value); nm.value = a.name; changed(); } });
-  const wIn = h('input', { type: 'number', value: a.w, min: 4, max: 256, style: { width: '62px' } });
-  const hIn = h('input', { type: 'number', value: a.h, min: 4, max: 256, style: { width: '62px' } });
+  const wIn = h('input', { type: 'number', value: a.w, min: 4, max: 256, title: 'Frame width in pixels (then Set)', style: { width: '62px' } });
+  const hIn = h('input', { type: 'number', value: a.h, min: 4, max: 256, title: 'Frame height in pixels (then Set)', style: { width: '62px' } });
   const sw = h('div', { class: 'sw big' }, ...a.pal.map((c, i) => h('i', {
     class: (A.c1 && hex(A.c1) === hex(c) ? 'on' : '') + ((A.cyc || []).includes(hex(c)) ? ' cyc' : ''), 'data-cyc': (A.cyc || []).indexOf(hex(c)) + 1 || '', title: `${hex(c)}  ·  click: draw with it  ·  Shift+click: add to a colour cycle  ·  double-click: recolour it everywhere  ·  on the canvas: left adds, right removes, wheel rolls colours, middle-click picks`,
     style: { background: hex(c) },
@@ -209,8 +209,8 @@ function drawLeft() {
         h('p', { class: 'note', style: { margin: '6px 0 0' } }, 'Shift+click 2 or more colours to make a colour cycle (torch, water, glow).'),
       h('div', { class: 'btns' },
         h('button', { class: 'btn sm', title: 'Replace the palette with the colours actually used in the frames', onclick: () => { A.actor.pal = [...used].map(rgb).sort((x, y) => luma(x) - luma(y)); drawLeft(); } }, 'From frames'),
-        select([['', 'Load preset…'], ...Object.entries(PALETTES).map(([k, p]) => [k, p.name])], '', v => { if (v) { A.actor.pal = PALETTES[v].colors.slice(); drawLeft(); } }),
-        select(Object.entries(HARDWARE).map(([k, H]) => [k, 'Check: ' + H.name]), A.hw, v => { A.hw = v; pref.set('anim.hw', v); drawLeft(); })),
+        Object.assign(select([['', 'Load preset…'], ...Object.entries(PALETTES).map(([k, p]) => [k, p.name])], '', v => { if (v) { A.actor.pal = PALETTES[v].colors.slice(); drawLeft(); } }), { title: 'Swap the palette for a ready-made one (the pixels keep their colours until you recolour)' }),
+        Object.assign(select(Object.entries(HARDWARE).map(([k, H]) => [k, 'Check: ' + H.name]), A.hw, v => { A.hw = v; pref.set('anim.hw', v); drawLeft(); }), { title: 'Warn when the actor uses more colours than this console could show' })),
       h('p', { class: 'note' }, 'Double-click a colour to recolour it in every frame: quick enemy variants and palette swaps.')));
 }
 function setTool(t) { commitFloat(); A.tool = t; drawLeft(); drawEditor(); }
@@ -604,7 +604,7 @@ function drawTimeline() {
   }, n.name, h('small', {}, n.frames.length))),
   h('button', { title: 'New animation', onclick: addAnim }, '+ Animation'));
   const n = anim();
-  const fps = h('input', { type: 'number', min: 1, max: 60, value: n.fps, style: { width: '56px' }, onchange: () => { n.fps = clamp(+fps.value, 1, 60); changed(); } });
+  const fps = h('input', { type: 'number', min: 1, max: 60, value: n.fps, title: 'Frames per second for this animation', style: { width: '56px' }, onchange: () => { n.fps = clamp(+fps.value, 1, 60); changed(); } });
   V.animCtl.replaceChildren(
     h('span', { class: 'lbl' }, 'Speed'), fps, h('span', { class: 'faint', style: { fontSize: '11px' } }, 'fps'),
     check('loop', n.loop !== false, v => { n.loop = v; changed(); }),
@@ -754,7 +754,7 @@ function drawRight() {
 function drawSheet() {
   if (!V.sheet?.isConnected) return;
   const a = A.actor;
-  const setSel = select([['', 'Add an animation set…'], ...Object.entries(SETS).map(([k, v]) => [k, `${v.name} (${v.anims.length})`])], '', k => {
+  const setSel = Object.assign(select([['', 'Add an animation set…'], ...Object.entries(SETS).map(([k, v]) => [k, `${v.name} (${v.anims.length})`])], '', k => {
     if (!k) return;
     // a brand-new actor (one blank animation) takes the whole set; otherwise only what's missing is added
     const blankOnly = a.anims.length === 1 && a.anims[0].frames.every(f => !bbox(f));
@@ -765,7 +765,7 @@ function drawSheet() {
     if (blankOnly) a.anims = [];
     for (const [name, n, span, fps, loop] of add) a.anims.push({ name, fps, loop, span, frames: Array.from({ length: n }, () => newImg(a.w * span, a.h)) });
     A.ai = 0; A.fi = 0; changed(true);
-  });
+  }), { title: 'Lay out every animation a hero, enemy, flyer… needs, as boxes to draw into' });
   const rows = a.anims.map((n, i) => {
     const edge = n.frames.filter(f => touches(f).length).length, empty = n.frames.filter(f => !bbox(f)).length;
     return h('tr', { class: i === A.ai ? 'on' : '', onclick: () => { commitFloat(); A.ai = i; A.fi = 0; A.fsel = null; drawTimeline(); drawEditor(); drawSheet(); feedPlayer(); } },

@@ -45,6 +45,8 @@ let solo = null;     // id of the only layer shown (Alt+click an eye), null = al
 let zoomPick = pref.get('scene.zoom', 0);
 let cam = 0, playing = true, speed = pref.get('scene.speed', 30), actor = null, actorX = 0;
 
+// a tooltip on every control inside (for the bar's sliders and pickers)
+const tip = (el, t) => { for (const c of [el, ...el.querySelectorAll('input, select')]) if (c.matches('input, select')) c.title = t; return el; };
 function blankScene() {
   return { id: uid(), name: 'scene', view: { w: 480, h: 270 }, look: 'paint', haze: '#8a7f99', hazeAmt: .35, layers: [] };
 }
@@ -376,14 +378,14 @@ function build(el) {
   V.actorSel = h('select', { title: 'Walk an actor across the scene to judge scale and contrast', onchange: () => pickActor(V.actorSel.value) }, h('option', { value: '' }, 'No actor'));
   el.append(V.left,
     h('section', { class: 'stage' },
-      h('div', { class: 'bar' }, V.play, h('span', { class: 'lbl' }, 'Pan'), range(speed, 0, 160, 1, v => { speed = v; pref.set('scene.speed', v); }, v => v + 'px/s'),
+      h('div', { class: 'bar' }, V.play, h('span', { class: 'lbl' }, 'Pan'), tip(range(speed, 0, 160, 1, v => { speed = v; pref.set('scene.speed', v); }, v => v + 'px/s'), 'How fast the preview camera pans, to judge the depth of the layers'),
         h('i', { class: 'sep' }), h('span', { class: 'lbl' }, 'Actor'), V.actorSel,
         h('i', { class: 'sep' }), h('span', { class: 'lbl' }, 'Zoom'),
-        select([[0, 'Auto'], [-2, 'Sharp'], [-1, 'Fill'], [1, '1×'], [2, '2×'], [3, '3×'], [4, '4×']], zoomPick, v => { zoomPick = +v; pref.set('scene.zoom', zoomPick); drawPreview(); }),
+        tip(select([[0, 'Auto'], [-2, 'Sharp'], [-1, 'Fill'], [1, '1×'], [2, '2×'], [3, '3×'], [4, '4×']], zoomPick, v => { zoomPick = +v; pref.set('scene.zoom', zoomPick); drawPreview(); }), 'Preview size: Sharp keeps whole pixels, Fill uses all the space'),
         h('i', { class: 'sep' }), h('span', { class: 'lbl', title: 'Check the scene the way the game will show it' }, 'Show'),
-        select([['none', 'Scene only'], ['safe', 'Safe frame'], ['hud', 'HUD'], ['both', 'HUD + safe']], overlay, v => { overlay = v; pref.set('scene.overlay', v); if (v !== 'none' && v !== 'safe' && !hudImg) loadHud(); drawPreview(); }),
+        Object.assign(select([['none', 'Scene only'], ['safe', 'Safe frame'], ['hud', 'HUD'], ['both', 'HUD + safe']], overlay, v => { overlay = v; pref.set('scene.overlay', v); if (v !== 'none' && v !== 'safe' && !hudImg) loadHud(); drawPreview(); }), { title: 'Draw guides over the preview: the safe frame (where nothing important should be cut off) and/or your HUD' }),
         h('span', { class: 'lbl', title: 'Time of day: left is night, right is bright day. Night is also exported to Godot (CanvasModulate)' }, 'Time'),
-        V.tod = range(SC?.tod || 0, -1, 1, .05, v => { SC.tod = v; drawPreview(); save(); }, v => todLabel(v)),
+        V.tod = tip(range(SC?.tod || 0, -1, 1, .05, v => { SC.tod = v; drawPreview(); save(); }, v => todLabel(v)), 'Time of day: left is night, right is bright day'),
         h('button', { class: 'ibtn', title: 'Snapshot: download this frame as a PNG (3× size)', onclick: () => snapshot() }, icon('export')),
         h('button', { class: 'btn sm', title: 'Record a 4-second camera pan (3× size, WebM video) to share', onclick: () => recordPan(4) }, 'Record pan'),
         h('span', { class: 'grow' }), V.info),
@@ -537,7 +539,7 @@ function drawLeft() {
       field('Haze', h('span', { style: { display: 'flex', gap: '8px', alignItems: 'center' } }, h('input', { type: 'color', value: SC.haze, oninput: e => { SC.haze = e.target.value; process(); } }),
         range(SC.hazeAmt, 0, .8, .01, v => { SC.hazeAmt = v; process(); }, v => Math.round(v * 100) + '%')), 'Far layers fade toward this colour')),
     h('div', { class: 'sec' }, h('h3', {}, 'Start from'),
-      h('div', { class: 'chips' }, ...Object.entries(PRESETS).map(([k, p]) => h('button', { onclick: () => usePreset(k) }, p.name)))),
+      h('div', { class: 'chips' }, ...Object.entries(PRESETS).map(([k, p]) => h('button', { title: `Start from the "${p.name}" look: its layers replace this scene's (Ctrl+Z undoes)`, onclick: () => usePreset(k) }, p.name)))),
     h('div', { class: 'sec' }, h('h3', {}, 'Add a layer'), gens,
       h('div', { class: 'chips', style: { margin: '8px 0' } }, h('span', { class: 'lbl', style: { marginRight: '4px' } }, 'Weather'),
         ...Object.entries(WEATHER).map(([k, W]) => h('button', { title: W.note + ' (animated; exported to Godot as particles)', onclick: () => addWeather(k) }, W.name))),

@@ -78,7 +78,7 @@ function drawLeft() {
     ...Object.entries(groups).map(([g, ps]) => h('div', { class: 'lg-group' }, h('div', { class: 'lg-gh' }, g),
       ...ps.map(p => h('button', { class: 'lg-file' + (p === cur && mode === 'code' ? ' on' : ''), title: p, onclick: () => open(p) }, p.split('/').pop().replace(/\.gd$/, ''), h('small', {}, p.split('/').slice(0, -1).join('/')))))),
     h('div', { style: { marginTop: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' } },
-      V.newSel = select(Object.entries(NEW).map(([k, [l]]) => [k, l]), 'empty', () => {}),
+      V.newSel = Object.assign(select(Object.entries(NEW).map(([k, [l]]) => [k, l]), 'empty', () => {}), { title: 'What the new script starts as' }),
       h('button', { class: 'btn sm', title: 'A new script in scripts/', onclick: newScript }, 'New script'))), V.trash ||= h('div', { class: 'sec' }));
   drawTrash();
 }

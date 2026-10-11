@@ -22,6 +22,7 @@ const SHAPES = {
   star: ['...X...', '...X...', 'XXXXXXX', '.XXXXX.', '..XXX..', '.XX.XX.', 'X.....X'],
   eye: ['.......', '..XXX..', '.XX.XX.', 'XX.X.XX', '.XX.XX.', '..XXX..', '.......'],
 };
+const TIPS = { bar: 'A health or stamina bar', gauge: 'A round meter', pips: 'Hearts, drops or other icons that empty one by one', counter: 'A number: score, coins, ammo', text: 'A label in a bitmap font', panel: 'A framed box behind other widgets', slot: 'Item slots', portrait: 'A face frame (status faces from an actor)', inventory: 'A grid of items with a cursor (I or your inventory key)', dialogue: 'The dialogue box: Logic and Dialogue show lines in it', prompt: 'A button prompt: [E] Open' };
 const NAMES = { bar: 'Bar', gauge: 'Gauge', pips: 'Pips', counter: 'Counter', text: 'Text', panel: 'Panel', slot: 'Slot', portrait: 'Portrait', inventory: 'Inventory', dialogue: 'Dialogue', prompt: 'Prompt' };
 
 /* ------------------------------------------------------------- state ---- */
@@ -312,8 +313,8 @@ export const hud = {
     el.append(V.left,
       h('section', { class: 'stage' },
         h('div', { class: 'bar' }, h('span', { class: 'lbl' }, 'Screen'),
-          V.sizeSel = select([['480x270', '480×270'], ['384x216', '384×216'], ['320x180', '320×180'], ['256x224', '256×224'], ['256x240', '256×240'], ['240x160', '240×160']], `${HUD.view.w}x${HUD.view.h}`, v => { const [w, hh] = v.split('x').map(Number); HUD.view = { w, h: hh }; save(); drawCanvas(); }),
-          h('span', { class: 'lbl' }, 'Behind'), V.bgSel = select([['checker', 'Checker'], ['#000000', 'Black'], ['#5f6b5c', 'Field'], ['scene', 'Latest scene']], HUD.bg, v => { HUD.bg = v; save(); loadBg(); }),
+          V.sizeSel = Object.assign(select([['480x270', '480×270'], ['384x216', '384×216'], ['320x180', '320×180'], ['256x224', '256×224'], ['256x240', '256×240'], ['240x160', '240×160']], `${HUD.view.w}x${HUD.view.h}`, v => { const [w, hh] = v.split('x').map(Number); HUD.view = { w, h: hh }; save(); drawCanvas(); }), { title: 'Screen size the HUD is laid out for (the game resolution)' }),
+          h('span', { class: 'lbl' }, 'Behind'), V.bgSel = Object.assign(select([['checker', 'Checker'], ['#000000', 'Black'], ['#5f6b5c', 'Field'], ['scene', 'Latest scene']], HUD.bg, v => { HUD.bg = v; save(); loadBg(); }), { title: 'What shows behind the HUD here (only for checking contrast)' }),
           V.demoBtn, h('button', { class: 'ibtn', title: 'Undo (Ctrl+Z)', onclick: () => undoHud(-1) }, '↶'), h('button', { class: 'ibtn', title: 'Redo (Ctrl+Y)', onclick: () => undoHud(1) }, '↷'),
           h('span', { class: 'grow' }), V.info),
         V.vp,
@@ -429,7 +430,7 @@ function bindCanvas(el) {
 function drawLeft() {
   const nm = h('input', { type: 'text', value: HUD.name, onchange: () => { HUD.name = nm.value.toLowerCase().replace(/[^a-z0-9_-]+/g, '_') || 'hud'; nm.value = HUD.name; save(); } });
   const P = palette();
-  const btn = t => { const w = defaults(t); const im = render(w, .7); const c = toCanvas(im); c.style.height = Math.min(22, im.height * 2) + 'px'; return h('button', { onclick: () => { if (!['inventory', 'dialogue', 'prompt'].includes(t)) { w.x = 20 + Math.floor(Math.random() * 60); w.y = 40 + Math.floor(Math.random() * 60); } HUD.widgets.push(w); sel = w.id; save(); drawRight(); drawCanvas(); } }, c, NAMES[t]); };
+  const btn = t => { const w = defaults(t); const im = render(w, .7); const c = toCanvas(im); c.style.height = Math.min(22, im.height * 2) + 'px'; return h('button', { title: 'Add: ' + TIPS[t], onclick: () => { if (!['inventory', 'dialogue', 'prompt'].includes(t)) { w.x = 20 + Math.floor(Math.random() * 60); w.y = 40 + Math.floor(Math.random() * 60); } HUD.widgets.push(w); sel = w.id; save(); drawRight(); drawCanvas(); } }, c, NAMES[t]); };
   const fontBox = h('div');
   const fst = { font: 'small', color: P.light, outline: '', shadow: P.dark };
   const drawFont = () => {

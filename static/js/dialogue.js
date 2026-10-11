@@ -29,7 +29,7 @@ export const dialogue = {
         h('button', { class: 'btn sm go', title: 'Write dialogue/<name>.json and its runner for the game', onclick: save }, 'Save')),
       h('div', { class: 'dl-scroll' }, V.list)), V.right);
     V.right.replaceChildren(h('div', { class: 'sec' }, h('h3', {}, 'Play it', h('small', {}, 'Space / click: go on')), V.play.el),
-      h('div', { class: 'sec' }, h('h3', {}, 'In the game'), h('p', { class: 'note', style: { marginTop: 0 } }, 'Start it from a Logic graph ("Start a dialogue", e.g. when the player enters a zone); "When a dialogue ends" and "Dialogue flag is set" carry on from it. Lines show in the HUD\'s dialogue box (HUD → add a Dialogue widget), or a plain box if the HUD has none; voice lines move the speaker\'s mouth; the player stands still until it ends.')));
+      h('div', { class: 'sec' }, h('h3', {}, 'In the game'), V.hudNote = h('p', { class: 'note', style: { marginTop: 0, color: 'var(--warn)', display: 'none' } }), h('p', { class: 'note', style: { marginTop: 0 } }, 'Start it from a Logic graph ("Start a dialogue", e.g. when the player enters a zone); "When a dialogue ends" and "Dialogue flag is set" carry on from it. Lines show in the HUD\'s dialogue box (HUD → add a Dialogue widget), or a plain box if the HUD has none; voice lines move the speaker\'s mouth; the player stands still until it ends.')));
     refresh();
   },
   show() { refresh(); },
@@ -40,6 +40,11 @@ export const dialogue = {
 async function refresh() {
   list = (await api('/api/projects').catch(() => [])).filter(p => p.kind === 'dialogue').sort((a, b) => a.name.localeCompare(b.name));
   actors = (await listScenes('sprites')).map(([n]) => n);
+  // does a saved HUD have a dialogue box? (without one, the game uses a plain box)
+  const huds = ((await api('/api/fs?path=' + encodeURIComponent(FS.root + '/hud')).catch(() => ({ items: [] }))).items || []).filter(i => i.dir);
+  let box = false;
+  for (const d of huds) { const j = await fetch(`/api/fs/raw?path=${encodeURIComponent(d.path + '/hud.json')}`).then(r => r.ok ? r.json() : null).catch(() => null); if ((j?.widgets || []).some(w => w.type === 'dialogue')) box = true; }
+  if (V.hudNote) { V.hudNote.style.display = huds.length && !box ? '' : 'none'; V.hudNote.textContent = 'Your HUD has no dialogue box yet, so the game shows lines in a plain box. HUD → Add → Dialogue gives it the styled one (then Save the HUD).'; }
   voices = {};
   for (const a of actors) voices[a] = ((await api('/api/fs?path=' + encodeURIComponent(`${FS.root}/sprites/${a}/voice`)).catch(() => ({ items: [] }))).items || [])
     .filter(i => i.name.endsWith('.lipsync.json')).map(i => [`sprites/${a}/voice/${i.name}`, i.name.replace('.lipsync.json', '')]);

@@ -100,7 +100,7 @@ function drawCrumbs() {
     if (acc.length < S.home.length) return;
     const p = acc;
     if (parts.length) parts.push(h('span', {}, '/'));
-    parts.push(h('button', { onclick: () => go(p) }, p === S.home ? '~' : p === S.root ? '◆ ' + s : s));
+    parts.push(h('button', { title: p === S.root ? 'The asset folder' : 'Go to ' + p.replace(S.home, '~'), onclick: () => go(p) }, p === S.home ? '~' : p === S.root ? '◆ ' + s : s));
   });
   V.crumbs.replaceChildren(...parts);
 }

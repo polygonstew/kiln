@@ -101,7 +101,7 @@ export const levels = {
     V.vp = h('div', { class: 'viewport', style: { background: '#0e0e0d' } }, V.cv);
     V.info = h('span', { class: 'mono dim', style: { fontSize: '11px' } });
     el.append(V.left, h('section', { class: 'stage' },
-      h('div', { class: 'bar' }, h('span', { class: 'lbl' }, 'Zoom'), select([[0, 'Fit'], [1, '1×'], [2, '2×'], [3, '3×'], [4, '4×']], zoom, v => { zoom = +v; draw(); }),
+      h('div', { class: 'bar' }, h('span', { class: 'lbl' }, 'Zoom'), Object.assign(select([[0, 'Fit'], [1, '1×'], [2, '2×'], [3, '3×'], [4, '4×']], zoom, v => { zoom = +v; draw(); }), { title: 'Map zoom (also Ctrl+wheel, + and −)' }),
         h('button', { class: 'ibtn' + (L.grid ? ' on' : ''), title: 'Tile grid', onclick: e => { L.grid = !L.grid; e.currentTarget.classList.toggle('on', L.grid); draw(); } }, '#'),
         V.bar = h('span', { class: 'lv-tools' }),
         h('span', { class: 'grow' }), V.info),
@@ -318,7 +318,7 @@ function drawLeft() {
       onclick: e => { if (e.shiftKey) setKind(i, kindOf(i) === 'solid' ? '' : 'solid'); else { L.pick = i; L.pickTer = null; } drawLeft(); draw(); } }, c);
   }));
   const name = h('input', { type: 'text', value: L.name, onchange: () => { L.name = slug(name.value); name.value = L.name; changed(); drawRight(); } });
-  const cols = h('input', { type: 'number', value: L.cols, min: 4, max: 400, style: { width: '60px' } }), rows = h('input', { type: 'number', value: L.rows, min: 4, max: 200, style: { width: '60px' } });
+  const cols = h('input', { type: 'number', value: L.cols, min: 4, max: 400, title: 'Width in tiles (then Set)', style: { width: '60px' } }), rows = h('input', { type: 'number', value: L.rows, min: 4, max: 200, title: 'Height in tiles (then Set)', style: { width: '60px' } });
   V.left.replaceChildren(
     h('div', { class: 'sec' }, h('h3', {}, 'Level', h('span', { class: 'grow' }),
         h('button', { class: 'btn sm ghost', title: 'Open, rename, copy or remove your levels', onclick: openMenu }, 'Open'),
@@ -352,7 +352,7 @@ function autotileUI() {
   const style = V.atStyle || 'grass';
   return h('div', { class: 'kindpick' }, h('span', { class: 'fl' }, 'Autotile (edges and corners join up as you paint)'),
     (L.terrains || []).length ? h('div', { class: 'kinds', style: { marginBottom: '6px' } }, ...L.terrains.map((t, i) => h('button', { class: L.pickTer === i ? 'on' : '', style: { '--kc': '#9cc76b' }, title: `Paint with "${t.name}": each tile picks its edge piece from its neighbours`, onclick: () => { L.pickTer = L.pickTer === i ? null : i; drawLeft(); } }, '▦ ' + t.name))) : '',
-    h('div', { style: { display: 'flex', gap: '4px', alignItems: 'center' } }, select(STYLES, style, v => { V.atStyle = v; }),
+    h('div', { style: { display: 'flex', gap: '4px', alignItems: 'center' } }, Object.assign(select(STYLES, style, v => { V.atStyle = v; }), { title: 'How the autotile draws its edges: a grass top, a lit top edge, or an outline' }),
       h('button', { class: 'btn sm', title: `Build 16 pieces (caps, edges, corners) from tile ${L.pick + 1} and add them to the tileset`, onclick: makeAutotile }, `From tile ${L.pick + 1}`)));
 }
 async function makeAutotile() {
