@@ -48,6 +48,11 @@ const T = {
     ['stage', 'The editor', 'Tab indents, Ctrl+/ comments, Ctrl+S saves and the real Godot checks it.'],
     ['h3:Problems', 'Problems', 'What Godot found, with the line; click one to jump there.'],
     ['h3:Kiln reference', 'Reference', 'What Kiln\'s scripts give you: click a line to insert it.']],
+  menus: [['h3:Screens', 'Screens', 'The title menu, options and pause. Switch each on or off.'],
+    ['h3:This screen', 'Look', 'Title, what is behind it (a scene or colour), dim, text size, colours, layout.'],
+    ['h3:Items', 'Items', 'Buttons (start, options, back, quit…), volume sliders, fullscreen, on/off options, the controls list.'],
+    ['stage', 'Preview', 'At game size, laid out the way the game builds it.'],
+    ['h3:Save to asset folder', 'Save', 'Scenes in menus/ plus the scripts; ▶ Play shows the title menu first and Esc pauses.']],
 };
 
 function target(area, spec) {

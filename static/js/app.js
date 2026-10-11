@@ -12,7 +12,7 @@ import { offerTour, endTour } from './tour.js';
 import { openPlay } from './playbuild.js';
 
 const mods = [files];
-const optional = ['forge', 'animate', 'scenes', 'levels', 'hud', 'stage', 'concepts', 'logic'];
+const optional = ['forge', 'animate', 'scenes', 'levels', 'hud', 'stage', 'concepts', 'logic', 'menus'];
 const views = {};
 let cur = null;
 

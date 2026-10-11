@@ -13,15 +13,61 @@ const MAIN_GD = `extends Node2D
 @export var background_scene: PackedScene
 @export var player_scene: PackedScene
 @export var hud_scene: PackedScene
+@export var title_menu: PackedScene      ## Kiln Menus: shown first (else a plain title screen)
+@export var options_menu: PackedScene
+@export var pause_menu: PackedScene       ## Esc while playing
 @export var title := "Kiln demo"
 @export var show_title := true
+var playing := false
+var menus: Array[Node] = []               # open menu screens, top last
 const BRAIN := "res://sprites/_kiln/brains/player.gd"
 
 func _ready() -> void:
-\tif show_title:
+\tif title_menu:
+\t\t_open(title_menu)
+\telif show_title:
 \t\t_title_screen()
 \telse:
 \t\t_start()
+
+# ---- Kiln menus: each screen emits action(name); this decides what it means
+func _open(scene: PackedScene) -> void:
+\tvar layer := CanvasLayer.new()
+\tlayer.layer = 10 + menus.size()
+\tlayer.process_mode = Node.PROCESS_MODE_ALWAYS
+\tvar m := scene.instantiate()
+\tlayer.add_child(m)
+\tadd_child(layer)
+\tmenus.append(layer)
+\tm.action.connect(_on_menu)
+
+func _close_top() -> void:
+\tif menus.size():
+\t\tmenus.pop_back().queue_free()
+
+func _on_menu(a: String) -> void:
+\tmatch a:
+\t\t"start":
+\t\t\twhile menus.size():
+\t\t\t\t_close_top()
+\t\t\t_start()
+\t\t"open:options":
+\t\t\tif options_menu:
+\t\t\t\t_open(options_menu)
+\t\t"back":
+\t\t\t_close_top()
+\t\t"resume":
+\t\t\twhile menus.size():
+\t\t\t\t_close_top()
+\t\t\tget_tree().paused = false
+\t\t"title":
+\t\t\tget_tree().paused = false
+\t\t\tget_tree().reload_current_scene()
+
+func _unhandled_input(e: InputEvent) -> void:
+\tif playing and pause_menu and e.is_action_pressed("ui_cancel") and menus.is_empty():
+\t\tget_tree().paused = true
+\t\t_open(pause_menu)
 
 func _title_screen() -> void:
 \tvar ui := CanvasLayer.new()
@@ -53,6 +99,7 @@ func _title_screen() -> void:
 \tplay.grab_focus()
 
 func _start() -> void:
+\tplaying = true
 \tvar world := Node2D.new()
 \tadd_child(world)
 \tvar view := get_viewport_rect().size
@@ -139,6 +186,9 @@ export async function openPlay() {
     const ext = [], props = [];
     const add = (key, path) => { if (!path) return; ext.push(`[ext_resource type="PackedScene" path="${path}" id="${key}"]`); props.push(`${key}_scene = ExtResource("${key}")`); };
     add('level', S.level.value); add('background', S.level.value ? '' : S.bg.value); add('player', S.player.value); add('hud', S.hud.value);
+    // saved Kiln menus (Menus area): title first, options from it, pause on Esc
+    const mn = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/menus')).catch(() => ({ items: [] }));
+    for (const k of ['title', 'options', 'pause']) if ((mn.items || []).some(i => i.name === k + '.tscn')) { ext.push(`[ext_resource type="PackedScene" path="res://menus/${k}.tscn" id="${k}m"]`); props.push(`${k}_menu = ExtResource("${k}m")`); }
     const main = `[gd_scene load_steps=${ext.length + 2} format=3]\n\n[ext_resource type="Script" path="res://main.gd" id="main"]\n${ext.join('\n')}\n\n`
       + `[node name="Main" type="Node2D"]\nscript = ExtResource("main")\n${props.join('\n')}\ntitle = ${JSON.stringify(name.value || 'Kiln demo')}\nshow_title = ${title.checked}\n`;
     const files = { 'kiln_main.tscn': main, 'main.gd': MAIN_GD };
