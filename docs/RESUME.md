@@ -1,8 +1,20 @@
 # RESUME: Kiln state of build
 
-Last updated: 2026-10-10 (session 2 + timed loop runs 1–20 + user requests).
+Last updated: 2026-10-10 evening (session 2 + loop runs 1–24 + user requests; the 45-min loop is PAUSED by the user).
 
 ## At a glance (newest first)
+
+- **START HERE (next session):** docs/LOOP.md backlog order = Stage → playtest room, more Menus backgrounds, Logic node
+  system, then items DB / 2D lighting / dialogue / cutscenes. A one-shot session-only timer may start a build at 22:04.
+  The user's asset folder is now **library/games/untitled_demo** (they work in it live): read the root from
+  library/settings.json, sha1 it before/after every test, only create zz_ items and delete them. animate.js ≈996 lines:
+  split before adding. Restart `kiln` only when /api/status queue is 0.
+- 2026-10-10 evening: **Puppet** (Animate → Puppet: rig.js engine, puppet.js screen, timeline.js Flash-style timeline with
+  tweens/ease, rig_godot.js Skeleton2D export) · **▶ Play** (play.py + playbuild.js: web build of the asset folder at
+  /play/) · **Menus** area (key 0: title/options/pause → menus/*.tscn + KilnSettings) · **Logic** area (key 9: GDScript
+  editor checked by Godot; checks.py) · Workshop (faces, hit reactions, projectiles, brains, sounds sfx.js, effects
+  vfx.js) · hit/hurt boxes · Levels: tile behaviours, zones, autotile, tool bar + undo · Doctor · History snapshots ·
+  tours (Shift+F1) · Forge mask + sheet detection · right-click menu sections · "Kiln updated · Reload" chip.
 
 - Menu bar (menubar.js), in-app guide `/help` (help.html + static/help/*.jpg), developer guide docs/DEVELOPING.md,
   smoke test tools/smoke.py, asset chip shows "Godot ✓ / not in Godot" (asset folder is NOT in a Godot project yet:
