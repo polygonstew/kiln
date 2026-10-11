@@ -546,9 +546,16 @@ async function pickFaces(cb) {
 async function pickSprite(cb) {
   const r = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/sprites')).catch(() => ({ items: [] }));
   const actors = r.items.filter(i => i.dir && i.ok);
+  // icon sets made in Forge (icons/<set>/<item>.png): click one to use it as it is
+  const iconBox = h('div', { class: 'hud-icons' });
+  for (const set of ((await api('/api/fs?path=' + encodeURIComponent(FS.root + '/icons')).catch(() => ({ items: [] }))).items || []).filter(i => i.dir)) {
+    const files = ((await api('/api/fs?path=' + encodeURIComponent(set.path)).catch(() => ({ items: [] }))).items || []).filter(i => /\.png$/.test(i.name) && i.name !== 'sheet.png');
+    if (files.length) iconBox.append(h('div', { class: 'lbl', style: { margin: '6px 0 4px' } }, 'Icons: ' + set.name),
+      h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '4px' } }, ...files.map(f => h('img', { src: rawURL(f.path), title: f.name.replace('.png', ''), style: { width: '32px', height: '32px', imageRendering: 'pixelated', cursor: 'pointer', background: 'var(--p3)' }, onclick: () => { m.remove(); cb(f.path); } }))));
+  }
   const m = h('div', { class: 'modal', onclick: e => { if (e.target === m) m.remove(); } }, h('div', {},
     h('header', {}, h('span', { class: 'grow' }, 'Pick a sprite'), h('button', { class: 'ibtn', onclick: () => m.remove() }, '✕')),
-    h('div', { class: 'body' }, actors.length ? actors.map(a => h('div', { class: 'palrow', onclick: async () => {
+    h('div', { class: 'body' }, iconBox, actors.length ? actors.map(a => h('div', { class: 'palrow', onclick: async () => {
       m.remove();
       const man = await (await fetch(rawURL(a.path + '/manifest.json'))).json();
       const first = Object.values(man.anims)[0];

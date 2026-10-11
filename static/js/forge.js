@@ -18,6 +18,7 @@ const KINDS = [
   ['fx', 'Effect', 'game effect, magic burst, isolated'],
   ['portrait', 'Portrait', 'character portrait bust, head and shoulders, facing viewer'],
   ['vehicle', 'Vehicle', 'vehicle, side view, whole vehicle visible'],
+  ['ui', 'UI piece', 'game user interface element (a frame, panel, button or badge), flat front view, crisp edges, isolated'],
 ];
 const VIEWS = [['side', 'Side', 'side view, facing right'], ['front', 'Front', 'front view, facing viewer'], ['three', '¾', 'three-quarter view'], ['back', 'Back', 'back view'], ['top', 'Top-down', 'top-down view from above']];
 const MOODS = ['grim', 'cheerful', 'eerie', 'heroic', 'grotesque', 'regal', 'ragged', 'mechanical', 'holy', 'feral'];
@@ -204,6 +205,7 @@ function drawLeft() {
     const ta = h('textarea', { rows: 3, value: st.prompt, placeholder: 'What is it? e.g. "drowned sailor with an anchor chain"', oninput: () => { st.prompt = ta.value; save(); } });
     const neg = h('input', { type: 'text', value: st.neg, placeholder: 'things to keep out', oninput: () => { st.neg = neg.value; save(); } });
     V.left.replaceChildren(...[
+      makingSec(),
       h('div', { class: 'sec' }, h('h3', {}, 'Describe it', h('span', { class: 'grow' }),
         h('button', { class: 'btn sm ghost dice', title: 'Roll the dice: a random enemy idea from parts (D). Roll again until one grabs you', onclick: roll }, '⚂ Roll')), ta,
         h('div', { style: { marginTop: '8px' } }, chips(KINDS.map(k => [k[0], k[1], `What it is: adds "${k[2]}" to the description`]), 'kind')),
@@ -218,6 +220,16 @@ function drawLeft() {
         h('button', { class: 'btn', style: { marginTop: '6px' }, onclick: () => variations() }, 'Make variations')) : null].filter(Boolean));
   }
   est();
+}
+// what are you making? A sprite is this screen; the others open their own maker over it (forge_bg.js, forge_sets.js)
+function makingSec() {
+  const host = () => document.querySelector('#v-forge');
+  const card = (label, tip, open) => h('button', { class: 'fm-pick' + (open ? '' : ' on'), title: tip, onclick: open || (() => {}) }, label);
+  return h('div', { class: 'sec' }, h('h3', {}, 'What are you making?'), h('div', { class: 'fm-picks' },
+    card('Sprite', 'A character, creature, item, prop, effect, portrait, vehicle or UI piece: this screen'),
+    card('Background', 'A whole parallax background in depth layers (sky, far, middle, near, ground, foreground), sent to Scenes', () => import('./forge_bg.js').then(m => m.openBackgroundMaker(host()))),
+    card('Tileset', 'One material as tiles that join up (fills, lit tops, platforms), sent to Levels', () => import('./forge_sets.js').then(m => m.openTileset(host()))),
+    card('Icon set', 'A list of items as icons in one palette and size, for the HUD inventory', () => import('./forge_sets.js').then(m => m.openIconSet(host())))));
 }
 function guideSec() {
   const q = encodeURIComponent((st.prompt.trim() || KINDS.find(k => k[0] === st.kind)?.[1] || 'sprite').split(/[,.]/)[0]);

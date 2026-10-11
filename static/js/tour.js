@@ -8,7 +8,7 @@ const T = {
   files: [['tab', 'Files', 'Your asset folder, laid out the way Godot reads it. Everything Kiln makes lands here.'],
     ['stage', 'The folder', 'Click to see a file, double-click to open a folder or use an image. Drop files from your computer to copy them in.'],
     ['h3:How the asset folder is laid out', 'Where things go', 'sprites/ for actors, backgrounds/ for scenes, levels/, hud/, fonts/: the same layout every time, so Godot scenes find their files.']],
-  forge: [['h3:Describe it', 'Describe it', 'Say what you want in plain words, then pick what it is and which way it faces. The style bible is added to every prompt so things match.'],
+  forge: [['h3:What are you making?', 'What are you making?', 'Sprites here; Background (depth layers → Scenes), Tileset (→ Levels) and Icon set (one palette) open their own makers.'], ['h3:Describe it', 'Describe it', 'Say what you want in plain words, then pick what it is and which way it faces. The style bible is added to every prompt so things match.'],
     ['h3:Guide image', 'Guide image', 'Optional: an image whose shape or design the new thing should follow.'],
     ['h3:Generator', 'Generator', 'Cloud draws best (free daily quota first); This PC is free but slower. Then Generate.'],
     ['stage', 'Source → sprite', 'Left: the generated or opened image. Right: the real game sprite it becomes, pixel for pixel.'],

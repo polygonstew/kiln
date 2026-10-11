@@ -75,7 +75,7 @@ export const scenes = {
 async function drain() {
   while (pending.length) {
     const [k, d] = pending.shift();
-    if (k === 'open') await openSceneDir(d);
+    if (k === 'open') d?.id ? await openSceneProject(d.id) : await openSceneDir(d);
     if (k === 'layer') await addImageLayer(/^(data:|\/api\/|https?:)/.test(d) ? d : rawURL(d), layerName(d));
   }
 }
@@ -227,6 +227,14 @@ function nearestLab(c, pal) {
 const sat = c => { const mx = Math.max(...c), mn = Math.min(...c); return mx ? (mx - mn) / mx : 0; };
 let procT;
 // quiet = just opened: draw it, but don't write it back to disk until something actually changes
+// a saved scene project by id: drawn, ready to edit (nothing is saved until you change something)
+async function openSceneProject(id) {
+  const d = await fetch('/api/project?id=' + encodeURIComponent(id)).then(r => r.ok ? r.json() : null).catch(() => null);
+  if (!d?.scene) return toast('Could not open that scene', 'bad');
+  ++loads; SC = d.scene; sel = 0; undoS = []; redoS = [];
+  for (const [i, L] of SC.layers.entries()) await renderLayer(L, i);
+  drawAll();
+}
 // one layer's pixels: its source (generator, image…) → haze → the scene's look
 async function renderLayer(L, i) {
   if (L.kind === 'weather') { L.out = null; return; }

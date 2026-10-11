@@ -348,8 +348,14 @@ def submit_cloud(req):
     aspect = min(['1:1', '4:3', '3:4', '16:9', '9:16', '21:9', '3:2', '2:3'],
                  key=lambda a: abs(int(a.split(':')[0]) / int(a.split(':')[1]) - r))
     prompt = req.get('prompt', '')
-    if req.get('engine_hint') == 'scene':
+    hint = req.get('engine_hint')
+    if hint == 'scene':
         prompt = f'{prompt}. 2D side-scrolling video game background, wide, no characters, no text, no UI.'
+    elif hint == 'layer':          # one depth layer of a background, on a colour Kiln removes (Forge → Background)
+        prompt = f'{prompt}. One layer of a 2D side-scrolling video game background: scenery only, crisp pixel art, flat colours, no characters, no text, no UI.'
+    elif hint == 'texture':        # a surface for tiles (Forge → Tileset)
+        prompt = (f'{prompt}. Seamless pixel art texture for a 2D game tileset: the surface fills the whole image edge to edge, '
+                  'crisp square pixels, flat colours, nothing standing on it, no characters, no text, no frame.')
     else:
         px = int(req.get('px') or 0)
         grid = f'about {px} art pixels tall, ' if 16 <= px <= 256 else ''
@@ -388,7 +394,7 @@ def submit_fast(req):
     steps = int(req.get('steps') or 4)
     with LOCK:
         JOBS[pid] = {'state': 'queued', 'step': 0, 'steps': steps * n, 'images': [], 'err': None, 't0': time.time(), 'seed': 0}
-    prefix = '16bitscene, ' if req.get('engine_hint') == 'scene' else 'pixelsprite, '
+    prefix = '16bitscene, ' if req.get('engine_hint') in ('scene', 'layer', 'texture') else 'pixelsprite, '
     body = {'prompt': prefix + req.get('prompt', ''), 'neg': ((req.get('neg') or '') + ', ' + NEG).strip(', '), 'w': req.get('w', 384), 'h': req.get('h', 384),
             'steps': steps, 'seed': int(req.get('seed', -1)), 'batch': n, 'init': req.get('init'), 'denoise': req.get('denoise', 0.5)}
 

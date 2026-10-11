@@ -56,6 +56,8 @@ function openPath(welcome) {
       done.has(id) ? '' : h('button', { class: 'btn sm' + (n?.[0] === id ? ' go' : ' ghost'), title: 'Open ' + area, onclick: () => { p.remove(); emit('tab', area); } }, 'Do it')))),
     h('p', { class: 'note' }, 'Want to see it all working first? ', h('a', { href: '#', onclick: e => { e.preventDefault(); p.remove(); import('./demo.js').then(m => m.makeDemo()); } }, 'Make the demo game'), ' and look inside each area.'));
   document.body.append(p);
+  // a click anywhere else closes it (it never stands in the way)
+  setTimeout(() => document.addEventListener('pointerdown', function off(e) { if (!p.contains(e.target) && e.target.id !== 'journey') { p.remove(); document.removeEventListener('pointerdown', off, true); } }, true), 0);
 }
 // after a save that finished a step: well done, and what could come next
 function nudge(step) {
