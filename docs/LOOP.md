@@ -270,14 +270,14 @@ override everything; each gets a Help section and a Godot export):**
   an image from the asset folder (fit / fill / tile, pixel-scaled), a scene that slowly pans (camera drift), a looping
   actor animation on the side (title-screen hero idling), weather on top (snow, embers), a vignette, and a slow colour
   pulse. Preview in Menus and exported in kiln_menu.gd (background_kind + settings).
-- [ ] **Flash-style timeline (user, 2026-10-10)**, built together with the puppet screen (one timeline for both):
+- [x] DONE **Flash-style timeline (user, 2026-10-10)** (timeline.js, in the Puppet screen), built together with the puppet screen (one timeline for both):
   layers as rows (each a part/bone or a drawn layer, eye/lock/onion toggles), frames as columns; keyframes (●),
   blank keyframes (○), held frames (grey spans), drag to move/extend, F5 insert frame, F6 keyframe, F7 blank keyframe;
   **motion tween** between two keyframes (position, rotation, scale, alpha) with **easing** (in/out slider, like Flash's
   ease -100..100) and a curve preview; tween rotation CW/CCW + turns; **frame labels**; onion skin with range markers;
   playhead scrub; loop range. Puppet poses are keyframes on bone rows; tweens = lerpPose with easing. Bake = render
   every frame into Animate frames (pixel-snapped). Keep it in its own module (timeline.js).
-- [ ] **TOP PRIORITY: Bones / puppet animation (user: "could be a game changer")**. Engine DONE: static/js/rig.js
+- [x] DONE **Bones / puppet animation** (puppet.js + rig.js + timeline.js + rig_godot.js, tested in browser and Godot) (user: "could be a game changer")**. Engine DONE: static/js/rig.js
   (autoRig: 11-bone side-view humanoid fitted to the sprite's box + leg runs; skin: pixel → nearest bone with body-layout
   rules; prepare: EPX ×8 + "behind the limb" parent fill; render: RotSprite-style per bone back→front; PRESETS idle,
   walk, run, attack, jump, hurt, death; motion(rig, kind, facing); lerpPose for keyframes). Tested headless: all presets
@@ -293,4 +293,5 @@ override everything; each gets a Help section and a Godot export):**
 - 2026-10-10: user at 94% usage (resets 22:00): stopped after the rig engine + hand-off. Next session: build puppet.js first.
 
 - 2026-10-10: loop run (low-usage mode, user at ~94% until 22:00): smoke only, all clean. Puppet UI waits for the reset.
+- 2026-10-10 (after the reset): Puppet screen shipped: rig (auto / piece by piece / parts brush / joints), pose by dragging tips + hip, Flash timeline (keys, holds, tweens with ease, labels, F5/F6/F7, drag keys, onion, play), presets (2-wide death/attack), bake to Animate, Godot Skeleton2D export (verified: 11 bones, motions play). autoRig now finds arms held apart. Hitbox helpers moved to actor_tools.js (animate.js 996 lines: split more before adding).
 

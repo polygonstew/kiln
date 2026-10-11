@@ -70,3 +70,29 @@ export function shrinkActor(a, want) {
   return { ...a, w: Math.max(1, Math.round(a.w * k)), h: want, pal, identity: undefined, faces: undefined,
     anims: a.anims.map((n, i) => ({ ...n, frames: small[i].map(f => despeckle(applyPalette(f, pal))) })) };
 }
+
+// the body box (default hurtbox): the idle pose's figure, trimmed to its core width, in a frame W wide
+export function bodyBoxOf(actor, W) {
+  const base = actor.anims.find(n => /idle|stand/i.test(n.name)) || actor.anims[0];
+  const bbs = base.frames.map(bbox).filter(Boolean); if (!bbs.length) return null;
+  const med = k => bbs.map(b => b[k]).sort((p, q) => p - q)[bbs.length >> 1];
+  const bh = med('h'), bw = Math.max(2, Math.round(med('w') * .6)), cx = med('x') + med('w') / 2 + (W - base.frames[0].width) / 2;
+  return { x: Math.round(cx - bw / 2), y: actor.h - bh, w: bw, h: bh };
+}
+// hitboxes for an attack: whatever sticks out past the body on each frame (the weapon, the slash); returns how many
+export function guessHits(actor, n) {
+  let made = 0;
+  for (const f of n.frames) {
+    const body = bodyBoxOf(actor, f.width); if (!body) break;
+    let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
+    for (let y = 0; y < f.height; y++) for (let x = 0; x < f.width; x++) {
+      if (f.data[(y * f.width + x) * 4 + 3] < 128 || (x >= body.x - 1 && x < body.x + body.w + 1)) continue;
+      if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y;
+    }
+    const B = (f.boxes ||= { hit: [], hurt: [] });
+    B.hit = x1 >= 0 && (x1 - x0 + 1) * (y1 - y0 + 1) >= 6 ? [{ x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 }] : [];
+    if (B.hit.length) made++;
+  }
+  return made;
+}
+

@@ -10,7 +10,8 @@ import { registerWheel, registerMenu } from './wheel.js';
 import { loadOwners, claim } from './owners.js';
 import { openWorkshop, facesFiles } from './workshop.js';
 import { actorScene, projectileScene, boxesOf, brainOf, JUICE_GD, PROJECTILE_GD, FLASH_SHADER } from './actor_godot.js';
-import { characterDoc, shrinkActor } from './actor_tools.js';
+import { characterDoc, shrinkActor, bodyBoxOf, guessHits } from './actor_tools.js';
+import { openPuppet } from './puppet.js';
 import { BRAIN_GD } from './brains.js';
 import { wav, synth } from './sfx.js';
 import { vfxFiles, VFX_GD } from './vfx.js';
@@ -138,6 +139,7 @@ function build(el) {
         h('button', { class: 'btn sm ghost', title: 'Flip every frame of this animation', onclick: () => { pushUndo(); anim().frames = anim().frames.map(flipX); changed(true); } }, 'Flip anim'),
         h('i', { class: 'sep' }),
         h('button', { class: 'btn sm go', title: 'Workshop: everything this actor needs (animations, status faces) as a checklist', onclick: () => workshop() }, 'Workshop'),
+        h('button', { class: 'btn sm go', title: 'Puppet: bones for this actor. Rig a frame, pose it on a timeline with tweens, make walk / run / attack from the rig, bake to frames', onclick: () => puppet() }, 'Puppet'),
         V.boxBtn = h('button', { class: 'btn sm' + (A.boxes ? ' on' : ' ghost'), title: 'Hit and hurt boxes: drag to draw (red hits, blue gets hit), right-click removes. Exported to Godot frame by frame', onclick: () => { A.boxes = !A.boxes; V.boxBtn.className = 'btn sm' + (A.boxes ? ' on' : ' ghost'); drawTimeline(); drawEditor(); } }, 'Boxes'),
         h('span', { class: 'grow' }), V.status,
         h('span', { class: 'lbl' }, 'Zoom'),
@@ -649,28 +651,9 @@ function updateThumb() {
   const c = el.querySelector('canvas'); if (!c) return;
   c.getContext('2d').putImageData(frame(), 0, 0);
 }
-// the body box (default hurtbox): the idle pose's figure, trimmed to its core width, in a frame `W` wide
-function bodyBox(W) {
-  const base = A.actor.anims.find(n => /idle|stand/i.test(n.name)) || A.actor.anims[0];
-  const bbs = base.frames.map(bbox).filter(Boolean); if (!bbs.length) return null;
-  const med = k => bbs.map(b => b[k]).sort((p, q) => p - q)[bbs.length >> 1];
-  const bh = med('h'), bw = Math.max(2, Math.round(med('w') * .6)), cx = med('x') + med('w') / 2 + (W - base.frames[0].width) / 2;
-  return { x: Math.round(cx - bw / 2), y: A.actor.h - bh, w: bw, h: bh };
-}
-// hitboxes for an attack: whatever sticks out past the body on each frame (the weapon, the slash)
+const bodyBox = W => bodyBoxOf(A.actor, W);
 function guessHitboxes() {
-  const n = anim(); pushUndo(); let made = 0;
-  for (const f of n.frames) {
-    const body = bodyBox(f.width); if (!body) break;
-    let x0 = 1e9, y0 = 1e9, x1 = -1, y1 = -1;
-    for (let y = 0; y < f.height; y++) for (let x = 0; x < f.width; x++) {
-      if (f.data[(y * f.width + x) * 4 + 3] < 128 || (x >= body.x - 1 && x < body.x + body.w + 1)) continue;
-      if (x < x0) x0 = x; if (y < y0) y0 = y; if (x > x1) x1 = x; if (y > y1) y1 = y;
-    }
-    const B = (f.boxes ||= { hit: [], hurt: [] });
-    B.hit = x1 >= 0 && (x1 - x0 + 1) * (y1 - y0 + 1) >= 6 ? [{ x: x0, y: y0, w: x1 - x0 + 1, h: y1 - y0 + 1 }] : [];
-    if (B.hit.length) made++;
-  }
+  const n = anim(); pushUndo(); const made = guessHits(A.actor, n);
   changed(); toast(made ? `Hitboxes on ${made} of ${n.frames.length} frames (what sticks out past the body). Adjust by drawing / right-click` : 'Nothing sticks out past the body in this animation', made ? 'ok' : '');
 }
 // a copy of this actor at game size: every frame scaled by the same amount (area average, then despeckled)
@@ -871,6 +854,22 @@ async function makeMore(poses) {
     refSprite: await imgData(id.refSprite), pal: A.actor.pal.slice(), w: A.actor.w, h: A.actor.h, seed: id.seed, poses: Array.isArray(poses) ? poses : null });
 }
 // the Workshop: everything this actor needs, as a checklist (workshop.js)
+function puppet() {
+  commitFloat();
+  openPuppet(V.view, {
+    actor: () => A.actor, frame: () => frame(), changed: () => { A.dirty = true; clearTimeout(saveT); saveT = setTimeout(autosave, 1500); },
+    redraw: () => { drawTimeline(); drawLeft(); drawEditor(); feedPlayer(); },
+    // a baked motion becomes an animation of the actor (same name: replaced after asking, unless quiet)
+    addAnim(name, frames, fps, loop, span, quiet) {
+      const a = A.actor, i = a.anims.findIndex(n => n.name === name);
+      if (i >= 0 && !quiet && !confirm(`Replace the animation "${name}" with the baked one?`)) return;
+      pushUndo();
+      const n = { name, fps, loop, span, frames };
+      if (i >= 0) a.anims[i] = n; else a.anims.push(n);
+      A.ai = i >= 0 ? i : a.anims.length - 1; A.fi = 0; changed(true);
+    },
+  });
+}
 function workshop() {
   commitFloat();
   openWorkshop(V.view, {

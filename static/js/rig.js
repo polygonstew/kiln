@@ -49,6 +49,15 @@ export function autoRig(im) {
       L.x = Math.round((L.x + cx) / 2); L.tx = Math.round(cx); S.x = L.tx; S.tx = Math.round(cx);
     }
   }
+  // the arms: at chest height, pixels standing apart on both sides of the body are the arms (a front view, or arms held out)
+  const mid = runsAt(im, Math.round(b.y + b.h * .36)).filter(r => r[1] - r[0] >= 0);
+  if (mid.length >= 3) {
+    const [l, r] = [mid[0], mid[mid.length - 1]], byName = n => bones.find(q => q.name === n), body = mid.slice(1, -1), bl = body[0][0], br = body[body.length - 1][1];
+    for (const [arm, hand, run, edge] of [['arm_back', 'hand_back', l, bl], ['arm_front', 'hand_front', r, br]]) {
+      const A = byName(arm), H = byName(hand), cx = Math.round((run[0] + run[1]) / 2);
+      A.x = edge; A.tx = cx; H.x = cx; H.tx = cx;
+    }
+  }
   const rig = { w: im.width, h: im.height, bones };
   rig.parts = skin(im, rig);
   return rig;
@@ -109,18 +118,19 @@ export function prepare(im, rig, parts, fillBehind = true) {
   });
   return { w, h, px, up, uw, parts, under, underC };
 }
-// one posed frame (ImageData w×h): bones back to front, each pixel pulled from where it came from
-export function render(P, rig, pose) {
-  const out = new ImageData(P.w, P.h), o32 = new Uint32Array(out.data.buffer), T = transforms(rig, pose);
+// one posed frame: bones back to front, each pixel pulled from where it came from. W×H may be wider than the drawing
+// (a 2-wide frame for a lunge or a fall): the drawing sits centred, feet on the bottom row
+export function render(P, rig, pose, W = P.w, H = P.h) {
+  const out = new ImageData(W, H), o32 = new Uint32Array(out.data.buffer), T = transforms(rig, pose), ox = Math.floor((W - P.w) / 2), oy = H - P.h;
   const order = rig.bones.map((b, i) => [b, i]).sort((a, c) => a[0].z - c[0].z);
   for (const [b, i] of order) {
     const M = T[b.id], I = inv(M), id = i + 1;
-    for (let y = 0; y < P.h; y++) for (let x = 0; x < P.w; x++) {
-      const [sx, sy] = apply(I, x + .5, y + .5), xi = Math.floor(sx), yi = Math.floor(sy);
+    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+      const [sx, sy] = apply(I, x - ox + .5, y - oy + .5), xi = Math.floor(sx), yi = Math.floor(sy);
       if (xi < 0 || yi < 0 || xi >= P.w || yi >= P.h) continue;
       const k = yi * P.w + xi;
-      if (P.parts[k] === id) { const c = P.up[Math.min(P.uw * 8 * P.h - 1, Math.floor(sy * 8) * P.uw + Math.floor(sx * 8))]; if (c >>> 24) o32[y * P.w + x] = c; }
-      else if (P.under[k] === id && !o32[y * P.w + x]) o32[y * P.w + x] = P.underC[k];
+      if (P.parts[k] === id) { const c = P.up[Math.min(P.uw * 8 * P.h - 1, Math.floor(sy * 8) * P.uw + Math.floor(sx * 8))]; if (c >>> 24) o32[y * W + x] = c; }
+      else if (P.under[k] === id && !o32[y * W + x]) o32[y * W + x] = P.underC[k];
     }
   }
   return out;
@@ -133,10 +143,10 @@ export const PRESETS = {
   idle: { n: 6, fps: 6, loop: true, pose: (t, n, f) => { const p = S(t / n * TAU); return { torso: f * 1.5 * p, head: -f * 1 * p, arm_front: -f * 2 * p, arm_back: -f * 2 * p, _root: { dx: 0, dy: p > .5 ? 1 : 0 } }; } },
   walk: { n: 8, fps: 10, loop: true, pose: (t, n, f) => gait(t / n * TAU, f, 24, 28, 18, 1, 3) },
   run: { n: 8, fps: 14, loop: true, pose: (t, n, f) => ({ ...gait(t / n * TAU, f, 38, 55, 34, 2, 10), hand_front: -f * 70, hand_back: -f * 70 }) },
-  attack: { n: 6, fps: 12, loop: false, pose: (t, n, f) => { const k = [0, 1, .2, -.9, -1, -.3][t] ?? 0; return { arm_front: -f * (k > 0 ? 150 * k : 95 * k), hand_front: -f * (k > 0 ? 30 * k : -15 * k), torso: -f * 8 * k, head: f * 4 * k, leg_front: -f * (k < 0 ? 15 : 0), shin_front: f * (k < 0 ? 15 : 0), _root: { dx: Math.round(-f * 2 * Math.min(0, k)), dy: 0 } }; } },
+  attack: { n: 6, fps: 12, loop: false, span: 2, pose: (t, n, f) => { const k = [0, 1, .2, -.9, -1, -.3][t] ?? 0; return { arm_front: -f * (k > 0 ? 150 * k : 95 * k), hand_front: -f * (k > 0 ? 30 * k : -15 * k), torso: -f * 8 * k, head: f * 4 * k, leg_front: -f * (k < 0 ? 15 : 0), shin_front: f * (k < 0 ? 15 : 0), _root: { dx: Math.round(-f * 2 * Math.min(0, k)), dy: 0 } }; } },
   jump: { n: 6, fps: 10, loop: false, pose: (t, n, f) => { const k = [[.6, 0], [0, -2], [.3, -6], [.8, -8], [.4, -6], [.7, 0]][t] || [0, 0]; return { leg_front: -f * 45 * k[0], shin_front: f * 80 * k[0], leg_back: -f * 35 * k[0], shin_back: f * 70 * k[0], arm_front: f * 40 * (1 - k[0]), arm_back: f * 30 * (1 - k[0]), torso: -f * 10 * k[0], _root: { dx: 0, dy: Math.round(k[0] * 4 + k[1]) } }; } },
   hurt: { n: 4, fps: 10, loop: false, pose: (t, n, f) => { const k = [1, .8, .4, 0][t] ?? 0; return { torso: f * 16 * k, head: f * 14 * k, arm_front: -f * 35 * k, arm_back: f * 25 * k, leg_front: -f * 10 * k, _root: { dx: Math.round(-f * 3 * k), dy: 0 } }; } },
-  death: { n: 8, fps: 10, loop: false, pose: (t, n, f, rig) => { const k = Math.min(1, t / (n - 2)), down = k * k; const hip = rig?.bones.find(b => b.name === 'hip'), drop = hip ? (rig.h - hip.y) : 8; return { hip: f * 88 * down, torso: f * 10 * k, head: f * 20 * k, arm_front: -f * 50 * k, arm_back: -f * 30 * k, leg_front: -f * 20 * k, shin_front: f * 30 * k, _root: { dx: Math.round(-f * 4 * k), dy: Math.round(down * Math.max(0, drop - 4)) } }; } },
+  death: { n: 8, fps: 10, loop: false, span: 2, pose: (t, n, f, rig) => { const k = Math.min(1, t / (n - 2)), down = k * k; const hip = rig?.bones.find(b => b.name === 'hip'), drop = hip ? (rig.h - hip.y) : 8; return { hip: f * 88 * down, torso: f * 10 * k, head: f * 20 * k, arm_front: -f * 50 * k, arm_back: -f * 30 * k, leg_front: -f * 20 * k, shin_front: f * 30 * k, _root: { dx: Math.round(-f * 4 * k), dy: Math.round(down * Math.max(0, drop - 6)) } }; } },
 };
 // walking and running: legs swing in turns, knees fold on the way through, arms swing against the legs, the body bobs
 function gait(ph, f, leg, knee, arm, bob, lean) {

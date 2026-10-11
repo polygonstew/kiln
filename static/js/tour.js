@@ -18,6 +18,7 @@ const T = {
   animate: [['h3:Actor', 'The actor', 'One character with all its animations. Open, New, its name and frame size.'],
     ['h3:Tools', 'Draw', 'Left click adds, right click removes, the mouse wheel rolls through colours, middle click picks one.'],
     ['stage', 'The frame', 'The editor. Below it: the animations (tabs) and the frame strip; Shift/Ctrl+click picks several frames, Ping-pong plays them back.'],
+    ['btn:Puppet', 'Puppet', 'Bones: rig this frame, pose it on a Flash-style timeline with tweens, make walk / run / attack from the rig, bake to frames.'],
     ['btn:Workshop', 'Workshop', 'Everything this actor needs as a checklist: animations, status faces, behaviour, sounds, effects, projectiles.'],
     ['h3:Preview', 'Preview', 'Plays live, the way the game will show it.'],
     ['h3:Identity', 'Identity', 'Describe the actor and set a reference frame: new frames are then drawn on-model.'],
