@@ -43,7 +43,7 @@ async function boot() {
   for (const n of optional) {
     try { const mod = await import(`./${n}.js`); mods.push(mod[n]); } catch (e) { if (!/Failed to fetch|Importing a module/.test(e.message)) console.error(n, e); }
   }
-  $('#tabs').replaceChildren(...mods.map(m => h('button', { 'data-id': m.id, onclick: () => show(m.id) }, m.title, h('kbd', {}, m.key))));
+  $('#tabs').replaceChildren(...mods.map(m => h('button', { 'data-id': m.id, title: `${m.title} (key ${m.key})`, onclick: () => show(m.id) }, m.title, h('kbd', {}, m.key))));
   try { await loadSettings(); } catch (e) { toast('Server not answering: ' + e.message, 'bad'); }
   on('tab', id => show(id));
   $('#stylechip').onclick = editStyle;

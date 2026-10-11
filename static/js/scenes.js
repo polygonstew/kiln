@@ -258,7 +258,7 @@ function usePreset(k, silent) {
   SC.layers = [];
   for (const [g, p] of PRESETS[k].layers) addGen(g, p);
   if (SC.name === 'scene') SC.name = freeName(k, SC.id);     // only an unnamed scene takes the preset's name, and never a taken one
-  sel = 0; drawAll(); process();
+  sel = 0; drawAll(); process(null, silent);      // the starting preset (silent) is saved only once you change something
 }
 // a readable layer name from a path, a /api/fs/raw?path=… URL or a data URL
 function layerName(d) {

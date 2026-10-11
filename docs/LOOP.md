@@ -263,4 +263,5 @@ override everything; each gets a Help section and a Godot export):**
 - [x] DONE **Menus area** (menus.js + menus_godot.js: title/options/pause, KilnSettings, used by Play; verified title → play → Esc pause → resume in the web build).
 - [ ] NEXT (user asks): **Logic node system** (visual event → action graphs compiled to plain GDScript, editable in the GDScript editor).
 - 2026-10-10 NOTE: the user switched the asset folder to library/games/untitled_demo (20:01). Tests must read the root from library/settings.json, sha1 it before/after, and clean only their own files. A Menus test wrote kiln/menus-game.json there; removed, folder verified back to its state.
+- 2026-10-10: smoke caught /api/fs 500 on a missing folder (fresh asset folder has no concepts/) → empty listing. Scenes' starting preset was saved on mere opening (smoke wrote scene-pallid.json into the user's new folder; removed) → now saved only after a change. Tabs made very small (10px, no key badges; keys in tooltips).
 

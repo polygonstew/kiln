@@ -27,9 +27,9 @@ button, input, select, textarea { font: inherit; color: inherit; }
 #logo .caret { color: var(--faint); font-size: 11px; margin-top: 2px; } #logo:hover .caret, #logo.on .caret { color: var(--ember); }
 #mark { width: 80px; height: 32px; margin-top: 3px; pointer-events: none; }
 #tabs { display: flex; overflow-x: auto; scrollbar-width: none; min-width: 0; }   /* compact; scrolls sideways if there are ever too many */
-#tabs button { background: none; border: 0; border-left: 1px solid var(--line); padding: 0 11px; font: 500 11px var(--cond); letter-spacing: .05em; text-transform: uppercase; color: var(--dim); cursor: pointer; position: relative; display: flex; align-items: center; gap: 8px; }
+#tabs button { background: none; border: 0; border-left: 1px solid var(--line); padding: 0 7px; font: 500 10px var(--cond); letter-spacing: .04em; text-transform: uppercase; color: var(--dim); cursor: pointer; position: relative; display: flex; align-items: center; gap: 8px; }
 #tabs button:last-child { border-right: 1px solid var(--line); }
-#tabs button kbd { font: 9px var(--mono); color: var(--faint); border: 0; padding: 0; letter-spacing: 0; opacity: .7; }
+#tabs button kbd { display: none; }   /* keys are in each tab's tooltip */
 #tabs button { white-space: nowrap; gap: 5px; }
 #tabs button:hover { color: var(--ink); background: var(--p2); }
 #tabs button.on { color: var(--ink); background: var(--bg); }

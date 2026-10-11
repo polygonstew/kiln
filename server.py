@@ -721,6 +721,9 @@ def fs_list(path):
     s = settings()
     root = in_home(s['root'])
     p = in_home(path or root)
+    if not p.exists() and str(p).startswith(str(root)):
+        # a folder this asset folder does not have yet (a fresh one has no concepts/, menus/…): empty, not an error
+        return {'path': str(p), 'root': str(root), 'parent': str(p.parent), 'items': [], 'here': {}}
     if not p.is_dir():
         raise ValueError('not a folder')
     items = []
