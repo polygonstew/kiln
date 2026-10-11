@@ -1,7 +1,7 @@
 // A Flash-style timeline: layers as rows, frames as columns. Each row has keyframes; between two keyframes a row
 // either holds the first value (grey, like held frames) or tweens to the next one (blue, a motion tween) with an
 // ease from -100 (slow start) to +100 (slow finish), as in Flash. Frame labels sit above. Used by the puppet screen:
-// rows are bones (+ the root move), values are angles (or { dx, dy } for the root).
+// rows are bones (+ the root move), values are angles (or { dx, dy } for the root, a head id / mouth letter for _head / _mouth).
 //   motion = { name, n, fps, loop, span, labels: { frame: text }, keys: { rowId: { frame: { v, tween, ease } } } }
 import { h } from './core.js';
 
@@ -22,7 +22,7 @@ export function valueAt(motion, rowId, f) {
   let i = -1; for (let k = 0; k < fs.length; k++) if (fs[k] <= f) i = k;
   if (i < 0) return row[fs[0]].v;                                   // before the first key: the first key's value
   const k0 = row[fs[i]];
-  if (fs[i] === f || !k0.tween) return k0.v;
+  if (fs[i] === f || !k0.tween || typeof k0.v === 'string') return k0.v;      // head views and mouth shapes hold, never tween
   let f1 = fs[i + 1], k1 = row[f1];
   if (k1 == null && motion.loop) { f1 = fs[0] + motion.n; k1 = row[fs[0]]; }   // a loop tweens round to its first key
   if (k1 == null) return k0.v;
@@ -38,7 +38,7 @@ export function setKey(motion, rowId, f, v) {
   const row = (motion.keys[rowId] ||= {}), had = row[f];
   // a new key tweens like the key before it (so a smooth motion stays smooth); the very first one tweens by default
   const prev = Object.keys(row).map(Number).filter(x => x < f).sort((a, b) => b - a)[0];
-  row[f] = { v, tween: had ? had.tween : prev != null ? row[prev].tween : true, ease: had?.ease || 0 };
+  row[f] = { v, tween: typeof v === 'string' ? false : had ? had.tween : prev != null ? row[prev].tween : true, ease: had?.ease || 0 };
 }
 export function clearKey(motion, rowId, f) { if (motion.keys[rowId]) { delete motion.keys[rowId][f]; if (!Object.keys(motion.keys[rowId]).length) delete motion.keys[rowId]; } }
 // the key a frame belongs to (the last one at or before it), for tween / ease settings

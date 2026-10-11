@@ -33,7 +33,7 @@ name="Web"
 platform="Web"
 runnable=true
 export_filter="all_resources"
-include_filter=""
+include_filter="*.json"
 exclude_filter=""
 export_path="../web/index.html"
 

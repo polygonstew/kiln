@@ -5,7 +5,7 @@
 import { newImg, cloneImg, blit, keyBackground, detectGrid, snapGrid, bbox, crop } from './core.js';
 
 // what a piece can be; the order is the order of the label buttons in the kit screen
-export const KINDS = [['head', 'Head'], ['torso', 'Torso'], ['arm', 'Arm (upper, or whole)'], ['forearm', 'Forearm'], ['hand', 'Hand'],
+export const KINDS = [['head', 'Head'], ['head2', 'Extra head (swap)'], ['torso', 'Torso'], ['arm', 'Arm (upper, or whole)'], ['forearm', 'Forearm'], ['hand', 'Hand'],
   ['thigh', 'Leg (upper, or whole)'], ['shin', 'Shin'], ['foot', 'Foot'], ['prop', 'Prop (held)'], ['spare', 'Not used']];
 
 /* ------------------------------------------------------------ finding ---- */
@@ -81,6 +81,7 @@ export function guessKinds(pieces) {
   // heads: compact pieces about head-sized; the first in reading order is used, the others are spares
   const heads = real.filter(p => p !== torso && p.fill >= .35 && p.len / p.thick < 2.2 && p.n >= torso.n * .4 && p.n <= torso.n * 1.4).sort((p, q) => (p.y - q.y) || (p.x - q.x));
   if (heads[0]) heads[0].kind = 'head';
+  for (const p of heads.slice(1)) p.kind = 'head2';      // other views / expressions: heads to swap in (Puppet → Head & mouth)
   // a prop: big and sparse (a pick, a sword on a slant)
   const free = real.filter(p => p !== torso && !heads.includes(p));
   const prop = free.filter(p => p.fill < .3 && p.len > torso.h * .9).sort((p, q) => q.len - p.len)[0];
@@ -203,7 +204,9 @@ export function assemble(pieces, W0 = 0, H0 = 0) {
       im.data.set(q.img.data.subarray(s, s + 4), (Y2 * W + X2) * 4); parts[Y2 * W + X2] = bi;
     }
   }
-  return { im, rig: { w: W, h: H, bones, parts }, size: [fw, fh] };
+  // extra heads: their neck where the drawn head's is (bottom middle, the same small overlap)
+  const heads = K('head2').map(p => ({ im: p.img, ax: Math.round(botX(p.img)), ay: p.img.height - Math.max(1, Math.round(p.img.height * .06)) }));
+  return { im, rig: { w: W, h: H, bones, parts }, size: [fw, fh], heads };
 }
 
 /* ------------------------------------------------------------- reading ---- */

@@ -20,7 +20,7 @@ const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').repl
 const num = v => { const n = Number(v); return !isFinite(n) ? '0.0' : Number.isInteger(n) ? n + '.0' : String(n); };
 
 // ports: [id, type, label, default]  (type exec|num|text|bool|any; data inputs with a default get a field)
-// fields: [id, label, kind, default, options]  (kind num|text|check|sel|var|zone|actor|sound|key)
+// fields: [id, label, kind, default, options]  (kind num|text|check|sel|var|zone|actor|sound|voice|key)
 export const NODES = {
   /* ------------------------------------------------------------------ events ---- */
   start: { cat: 'event', label: 'When the level starts', hint: 'Runs once, when the level (with the player and HUD) is ready',
@@ -59,6 +59,10 @@ export const NODES = {
   /* ----------------------------------------------------------------- actions ---- */
   say: { cat: 'act', label: 'Say', hint: 'A line in the HUD dialogue box (printed if there is no HUD)', ins: [['who', 'text', 'who', ''], ['line', 'text', 'line', 'Hello!']],
     run: c => [`_say(${c.in('who')}, ${c.in('line')})`], use: ['_hud', '_say'] },
+  voice: { cat: 'act', label: 'Speak a voice line', hint: 'An actor says a voice line (Puppet → Voice line…), mouth in time; the words (if any) show in the HUD',
+    fields: [['who', 'Who', 'text', 'player'], ['line', 'Line', 'voice', '']], ins: [['words', 'text', 'words', '']],
+    run: c => c.f.line ? [`_voice(${JSON.stringify(c.f.who)}, ${JSON.stringify(c.res(c.f.line))})`, ...(c.wired('words') || c.f.words ? [`_say(${JSON.stringify(c.f.who === 'player' ? '' : c.f.who)}, ${c.in('words')})`] : [])] : ['pass  # pick a voice line'],
+    use: ['_voice', '_sound', '_hud', '_say'] },
   prompt: { cat: 'act', label: 'Show a button prompt', ins: [['key', 'text', 'key', 'E'], ['what', 'text', 'does', 'Open']],
     run: c => [`if _hud(): _hud().prompt(${c.in('key')}, ${c.in('what')})`], use: ['_hud'] },
   unprompt: { cat: 'act', label: 'Hide the prompt', run: () => ['if _hud(): _hud().hide_prompt()'], use: ['_hud'] },
@@ -131,6 +135,16 @@ export const fits = (a, b) => a === 'exec' || b === 'exec' ? a === b : a === b |
 export const HELPERS = {
   _player: `func _player() -> Node2D:   # the player (an actor whose Workshop role is Player), or null
 \treturn get_tree().get_first_node_in_group("player")`,
+  _voice: `func _voice(who: String, lipsync_json: String) -> void:   # an actor says a Kiln voice line, its mouth in time
+\tfor a in get_tree().get_nodes_in_group("kiln_actors"):
+\t\tif (who == "player" and a.is_in_group("player")) or a.name.begins_with(who):
+\t\t\tvar talker := a.get_node_or_null("LipSync")
+\t\t\tif talker:
+\t\t\t\ttalker.say(lipsync_json)
+\t\t\t\treturn
+\tvar d = JSON.parse_string(FileAccess.get_file_as_string(lipsync_json))   # nobody to move: just the sound
+\tif d is Dictionary:
+\t\t_sound(lipsync_json.get_base_dir().path_join(d.get("sound", "")))`,
   _hud: `func _hud() -> Node:   # the Kiln HUD, or null
 \treturn get_tree().get_first_node_in_group("kiln_hud")`,
   _say: `func _say(who: String, line: String) -> void:   # the HUD dialogue box, or the output if there is no HUD

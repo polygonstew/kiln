@@ -6,7 +6,7 @@
 //   c.in(port)     the expression for a data input: the wired node's value, or the field as a literal
 //   c.flow(port)   the statements of the chain leaving an exec output (same indent)
 //   c.block(port)  the same, one indent in ("pass" if nothing is wired)
-//   c.has(port)    is anything wired to that exec output?
+//   c.has(port)    is anything wired to that exec output?   c.wired(port)  …to that data input?
 //   c.member(k, type, init)  a script variable for this node (flags, timestamps); returns its name
 //   c.id(k)        a local name for this node (loop counters)
 //   c.varType(v)   a graph variable's type;  c.res(path)  an asset path as res://
@@ -42,7 +42,7 @@ export function compile(g, { name = 'logic', resPrefix = 'res://' } = {}) {
     const N = NODES[n.type], P = portsOf(n.type), f = fieldsOf(n);
     for (const u of N.use || []) uses.add(u);
     return {
-      f, has: port => !!outOf(n.id, port),
+      f, has: port => !!outOf(n.id, port), wired: port => !!into(n.id, port),
       id: k => `${k}_${short(n.id)}`,
       varType: v => VAR_TYPES[vars.find(x => x.name === v)?.type] || 'float',
       res: p => resPrefix + p,

@@ -80,6 +80,17 @@ weather layers `{kind: weather, weather: rain|snow|embers|mist, color, amount, s
 `manifest.json` anims may carry `w` (2-wide animations), plus `hitbox {x, y, w, h}`. `<actor>.tscn`: CharacterBody2D (origin at the
 feet) with `Sprite` (AnimatedSprite2D, hit-flash ShaderMaterial) and `Body` (RectangleShape2D); script `sprites/_kiln/juice.gd`.
 
+## Talking actors (Puppet: Head & mouth, Voice line…)
+- `sprites/<actor>/voice/<line>.wav|ogg|mp3` + `<line>.lipsync.json`: `{ "sound": "<line>.wav", "duration": 3.2, "cues": [[0, "X"], [0.21, "D"], …] }`,
+  cues = seconds and mouth shape (X rest, A M/B/P, B K/S/T/EE, C EH/AE, D AA, E AO/ER, F OO/W, G F/V, H L), Rhubarb-style.
+- An animation `mouths` (9 frames in that order) makes the actor's scene get a `LipSync` node running `_kiln/lipsync.gd`:
+  `$LipSync.say("res://…/voice/<line>.lipsync.json")` plays the sound and sets the mouth frame from the cues.
+- Rig (Kiln project only): `rig.heads` [{ id, name, src, ax, ay, mouth }], `rig.mouths` { w, shapes: { X…H: png } }, `rig.mouthAt`;
+  motions key `_head` (head id) and `_mouth` (shape) rows; `motion.voice` { file, cues, duration }.
+
+## Logic graphs
+- `kiln/graph-<name>.json` (the graph: nodes, wires, vars, view) → `logic/<name>.gd` on Save (extends Node; ▶ Play runs every one).
+
 ## hud/<hud>/ for Godot
 
 `<hud>.tscn`: CanvasLayer (script `hud.gd`, `items_json`) → `Screen` (Control, view size) → one node per widget: bar = TextureProgressBar

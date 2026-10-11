@@ -4,7 +4,7 @@
 import { api, toast, newImg, toDataURL, blit, bbox, hex } from './core.js';
 import { loadOwners, claim } from './owners.js';
 import { facesFiles } from './workshop.js';
-import { actorScene, projectileScene, boxesOf, brainOf, JUICE_GD, PROJECTILE_GD, FLASH_SHADER } from './actor_godot.js';
+import { actorScene, projectileScene, boxesOf, brainOf, talks, JUICE_GD, PROJECTILE_GD, FLASH_SHADER, LIPSYNC_GD } from './actor_godot.js';
 import { characterDoc } from './actor_tools.js';
 import { BRAIN_GD } from './brains.js';
 import { wav, synth } from './sfx.js';
@@ -57,7 +57,8 @@ export async function saveActor(a, serialize, renamed) {
     if (Object.keys(boxesOf(a)).length) man.boxes = boxesOf(a);        // other engines: same boxes, centre-based, feet at 0
     files.find(f => f.name === 'manifest.json').text = JSON.stringify(man, null, 2) + '\n';
     files.push({ name: `${a.name}.tscn`, text: actorScene(a, res, man.hitbox) });
-    await saveFiles('sprites/_kiln', [{ name: 'juice.gd', text: JUICE_GD }, { name: 'hit_flash.gdshader', text: FLASH_SHADER }, { name: 'projectile.gd', text: PROJECTILE_GD }]).catch(() => {});
+    await saveFiles('sprites/_kiln', [{ name: 'juice.gd', text: JUICE_GD }, { name: 'hit_flash.gdshader', text: FLASH_SHADER }, { name: 'projectile.gd', text: PROJECTILE_GD },
+      ...(talks(a) ? [{ name: 'lipsync.gd', text: LIPSYNC_GD }] : [])]).catch(() => {});
     for (const pj of a.projectiles || []) files.push({ name: `projectile_${pj.name}.tscn`, text: projectileScene(a, res, pj) });
     for (const [ev, p] of Object.entries(a.sounds || {})) files.push({ name: `sfx_${ev}.wav`, b64: wav(synth(p)) });
     // effects: the hit effect and each projectile's impact, as one-shot scenes next to the actor

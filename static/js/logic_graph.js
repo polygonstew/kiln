@@ -14,7 +14,7 @@ const VAR_TYPES = [['int', 'whole number'], ['float', 'number'], ['text', 'text'
 const KW = new Set('and or not if else elif for while func var const return true false null self in is as match pass break continue class extends signal await'.split(' '));
 
 export function graphArea({ setMode, openScript }) {
-  let cur = null, written = '', graphs = [], L = { zones: [], actors: [], sounds: [] }, resPrefix = 'res://', saveT = 0, codeT = 0;
+  let cur = null, written = '', graphs = [], L = { zones: [], actors: [], sounds: [], voices: [] }, resPrefix = 'res://', saveT = 0, codeT = 0;
   const gv = graphView({ onChange: changed, lists: () => ({ ...L, vars: cur?.g.vars || [] }) });
   const V = { name: h('span', { class: 'mono', style: { fontSize: '12px' } }), state: h('span', { class: 'mono dim', style: { fontSize: '11px' } }) };
   V.code = h('pre', { class: 'gd-hl lg-code' }); V.probs = h('div', { class: 'lg-probs' });
@@ -55,7 +55,10 @@ export function graphArea({ setMode, openScript }) {
       .filter(i => pick(i.name)).forEach(i => sounds.push([dir + '/' + i.name, label(i.name)]));
     await ls('sfx', n => /\.(wav|ogg|mp3)$/i.test(n), n => n.replace(/\.\w+$/, ''));
     for (const [n] of actors) await ls('sprites/' + n, x => /^sfx_.*\.wav$/.test(x), x => `${n}: ${x.slice(4, -4)}`);
-    L = { zones: [...zones], actors: actors.map(([n, res]) => [res.replace(/^res:\/\//, ''), n]), sounds };
+    const voices = [];      // voice lines made in Puppet: sprites/<actor>/voice/<line>.lipsync.json
+    for (const [n] of actors) ((await api('/api/fs?path=' + encodeURIComponent(`${FS.root}/sprites/${n}/voice`)).catch(() => ({ items: [] }))).items || [])
+      .filter(i => i.name.endsWith('.lipsync.json')).forEach(i => voices.push([`sprites/${n}/voice/${i.name}`, `${n}: ${i.name.replace('.lipsync.json', '')}`]));
+    L = { zones: [...zones], actors: actors.map(([n, res]) => [res.replace(/^res:\/\//, ''), n]), sounds, voices };
     gv.refresh();
   }
   async function create(tpl) {

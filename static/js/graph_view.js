@@ -67,8 +67,8 @@ export function graphView({ onChange, lists }) {
     else if (kind === 'num') c = h('input', { type: 'number', value: v, step: 'any', onchange: e => set(+e.target.value) });
     else if (kind === 'text' || kind === 'zone') c = h('input', { type: 'text', value: v ?? '', list: kind === 'zone' ? 'gv-zones' : null, placeholder: kind === 'zone' ? 'zone name' : '', onchange: e => set(e.target.value) });
     else {
-      const L = lists(), options = kind === 'sel' ? opts : kind === 'key' ? KEY_OPTIONS : kind === 'var' ? L.vars.map(x => [x.name, x.name]) : kind === 'actor' ? L.actors : kind === 'sound' ? L.sounds : [];
-      c = h('select', { onchange: e => set(e.target.value) }, ...(['var', 'actor', 'sound'].includes(kind) ? [h('option', { value: '' }, '— pick —')] : []),
+      const L = lists(), options = kind === 'sel' ? opts : kind === 'key' ? KEY_OPTIONS : kind === 'var' ? L.vars.map(x => [x.name, x.name]) : kind === 'actor' ? L.actors : kind === 'sound' ? L.sounds : kind === 'voice' ? L.voices : [];
+      c = h('select', { onchange: e => set(e.target.value) }, ...(['var', 'actor', 'sound', 'voice'].includes(kind) ? [h('option', { value: '' }, '— pick —')] : []),
         ...options.map(([k, l]) => h('option', { value: k, selected: k === v }, l)));
       if (v && !options.some(o => o[0] === v)) c.append(h('option', { value: v, selected: true }, v + ' (missing)'));
     }

@@ -3,19 +3,24 @@
 // keyframes on a Flash-style timeline with tweens and easing. Presets (walk, run, attack…) fill a motion in one click.
 // Bake renders every frame into an ordinary Animate animation; the rig is kept on the actor (a.rig) for later.
 // An image dropped in (or Import image…) is rigged too: one drawing as it is, a sheet of parts via the kit screen.
-import { h, toast, toCanvas, toDataURL, imgData, checker } from './core.js';
+import { h, toast, toCanvas, toDataURL, imgData, checker, rawURL } from './core.js';
 import { autoRig, skin, prepare, render, transforms, apply, motion as presetMotion, PRESETS, partsToB64, partsFromB64 } from './rig.js';
 import { drawTimeline, poseAt, valueAt, setKey, clearKey, keyFor, insertFrame, removeFrame } from './timeline.js';
 import { exportSkeleton } from './rig_godot.js';
 import { readImage, assemble, standIn, darkArt } from './rig_import.js';
 import { openKit } from './rig_kit.js';
+import { buildFace, SHAPES } from './face.js';
+import { decode, analyse, shapeAt } from './lipsync.js';
+import { saveFiles, S as FS } from './files.js';
+import { faceCard } from './puppet_face.js';
 
 const HUES = [12, 200, 48, 280, 120, 330, 170, 30, 240, 90, 300, 60, 150, 0, 220];
 const boneColour = (i, a = 1) => `hsla(${HUES[i % HUES.length]}, 75%, 58%, ${a})`;
 
 export async function openPuppet(host, api) {
   const a = api.actor();
-  let R = a.rig || null, im = null, parts = null, P = null, bg = ['#2a2a28', '#313130'];
+  let R = a.rig || null, im = null, parts = null, P = null, bg = ['#2a2a28', '#313130'], face = null;
+  const FC = { sel: 'drawn' };      // the face card's state (which head is picked)
   let mode = R ? 'pose' : 'rig', tool = 'move', sel = 0, mi = 0, f = 0, playing = null, brush = 2, showParts = true, onion = true, addPivot = null;
   const undoS = [], redoS = [];
   const ov = h('div', { class: 'workshop puppet' });
@@ -30,6 +35,7 @@ export async function openPuppet(host, api) {
     if (!R.motions.length) R.motions.push(blankMotion('pose'));
     P = prepare(im, R, parts, R.fill);
     bg = darkArt(im) ? ['#5c5c66', '#66666f'] : ['#2a2a28', '#313130'];
+    face = await buildFace(R);
   }
   const blankMotion = name => ({ name, n: 8, fps: 10, loop: true, span: 1, labels: {}, keys: {} });
   const M = () => R.motions[mi];
@@ -55,6 +61,7 @@ export async function openPuppet(host, api) {
     if (r.whole) return useFigure(r.whole);
     openKit(ov, r, [a.w, a.h], { done: () => useKit(r.pieces), whole: useFigure });
   }
+  const pickURL = (cb, accept = 'image/*') => { const i = h('input', { type: 'file', accept, onchange: () => { const fl = i.files[0]; if (!fl) return; const r = new FileReader(); r.onload = () => cb(r.result, fl); r.readAsDataURL(fl); } }); i.click(); };
   const pickImage = () => { const i = h('input', { type: 'file', accept: 'image/*', onchange: () => readFile(i.files[0]) }); i.click(); };
   const readFile = f => { if (!f?.type.startsWith('image/')) return toast('Drop an image (PNG, JPG, WebP, GIF)', 'bad'); const r = new FileReader(); r.onload = () => importImage(r.result); r.readAsDataURL(f); };
   // the actor's frames must hold the figure: they grow (nothing is lost), after asking unless the actor is still empty
@@ -76,7 +83,8 @@ export async function openPuppet(host, api) {
     if (first.err || !roomFor(first.size[0] + 2, first.size[1])) return first.err && toast(first.err, 'bad');
     const k = assemble(pieces, a.w, a.h);
     if (api.isBlank()) api.setFrame(k.im);
-    R = { w: k.im.width, h: k.im.height, bones: k.rig.bones, src: toDataURL(k.im), parts: partsToB64(k.rig.parts), facing: 1, fill: true, painted: true, motions: R?.motions || [] };
+    R = { w: k.im.width, h: k.im.height, bones: k.rig.bones, src: toDataURL(k.im), parts: partsToB64(k.rig.parts), facing: 1, fill: true, painted: true, motions: R?.motions || [],
+      heads: k.heads.map((hd, i) => ({ id: 'kit' + i, name: 'head ' + (i + 2), src: toDataURL(hd.im), ax: hd.ax, ay: hd.ay, mouth: null })) };
     await load(); sel = Math.max(0, R.bones.findIndex(b => b.name === 'torso')); mode = 'rig'; tool = 'move'; save(); drawAll();
     toast(`Assembled ${R.bones.length} bones from the parts. Check the joints (drag the dots), then Pose or Make a motion`, 'ok');
   }
@@ -103,8 +111,8 @@ export async function openPuppet(host, api) {
       T = transforms(R, {});
     } else {
       const pose = poseAt(M(), f);
-      if (onion && M().n > 1) { const pv = render(P, R, poseAt(M(), (f - 1 + M().n) % M().n), W, H); x.globalAlpha = .28; x.drawImage(toCanvas(pv), 0, 0, W * Z, H * Z); x.globalAlpha = 1; }
-      x.drawImage(toCanvas(render(P, R, pose, W, H)), 0, 0, W * Z, H * Z);
+      if (onion && M().n > 1) { const pv = render(P, R, poseAt(M(), (f - 1 + M().n) % M().n), W, H, face); x.globalAlpha = .28; x.drawImage(toCanvas(pv), 0, 0, W * Z, H * Z); x.globalAlpha = 1; }
+      x.drawImage(toCanvas(render(P, R, pose, W, H, face)), 0, 0, W * Z, H * Z);
       T = transforms(R, pose);
     }
     // the skeleton: each bone from its joint to its tip; the selected one bright
@@ -230,6 +238,9 @@ export async function openPuppet(host, api) {
       h('div', { class: 'wk-card' }, h('h3', {}, 'Motions', h('span', { class: 'grow' }), h('button', { class: 'btn sm ghost', onclick: () => { const n = prompt('Name for the new motion', 'walk'); if (!n) return; push(); R.motions.push(blankMotion(n.replace(/\W+/g, '_'))); mi = R.motions.length - 1; f = 0; save(); drawAll(); } }, '+ New')),
         h('div', { class: 'pp-motions' }, ...R.motions.map((q, i) => h('div', { class: 'pp-motion' + (i === mi ? ' on' : ''), onclick: () => { mi = i; f = 0; mode = 'pose'; drawAll(); }, ondblclick: () => { const n = prompt('Motion name', q.name); if (n) { q.name = n.replace(/\W+/g, '_'); save(); drawAll(); } } }, q.name, h('small', {}, `${q.n}f`)))),
         h('div', { class: 'pp-row' }, h('span', { class: 'lbl' }, 'Facing'), h('div', { class: 'seg' }, ...[[1, 'Right'], [-1, 'Left']].map(([v, l]) => h('button', { class: R.facing === v ? 'on' : '', onclick: () => { R.facing = v; save(); drawRight(); } }, l))))),
+      R.bones.some(b => b.name === 'head') ? faceCard(Object.assign(FC, { R, im, parts, motion: () => M(), frame: () => f, push, save, redraw: drawAll, pickFile: pickURL,
+        key: (row, v) => { mode = 'pose'; setKey(M(), row, f, v); save(); drawAll(); }, refaced: async () => { face = await buildFace(R); drawCanvas(); drawTl(); },
+        voice: () => pickURL(voiceLine, 'audio/*'), bakeMouths })) : '',
       h('div', { class: 'wk-card' }, h('h3', {}, 'Make a motion', h('small', {}, 'from the rig, no AI')),
         h('div', { class: 'pp-presets' }, ...Object.keys(PRESETS).map(k => h('button', { class: 'btn sm', title: `${PRESETS[k].n} frames at ${PRESETS[k].fps} fps${PRESETS[k].span === 2 ? ', 2 boxes wide' : ''}`, onclick: () => usePreset(k) }, k))),
         h('p', { class: 'note' }, 'Uses the bone names of the auto rig (hip, torso, head, arm_front…). Each frame becomes a keyframe you can adjust.')),
@@ -252,13 +263,15 @@ export async function openPuppet(host, api) {
   }
   function bake(m, quiet) {
     const W = im.width * (m.span || 1), H = im.height;
-    const frames = Array.from({ length: m.n }, (_, t) => render(P, R, poseAt(m, t), W, H));
+    const frames = Array.from({ length: m.n }, (_, t) => render(P, R, poseAt(m, t), W, H, face));
     api.addAnim(m.name, frames, m.fps, m.loop, m.span || 1, quiet);
     if (!quiet) toast(`Baked "${m.name}": ${m.n} frames into Animate`, 'ok');
   }
 
   /* -------------------------------------------------------- timeline ---- */
-  const rows = () => [{ id: '_root', name: '⊕ body move', depth: 0 }, ...treeOrder().map(b => ({ id: String(b.id), name: b.name, depth: depthOf(b) + 1 }))];
+  const rows = () => [{ id: '_root', name: '⊕ body move', depth: 0 }, ...(R.heads?.length ? [{ id: '_head', name: '◐ head view', depth: 0 }] : []),
+    ...(R.mouths ? [{ id: '_mouth', name: '◡ mouth', depth: 0 }] : []), ...treeOrder().map(b => ({ id: String(b.id), name: b.name, depth: depthOf(b) + 1 }))];
+  const rest = row => row === '_root' ? { dx: 0, dy: 0 } : row === '_head' ? 'drawn' : row === '_mouth' ? 'X' : 0;
   const selRow = () => R.bones[sel] ? String(R.bones[sel].id) : '_root';
   function drawTl() {
     if (!R) { tlEl.replaceChildren(); tlBar.replaceChildren(); return; }
@@ -267,7 +280,7 @@ export async function openPuppet(host, api) {
       seek: t => { f = t; mode = 'pose'; drawCanvas(); drawTl(); },
       select: (id, t) => { const i = R.bones.findIndex(b => String(b.id) === id); if (i >= 0) sel = i; f = t; mode = 'pose'; drawAll(); },
       move: (id, from, to) => { if (m.keys[id]?.[to]) return toast('There is a keyframe there already'); push(); m.keys[id][to] = m.keys[id][from]; delete m.keys[id][from]; f = to; save(); drawAll(); },
-      toggle: (id, t) => { push(); if (m.keys[id]?.[t]) clearKey(m, id, t); else setKey(m, id, t, valueAt(m, id, t) ?? (id === '_root' ? { dx: 0, dy: 0 } : 0)); save(); drawAll(); },
+      toggle: (id, t) => { push(); if (m.keys[id]?.[t]) clearKey(m, id, t); else setKey(m, id, t, valueAt(m, id, t) ?? rest(id)); save(); drawAll(); },
     });
     const num = (v, mn, mx, fn, w = 46) => h('input', { type: 'number', value: v, min: mn, max: mx, style: { width: w + 'px' }, onchange: e => fn(Math.max(mn, Math.min(mx, +e.target.value || mn))) });
     tlBar.replaceChildren(
@@ -295,17 +308,55 @@ export async function openPuppet(host, api) {
   let easeV;
   function keyOp(k) {
     const m = M(), row = selRow(); push();
-    if (k === 'key') setKey(m, row, f, valueAt(m, row, f) ?? (row === '_root' ? { dx: 0, dy: 0 } : 0));
-    if (k === 'pose') for (const r of rows()) setKey(m, r.id, f, valueAt(m, r.id, f) ?? (r.id === '_root' ? { dx: 0, dy: 0 } : 0));
-    if (k === 'blank') setKey(m, row, f, row === '_root' ? { dx: 0, dy: 0 } : 0);
+    if (k === 'key') setKey(m, row, f, valueAt(m, row, f) ?? rest(row));
+    if (k === 'pose') for (const r of rows()) setKey(m, r.id, f, valueAt(m, r.id, f) ?? rest(r.id));
+    if (k === 'blank') setKey(m, row, f, rest(row));
     if (k === 'clear') clearKey(m, row, f);
     save(); drawAll();
   }
   const step = d => { f = (f + d + M().n) % M().n; mode = 'pose'; drawCanvas(); drawTl(); };
+  // a motion with a voice line plays its sound too, and follows the sound's clock so the mouth stays in time
+  let audio = null;
   function togglePlay() {
-    if (playing) { clearInterval(playing); playing = null; drawTl(); return; }
-    mode = 'pose'; playing = setInterval(() => { const m = M(); f = m.loop ? (f + 1) % m.n : Math.min(m.n - 1, f + 1); drawCanvas(); tlEl.querySelectorAll('.tl-n').forEach((n, i) => n.classList.toggle('ph', i === f)); if (!m.loop && f === m.n - 1) togglePlay(); }, 1000 / M().fps);
+    if (playing) { clearInterval(playing); playing = null; audio?.pause(); audio = null; drawTl(); return; }
+    mode = 'pose'; const m0 = M();
+    if (m0.voice) { audio = new Audio(rawURL(`${FS.root}/sprites/${a.name}/${m0.voice.file}`)); audio.currentTime = f / m0.fps; audio.play().catch(() => {}); }
+    playing = setInterval(() => {
+      const m = M();
+      if (audio) f = Math.min(m.n - 1, Math.floor(audio.currentTime * m.fps)); else f = m.loop ? (f + 1) % m.n : Math.min(m.n - 1, f + 1);
+      drawCanvas(); tlEl.querySelectorAll('.tl-n').forEach((n, i) => n.classList.toggle('ph', i === f));
+      if (audio ? audio.ended : !m.loop && f === m.n - 1) togglePlay();
+    }, 1000 / m0.fps);
     drawTl();
+  }
+
+  /* ------------------------------------------------ a voice line (lip sync) ---- */
+  // the sound goes next to the actor (sprites/<actor>/voice/) with its mouth timings (lipsync.js); a motion
+  // "say_<name>" gets a mouth key wherever the shape changes and a small head nod on the loud parts
+  async function voiceLine(url, file) {
+    if (!R.mouths || !(R.mouthAt || (R.heads || []).some(x => x.mouth))) return toast('Place the mouth first: click the face in Head & mouth', 'bad');
+    const sound = await decode(await (await fetch(url)).arrayBuffer()).catch(() => null);
+    if (!sound) return toast('Could not read that sound', 'bad');
+    const { cues, level, step } = analyse(sound), name = (file.name.replace(/\.\w+$/, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'line').slice(0, 32);
+    const ext = (file.name.match(/\.(wav|ogg|mp3)$/i)?.[1] || 'wav').toLowerCase();
+    await saveFiles(`sprites/${a.name}/voice`, [{ name: `${name}.${ext}`, b64: url }, { name: `${name}.lipsync.json`, text: JSON.stringify({ sound: `${name}.${ext}`, duration: +sound.duration.toFixed(3), cues }) + '\n' }]);
+    push();
+    const fps = 15, n = Math.max(1, Math.ceil(sound.duration * fps)), mname = 'say_' + name;
+    let m = R.motions.find(q => q.name === mname); if (!m) { m = blankMotion(mname); R.motions.push(m); }
+    Object.assign(m, { n, fps, loop: false, span: 1, voice: { file: `voice/${name}.${ext}`, cues: `voice/${name}.lipsync.json`, duration: sound.duration } });
+    m.keys._mouth = {}; let last = null;
+    for (let t = 0; t < n; t++) { const sh = shapeAt(cues, t / fps); if (sh !== last) { m.keys._mouth[t] = { v: sh, tween: false, ease: 0 }; last = sh; } }
+    const head = R.bones.find(b => b.name === 'head');
+    if (head) { m.keys[head.id] = {}; for (let t = 0; t < n; t += 4) { const lv = level[Math.min(level.length - 1, Math.round(t / fps / step))] || 0; m.keys[head.id][t] = { v: +(R.facing * (lv - .4) * 5).toFixed(1), tween: true, ease: 0 }; } }
+    mi = R.motions.indexOf(m); f = 0; mode = 'pose'; save(); drawAll();
+    toast(`"${mname}": ${cues.length} mouth changes in ${sound.duration.toFixed(1)} s, saved with the actor. Space plays it with the sound`, 'ok');
+  }
+  // the mouth set for lip sync in Godot: the rest pose once per mouth shape (an animation "mouths": X A B … H)
+  function bakeMouths() {
+    if (!R.mouths) return toast('Place the mouth first: click the face in Head & mouth', 'bad');
+    const frames = SHAPES.map(([k]) => render(P, R, { _head: FC.sel || 'drawn', _mouth: k }, im.width, im.height, face));
+    api.addAnim('mouths', frames, 1, false, 1);
+    toast('Baked "mouths": one frame per mouth shape. Saved actors with it talk in Godot (lipsync.gd)', 'ok');
   }
 
   /* ---------------------------------------------------------- keys & frame ---- */

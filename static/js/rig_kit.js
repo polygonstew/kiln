@@ -5,7 +5,7 @@ import { h, toCanvas, checker, bbox, crop } from './core.js';
 import { KINDS, assemble, darkArt } from './rig_import.js';
 import { prepare, render, motion } from './rig.js';
 
-const HUE = { head: 48, torso: 12, arm: 200, forearm: 175, hand: 140, thigh: 275, shin: 305, foot: 335, prop: 28 };
+const HUE = { head: 48, head2: 62, torso: 12, arm: 200, forearm: 175, hand: 140, thigh: 275, shin: 305, foot: 335, prop: 28 };
 const colour = (k, a = 1) => HUE[k] == null ? `rgba(150,150,150,${a * .55})` : `hsla(${HUE[k]}, 80%, 60%, ${a})`;
 
 // kit = { native, pieces } from readImage; frame = [w, h] the actor's frame; done({ im, rig }) or whole(image)
@@ -23,7 +23,7 @@ export function openKit(host, kit, frame, { done, whole }) {
       h('button', { class: 'btn sm go', title: 'Rig the assembled figure: every piece becomes its bone', onclick: () => { if (!built || built.err) return; close(); done(built); } }, 'Use these parts')),
     h('div', { class: 'kit-body' }, h('div', { class: 'pp-stage' }, cv),
       h('div', { class: 'pp-side' },
-        h('div', { class: 'wk-card' }, h('h3', {}, 'This piece is…'), labels, h('p', { class: 'note' }, 'Click a piece on the sheet, then its label (keys 1–0). Pairs go back/front from left to right; one piece of a pair is used for both sides. A whole arm or leg is cut at the elbow or knee.')),
+        h('div', { class: 'wk-card' }, h('h3', {}, 'This piece is…'), labels, h('p', { class: 'note' }, 'Click a piece on the sheet, then its label (keys 1–0). Extra heads become heads to swap in (Puppet → Head & mouth). Pairs go back/front from left to right; one piece of a pair is used for both sides. A whole arm or leg is cut at the elbow or knee.')),
         h('div', { class: 'wk-card' }, h('h3', {}, 'Assembled'), h('div', { class: 'kit-pv' }, pv), note))));
   host.append(ov);
 

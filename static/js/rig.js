@@ -3,6 +3,7 @@
 // drawing belongs to one bone ("parts"); pixels a limb covered on its parent are filled in from the parent's colours so
 // moving the limb leaves no hole. Poses are bone angles (degrees, + = clockwise on screen) plus a root move (dx, dy).
 //   rig = { w, h, src (data URL), parts (base64, one byte per pixel: bone index + 1), bones: [{ id, name, parent, x, y, tx, ty, z }] }
+//   (+ heads, mouths, mouthAt for swapped heads and talking: face.js)
 
 /* ---------------------------------------------------------------- maths ---- */
 const mul = (A, B) => [A[0] * B[0] + A[2] * B[1], A[1] * B[0] + A[3] * B[1], A[0] * B[2] + A[2] * B[3], A[1] * B[2] + A[3] * B[3], A[0] * B[4] + A[2] * B[5] + A[4], A[1] * B[4] + A[3] * B[5] + A[5]];
@@ -118,20 +119,46 @@ export function prepare(im, rig, parts, fillBehind = true) {
   });
   return { w, h, px, up, uw, parts, under, underC };
 }
+// any picture (a swapped head, a mouth) as an EPX ×8 copy, for drawOver()
+export function prepImage(im) {
+  let up = new Uint32Array(im.data.buffer.slice(0)), uw = im.width, uh = im.height;
+  for (let k = 0; k < 3; k++) { up = scale2x(up, uw, uh); uw *= 2; uh *= 2; }
+  return { w: im.width, h: im.height, up, uw };
+}
+// draw a prepared picture into a frame through M (picture coordinates → drawing coordinates), the drawing at (ox, oy)
+function drawOver(o32, W, H, ox, oy, Q, M) {
+  const I = inv(M), cs = [[0, 0], [Q.w, 0], [0, Q.h], [Q.w, Q.h]].map(([x, y]) => apply(M, x, y));
+  const x0 = Math.max(0, Math.floor(Math.min(...cs.map(c => c[0])) + ox) - 1), x1 = Math.min(W, Math.ceil(Math.max(...cs.map(c => c[0])) + ox) + 1);
+  const y0 = Math.max(0, Math.floor(Math.min(...cs.map(c => c[1])) + oy) - 1), y1 = Math.min(H, Math.ceil(Math.max(...cs.map(c => c[1])) + oy) + 1);
+  for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+    const [sx, sy] = apply(I, x - ox + .5, y - oy + .5);
+    if (sx < 0 || sy < 0 || sx >= Q.w || sy >= Q.h) continue;
+    const c = Q.up[Math.floor(sy * 8) * Q.uw + Math.floor(sx * 8)];
+    if (c >>> 24) o32[y * W + x] = c;
+  }
+}
+const shift = (dx, dy) => [1, 0, 0, 1, dx, dy];
 // one posed frame: bones back to front, each pixel pulled from where it came from. W×H may be wider than the drawing
 // (a 2-wide frame for a lunge or a fall): the drawing sits centred, feet on the bottom row
-export function render(P, rig, pose, W = P.w, H = P.h) {
+// face (face.js buildFace): pose._head swaps the head bone's pixels for another head, pose._mouth draws a mouth on it
+export function render(P, rig, pose, W = P.w, H = P.h, face = null) {
   const out = new ImageData(W, H), o32 = new Uint32Array(out.data.buffer), T = transforms(rig, pose), ox = Math.floor((W - P.w) / 2), oy = H - P.h;
   const order = rig.bones.map((b, i) => [b, i]).sort((a, c) => a[0].z - c[0].z);
   for (const [b, i] of order) {
-    const M = T[b.id], I = inv(M), id = i + 1;
-    for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const M = T[b.id], I = inv(M), id = i + 1, isHead = face && b.name === 'head';
+    const swap = isHead && pose._head && pose._head !== 'drawn' ? face.heads[pose._head] : null;
+    if (swap) drawOver(o32, W, H, ox, oy, swap.Q, mul(M, shift(b.x - swap.ax, b.y - swap.ay)));
+    else for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const [sx, sy] = apply(I, x - ox + .5, y - oy + .5), xi = Math.floor(sx), yi = Math.floor(sy);
       if (xi < 0 || yi < 0 || xi >= P.w || yi >= P.h) continue;
       const k = yi * P.w + xi;
       if (P.parts[k] === id) { const c = P.up[Math.min(P.uw * 8 * P.h - 1, Math.floor(sy * 8) * P.uw + Math.floor(sx * 8))]; if (c >>> 24) o32[y * W + x] = c; }
       else if (P.under[k] === id && !o32[y * W + x]) o32[y * W + x] = P.underC[k];
     }
+    // the mouth sits on whichever head shows, at that head's mouth spot, and turns with it
+    const Q = isHead && pose._mouth && face.mouths[pose._mouth];
+    const mp = Q && (swap ? swap.mouth && [b.x - swap.ax + swap.mouth[0], b.y - swap.ay + swap.mouth[1]] : face.mouthAt);
+    if (mp) drawOver(o32, W, H, ox, oy, Q, mul(M, shift(Math.round(mp[0] - Q.w / 2), Math.round(mp[1] - Q.h / 2))));
   }
   return out;
 }

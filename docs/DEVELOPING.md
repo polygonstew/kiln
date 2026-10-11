@@ -30,7 +30,7 @@ Rules for keeping Kiln readable are in CLAUDE.md ("Stay understandable"). Rough 
 - **Areas:** files, forge, animate (+ actor_save, workshop, motion, sheets, slicer, player), scenes (+ procgen), levels, hud, stage (playtest room: playbuild.js + play.py), concepts
 - **Godot writers:** actor_godot.js (actor scene + juice.gd/projectile.gd), hud_godot.js, the export parts of scenes.js / levels.js
 - **Server:** server.py (stdlib): files, projects, generation queue, cloud budget, Godot plugin endpoints; checks.py: GDScript list/check, Doctor, snapshots
-- **Actor extras:** workshop.js, actor_tools.js (CHARACTER.md, game-size copy), brains.js, sfx.js, vfx.js; Puppet: puppet.js, rig.js, timeline.js, rig_godot.js, rig_import.js (picture → figure or parts kit → rig), rig_kit.js (kit screen); **Level extras:** tilekinds.js, zones.js, autotile.js
+- **Actor extras:** workshop.js, actor_tools.js (CHARACTER.md, game-size copy), brains.js, sfx.js, vfx.js; Puppet: puppet.js, rig.js, timeline.js, rig_godot.js, rig_import.js (picture → figure or parts kit → rig), rig_kit.js (kit screen), face.js (heads + pixel mouths), puppet_face.js (Head & mouth card), lipsync.js (voice line → mouth cues); **Level extras:** tilekinds.js, zones.js, autotile.js
 
 ## Adding an area
 

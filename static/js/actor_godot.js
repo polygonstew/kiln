@@ -263,6 +263,58 @@ void fragment() {
 \tCOLOR = vec4(mix(c.rgb, flash_color.rgb, flash), c.a);
 }
 `;
+// lip sync: an actor with a "mouths" animation (Puppet → Bake mouth set) talks in time with its voice lines
+export const LIPSYNC_GD = `extends Node
+## Kiln lip sync: plays a voice line and moves the mouth with it. Sits on a "LipSync" node under a Kiln actor whose
+## sprite has a "mouths" animation, one frame per mouth shape X A B C D E F G H (Kiln: Puppet → Bake mouth set).
+##   $LipSync.say("res://sprites/miner/voice/hello.lipsync.json")   # the sound beside it plays, the mouth follows
+## The .lipsync.json holds the sound's file name and cues: [[seconds, shape], ...] (Kiln works them out from the sound).
+signal finished
+const SHAPES := "XABCDEFGH"
+@onready var sprite: AnimatedSprite2D = get_parent().get_node("Sprite")
+var _player: AudioStreamPlayer2D
+var _cues: Array = []
+var _before := &""                 # what the sprite played before it talked
+
+func say(lipsync_json: String) -> void:
+\tvar d = JSON.parse_string(FileAccess.get_file_as_string(lipsync_json))
+\tif not d is Dictionary:
+\t\tpush_warning("Kiln lip sync: cannot read " + lipsync_json)
+\t\treturn
+\t_cues = d.get("cues", [])
+\tif _player == null:
+\t\t_player = AudioStreamPlayer2D.new()
+\t\tadd_child(_player)
+\t\t_player.finished.connect(_done)
+\t_player.stream = load(lipsync_json.get_base_dir().path_join(d.get("sound", "")))
+\tif sprite.animation != &"mouths":
+\t\t_before = sprite.animation
+\tsprite.play(&"mouths")
+\tsprite.pause()
+\t_player.play()
+
+func talking() -> bool:
+\treturn _player != null and _player.playing
+
+func _process(_delta: float) -> void:
+\tif not talking():
+\t\treturn
+\t# brains pick idle / walk every physics frame; this runs after them, so the mouth is what shows
+\tif sprite.animation != &"mouths":
+\t\tsprite.play(&"mouths")
+\t\tsprite.pause()
+\tvar t := _player.get_playback_position()
+\tvar shape := "X"
+\tfor c in _cues:                 # cues are in time order: the last one already started is the mouth now
+\t\tif c[0] > t:
+\t\t\tbreak
+\t\tshape = c[1]
+\tsprite.frame = maxi(0, SHAPES.find(shape))
+
+func _done() -> void:
+\tsprite.play(_before if _before != &"" else &"idle")
+\tfinished.emit()
+`;
 export function actorScene(a, res, hb) {
   const start = (a.anims.find(n => /idle|stand/i.test(n.name)) || a.anims[0]).name;
   const shared = res.replace(/\/[^/]+$/, '') + '/_kiln', R = a.react || {}, pj = (a.projectiles || [])[0], br = brainOf(a);
@@ -271,6 +323,7 @@ export function actorScene(a, res, hb) {
     + (br ? `[ext_resource type="Script" path="${shared}/brains/${br}.gd" id="5"]\n` : '')
     + Object.keys(a.sounds || {}).map(ev => `[ext_resource type="AudioStream" path="${res}/sfx_${ev}.wav" id="sfx_${ev}"]\n`).join('')
     + (a.vfx?.hit ? `[ext_resource type="PackedScene" path="${res}/vfx_hit.tscn" id="vfx_hit"]\n` : '')
+    + (talks(a) ? `[ext_resource type="Script" path="${shared}/lipsync.gd" id="lip"]\n` : '')
     + `[ext_resource type="Script" path="${shared}/juice.gd" id="2"]\n[ext_resource type="Shader" path="${shared}/hit_flash.gdshader" id="3"]\n\n`
     + `[sub_resource type="ShaderMaterial" id="flash"]\nshader = ExtResource("3")\nshader_parameter/flash = 0.0\nshader_parameter/flash_color = Color(1, 1, 1, 1)\n\n`
     + `[sub_resource type="RectangleShape2D" id="body"]\nsize = Vector2(${hb.w}, ${hb.h})\n\n`
@@ -282,11 +335,14 @@ export function actorScene(a, res, hb) {
     + `[node name="Hurtbox" type="Area2D" parent="."]\n\n[node name="Shape" type="CollisionShape2D" parent="Hurtbox"]\nposition = Vector2(${hb.x + hb.w / 2 - a.w / 2}, ${hb.y + hb.h / 2 - a.h})\nshape = SubResource("hurt")\n\n`
     + `[node name="Hitbox" type="Area2D" parent="."]\n`
     + Object.keys(a.sounds || {}).map(ev => `\n[node name="Sfx_${ev}" type="AudioStreamPlayer2D" parent="."]\nstream = ExtResource("sfx_${ev}")\n`).join('')
+    + (talks(a) ? `\n[node name="LipSync" type="Node" parent="."]\nscript = ExtResource("lip")\n` : '')
     + (br ? `\n[node name="Brain" type="Node" parent="."]\nscript = ExtResource("5")\n` + BRAINS[br].params.map(([k, , , , , d]) => {
       const v = (a.brainParams || {})[k] ?? d;
       return `${k} = ${k === 'turn_at_ledges' ? !!v : Number.isInteger(v) ? v.toFixed(1) : v}\n`;
     }).join('') : '');
 }
+// it can talk (lip sync) when it has the mouth set
+export const talks = a => a.anims.some(n => n.name === 'mouths');
 // the behaviour this actor runs: chosen in the Workshop, or the default for its role ('' = none)
 export const brainOf = a => { const b = a.brain ?? defaultBrain(a.role || (a.kind === 'creature' ? 'enemy' : 'hero')); return BRAINS[b] ? b : ''; };
 // per-frame boxes in the actor's local space ([centre x, centre y, w, h], feet at 0): { anim: [ {hit, hurt} | {} per frame ] }

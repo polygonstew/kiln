@@ -537,13 +537,13 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .tl-l { color: #e3b04b; font-size: 9px; line-height: 20px; overflow: visible; white-space: nowrap; }
 .tl-top .tl-name { color: var(--faint); cursor: default; }
 /* Puppet (puppet.js) */
-.puppet { display: grid; grid-template-rows: auto 1fr auto; }
+.puppet { display: grid; grid-template-rows: auto 1fr auto; grid-template-columns: minmax(0, 1fr); }   /* a long timeline scrolls in its box instead of widening the screen */
 .pp-bar { display: flex; align-items: center; gap: 12px; padding: 8px 16px; border-bottom: 1px solid var(--line); } .pp-bar b { font: 600 16px var(--cond); color: var(--ember); letter-spacing: .06em; text-transform: uppercase; } .pp-bar > span { color: var(--dim); }
-.pp-body { display: grid; grid-template-columns: 250px 1fr 260px; min-height: 0; }
+.pp-body { display: grid; grid-template-columns: 250px minmax(0, 1fr) 260px; min-height: 0; }
 .pp-side { overflow: auto; padding: 10px; display: flex; flex-direction: column; gap: 10px; background: var(--p1); }
 .pp-stage { display: grid; place-items: safe center; overflow: auto; background: #121211; }
 .pp-cv { image-rendering: pixelated; cursor: crosshair; }
-.pp-bottom { border-top: 1px solid var(--line); background: var(--p1); max-height: 38vh; display: flex; flex-direction: column; }
+.pp-bottom { border-top: 1px solid var(--line); background: var(--p1); max-height: 38vh; display: flex; flex-direction: column; min-width: 0; }
 .pp-tlbar { display: flex; align-items: center; gap: 6px; padding: 6px 10px; flex-wrap: wrap; border-bottom: 1px solid var(--line); font-size: 12px; }
 .pp-tl { overflow: auto; }
 .pp-bones { max-height: 260px; overflow: auto; } .pp-bone { display: flex; align-items: center; gap: 6px; padding: 3px 6px; cursor: pointer; font: 12px var(--mono); color: var(--dim); border-radius: 2px; }
@@ -597,3 +597,11 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .lg-code { position: static; margin: 8px 0 0; padding: 8px 10px; background: #10100f; border: 1px solid var(--line); font: 11px/16px var(--mono); max-height: 46vh; overflow: auto; white-space: pre; color: #d8d4c8; tab-size: 3; }
 .lg-vars { display: flex; flex-direction: column; gap: 4px; } .lg-var { display: grid; grid-template-columns: 1fr 96px 62px 24px; gap: 4px; align-items: center; } .lg-var input, .lg-var select { min-width: 0; font-size: 12px; padding: 2px 4px; }
 .lg-outline { display: flex; flex-direction: column; max-height: 220px; overflow: auto; }
+/* Puppet: Head & mouth card (puppet_face.js) */
+.pp-heads { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; }
+.pp-headt { height: 40px; image-rendering: pixelated; background: #5c5c66; border: 2px solid transparent; border-radius: 2px; cursor: pointer; } .pp-headt.on { border-color: var(--ember); }
+.pp-headbox { display: grid; place-items: center; margin-top: 8px; background: #121211; border: 1px solid var(--line); padding: 6px; } .pp-headpv { image-rendering: pixelated; cursor: crosshair; max-width: 100%; }
+.pp-mouths { display: grid; grid-template-columns: repeat(5, 1fr); gap: 3px; margin-top: 6px; }
+.pp-mouth { display: flex; flex-direction: column; align-items: center; gap: 1px; background: #1c1b19; border: 1px solid var(--line); border-radius: 2px; padding: 3px 0; cursor: pointer; color: var(--dim); } .pp-mouth:hover { border-color: var(--ember); }
+.pp-mouth canvas { image-rendering: pixelated; background: #66666f; } .pp-mouth small { font: 10px var(--mono); }
+
