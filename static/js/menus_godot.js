@@ -1,6 +1,7 @@
-// Menus → Godot: each menu screen is a tiny scene whose script (kiln_menu.gd) builds its buttons, sliders and
+// Menus → Godot: each menu screen is a tiny scene whose script (_kiln/ui/menu.gd) builds its buttons, sliders and
 // toggles from `items` at runtime, so the scene file stays readable and Kiln's preview matches the game.
-// kiln_settings.gd keeps volumes / fullscreen / toggles in user://settings.cfg (static functions, no autoload needed).
+// _kiln/ui/settings.gd (KilnSettings) keeps volumes / fullscreen / toggles in user://settings.cfg (static functions, no autoload).
+import { rtRes } from './layout.js';
 
 export const MENU_GD = `extends Control
 ## Kiln menu screen: builds itself from \`items\` (set in Kiln's Menus area). It emits action(name) for the game
@@ -172,7 +173,7 @@ export function menuScene(m, base) {
   const bg = m.background ? `[ext_resource type="PackedScene" path="${base}backgrounds/${m.background}/${m.background}.tscn" id="bg"]\n` : '';
   const c = h => { const n = parseInt(h.slice(1), 16); return `Color(${((n >> 16) & 255) / 255}, ${((n >> 8) & 255) / 255}, ${(n & 255) / 255}, 1)`; };
   const items = '[' + m.items.map(it => '{' + Object.entries(it).filter(([, v]) => v !== '' && v != null).map(([k, v]) => `"${k}": ${JSON.stringify(v)}`).join(', ') + '}').join(', ') + ']';
-  return `[gd_scene load_steps=${bg ? 3 : 2} format=3]\n\n[ext_resource type="Script" path="${base}menus/kiln_menu.gd" id="1"]\n${bg}\n`
+  return `[gd_scene load_steps=${bg ? 3 : 2} format=3]\n\n[ext_resource type="Script" path="${rtRes(base, 'menu')}" id="1"]\n${bg}\n`
     + `[node name="${m.id}" type="Control"]\nlayout_mode = 3\nanchors_preset = 15\nanchor_right = 1.0\nanchor_bottom = 1.0\nscript = ExtResource("1")\n`
     + `title = ${JSON.stringify(m.title || '')}\nitems = ${items}\naccent = ${c(m.accent || '#ff5b2e')}\ntext_color = ${c(m.text || '#ebe3d0')}\ndim = ${m.dim ?? .55}\nfont_size = ${m.fontSize || 16}\nalign_left = ${!!m.left}\n`
     + (bg ? 'background = ExtResource("bg")\n' : '');

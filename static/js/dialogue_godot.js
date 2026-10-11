@@ -1,5 +1,5 @@
 // Dialogue → Godot: the game file (dialogue/<name>.json, res:// paths) and the runner script that plays it through
-// the Kiln HUD (dialogue/kiln_dialogue.gd). Plain data and one short, commented script; Logic's "Start a dialogue"
+// the Kiln HUD (_kiln/ui/dialogue.gd). Plain data and one short, commented script; Logic's "Start a dialogue"
 // makes the runner when it is first needed.
 
 // the Kiln project (dialogue.js) → what the game reads

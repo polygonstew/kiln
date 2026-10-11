@@ -103,6 +103,7 @@ export function compile(g, { name = 'logic', resPrefix = 'res://' } = {}) {
   if (input.length) out.push('func _unhandled_input(event: InputEvent) -> void:', ...tab(input), '');
   out.push('func _kiln_message(message: String) -> void:   # "Send a message" from any graph', ...tab(message.length ? message : ['pass']), '');
   if (funcs.length) out.push('# ---- events: one function per event node', '', ...funcs);
-  if (helpers.length) out.push('# ---- helpers', '', ...helpers.flatMap(k => [HELPERS[k], '']));
+  // helpers that load Kiln's runtime find it in _kiln/ (layout.js), under the asset folder's place in the project
+  if (helpers.length) out.push('# ---- helpers', '', ...helpers.flatMap(k => [HELPERS[k].replaceAll('{{KILN}}', resPrefix + '_kiln/'), '']));
   return out.join('\n').replace(/\n{3,}/g, '\n\n').trimEnd() + '\n';
 }

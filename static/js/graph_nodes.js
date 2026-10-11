@@ -154,7 +154,7 @@ export const HELPERS = {
   _dialogue_runner: `func _dialogue_runner(a_dialogue: String) -> Node:   # the game's one dialogue runner, made when first needed
 \tvar r := get_tree().get_first_node_in_group("kiln_dialogue")
 \tif r == null:
-\t\tr = load(a_dialogue.get_base_dir().path_join("kiln_dialogue.gd")).new()
+\t\tr = load("{{KILN}}ui/dialogue.gd").new()
 \t\tget_tree().current_scene.add_child(r)
 \treturn r`,
   _flag: `func _flag(flag: String) -> bool:   # set by a dialogue line or choice

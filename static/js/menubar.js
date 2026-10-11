@@ -5,7 +5,7 @@ import { areaList, currentArea } from './wheel.js';
 import { openHistory } from './history.js';
 import { openSfxDesigner } from './sfx.js';
 import { openVfxDesigner } from './vfx.js';
-import { openDoctor } from './doctor.js';
+import { openDoctor, openTidy } from './doctor.js';
 import { tour } from './tour.js';
 
 const view = () => document.querySelector('.view.on');
@@ -46,6 +46,7 @@ const MENUS = () => [
     null,
     ['Desk (your apps)', 'Your home apps as windows', () => window.open('/desk', '_blank')],
     ['Doctor…', 'Check the asset folder: missing files, sprites too big or too colourful, loose images, unsaved items', openDoctor],
+    ['Tidy game files…', 'Put Kiln\'s runtime scripts together in _kiln/ (older asset folders had them in sprites/_kiln/, menus/, hud/…)', openTidy],
     ['Effects…', 'Make effect sprites (sparks, slashes, dust, explosions, sparkles) as one-shot Godot scenes', openVfxDesigner],
     ['Sound effects…', 'Make retro sound effects (coin, jump, explosion…) and save them as .wav', openSfxDesigner],
     ['Godot plugin…', 'Install the Kiln dock into your Godot project (or download it)', godotPlugin],

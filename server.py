@@ -7,6 +7,7 @@ import base64, json, os, random, re, socket, struct, threading, time, urllib.req
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 import play
+import tidy
 from checks import GODOT, list_scripts, check_script, doctor, snapshot, history, restore_copy
 
 ROOT = Path(__file__).resolve().parent
@@ -660,6 +661,7 @@ LAYOUT = {
     'fonts': 'Bitmap fonts: atlas PNG + BMFont .fnt (Godot, Unity, LÖVE read it)',
     'palettes': 'Palettes as .hex (one colour per line) + swatch PNG',
     'kiln': 'Kiln source projects (editable). Engines can ignore this folder',
+    '_kiln': 'Kiln runtime: the small commented scripts every game uses (actor/, brains/, level/, ui/; see its README)',
 }
 SETTINGS = LIB / 'settings.json'
 
@@ -870,6 +872,9 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/scripts':
                 root = q.get('root') or settings()['root']
                 return self.send(200, {'root': str(in_home(root)), 'scripts': list_scripts(in_home(root)), 'godot': bool(GODOT)})
+            if u.path == '/api/tidy':
+                r = in_home(q.get('root') or settings()['root'])
+                return self.send(200, {'steps': tidy.plan(r)})
             if u.path == '/api/play/status':
                 return self.send(200, {**play.STATE, 'built': play.built(), 'secure': play.secure_url(PORT)})
             if u.path == '/play' or u.path.startswith('/play/'):
@@ -936,6 +941,11 @@ class H(BaseHTTPRequestHandler):
                 snapshot(d / f'{pid}.json', text)
                 (d / f'{pid}.json').write_text(text)
                 return self.send(200, {'ok': True})
+            if u.path == '/api/tidy':
+                r = in_home(b.get('root') or settings()['root'])
+                g = godot_root(str(r))
+                base = ('res://' + (str(r.relative_to(g)) + '/' if str(r) != g else '')) if g else ''
+                return self.send(200, tidy.apply(r, base))
             if u.path == '/api/play/build':
                 if play.STATE['running']:
                     return self.send(409, {'err': 'a build is already running'})

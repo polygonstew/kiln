@@ -24,7 +24,7 @@ var menus: Array[Node] = []               # open menu screens, top last
 var player: Node2D
 var _web: JavaScriptObject                # the page around a web build (Kiln's Stage talks through it)
 var _tuned := ""
-const BRAIN := "res://sprites/_kiln/brains/player.gd"
+const BRAIN := "res://_kiln/brains/player.gd"
 
 func _ready() -> void:
 \tif OS.has_feature("web"):
@@ -232,8 +232,10 @@ export async function buildGame(pick, onLog) {
   const main = `[gd_scene load_steps=${ext.length + 2} format=3]\n\n[ext_resource type="Script" path="res://main.gd" id="main"]\n${ext.join('\n')}\n\n`
     + `[node name="Main" type="Node2D"]\nscript = ExtResource("main")\n${props.join('\n')}\ntitle = ${JSON.stringify(pick.name || 'Kiln demo')}\nshow_title = ${pick.start !== 'none'}\n`;
   const files = { 'kiln_main.tscn': main, 'main.gd': MAIN_GD };
-  const have = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/sprites/_kiln/brains')).catch(() => ({ items: [] }));
-  if (!(have.items || []).some(i => i.name === 'player.gd')) files['sprites/_kiln/brains/player.gd'] = BRAIN_GD.player;
+  // the player brain main.gd falls back on: the folder's own copy (here or in the old sprites/_kiln/), else Kiln's
+  const ls = async d => ((await api('/api/fs?path=' + encodeURIComponent(`${FS.root}/${d}`)).catch(() => ({ items: [] }))).items || []).map(i => i.name);
+  if (!(await ls('_kiln/brains')).includes('player.gd')) files['_kiln/brains/player.gd'] = (await ls('sprites/_kiln/brains')).includes('player.gd')
+    ? await fetch('/api/fs/raw?path=' + encodeURIComponent(`${FS.root}/sprites/_kiln/brains/player.gd`)).then(r => r.text()) : BRAIN_GD.player;
   const r = await api('/api/play/build', { root: FS.root, files, opts: { name: pick.name, w: 480, h: 270 } }).catch(e => ({ err: e.message }));
   if (r.err) { onLog([r.err]); return false; }
   for (;;) {

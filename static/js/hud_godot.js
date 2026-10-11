@@ -1,6 +1,7 @@
 // HUD → Godot 4: a CanvasLayer scene built from real Control nodes (TextureProgressBar, NinePatchRect, Label…)
-// plus hud.gd, the script your game calls: set_value("health", 0.5), set_number("score", 120), say("Monk", "…"),
+// plus _kiln/ui/hud.gd (shared by every HUD; hud.js writes it), the script your game calls: set_value("health", 0.5), set_number("score", 120), say("Monk", "…"),
 // prompt("E", "Open"), toggle_inventory(), add_item("key"). Everything is positioned in game pixels.
+import { rtRes, baseOf } from './layout.js';
 
 const nodeName = s => (String(s || 'w').replace(/[^A-Za-z0-9_]/g, '_').replace(/^(\d)/, '_$1') || 'w');
 const col = hex => { const n = parseInt(String(hex || '#ffffff').slice(1), 16); return `Color(${((n >> 16 & 255) / 255).toFixed(3)}, ${((n >> 8 & 255) / 255).toFixed(3)}, ${((n & 255) / 255).toFixed(3)}, 1)`; };
@@ -91,15 +92,15 @@ export function buildGodotHud(HUD, T, res, base) {
       nodes.push(label('Action', `${P}/${n}`, kw + 4, Math.floor((kh - T.FONTS[w.font].h) / 2), w.text, w.font, w.color));
     }
   }
-  const script = addExt('Script', `${res}/hud.gd`);
+  const script = addExt('Script', rtRes(baseOf(res), 'hud'));      // the shared HUD script (_kiln/ui/hud.gd, layout.js)
   const tscn = `[gd_scene load_steps=${ext.length + subs.length + 1} format=3]\n\n${ext.join('\n')}\n\n${subs.join('\n\n')}${subs.length ? '\n\n' : ''}`
     + `[node name="${nodeName(HUD.name)}" type="CanvasLayer"]\nscript = ExtResource("${script}")\nitems_json = "${res}/items.json"\n\n`
     + `[node name="Screen" type="Control" parent="."]\nlayout_mode = 3\noffset_right = ${HUD.view.w}\noffset_bottom = ${HUD.view.h}\nmouse_filter = 2\n\n` + nodes.join('\n');
-  files.push({ name: `${HUD.name}.tscn`, text: tscn }, { name: 'hud.gd', text: HUD_GD }, { name: 'items.json', text: JSON.stringify(items, null, 1) + '\n' });
+  files.push({ name: `${HUD.name}.tscn`, text: tscn }, { name: 'items.json', text: JSON.stringify(items, null, 1) + '\n' });
   return { files, fonts: [...fonts] };
 }
 
-const HUD_GD = `extends CanvasLayer
+export const HUD_GD = `extends CanvasLayer
 ## Kiln HUD. Call these from your game:
 ##   set_value("health", 0.5)      bars, gauges, pips (0..1)
 ##   set_number("score", 120)      counters      set_text("title", "…")

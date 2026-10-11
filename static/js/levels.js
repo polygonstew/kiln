@@ -4,6 +4,7 @@ import { h, api, toast, on, pref, clamp, field, range, select, seg, check, imgDa
 import { saveFiles, S as FS } from './files.js';
 import { loadActor } from './player.js';
 import { openProjects } from './projects.js';
+import { writeRuntime, rtRes, baseOf } from './layout.js';
 import { registerWheel } from './wheel.js';
 import { registerKeys } from './wheel.js';
 import { loadOwners, claim } from './owners.js';
@@ -442,8 +443,7 @@ async function exportLevel() {
   const tres = `[gd_resource type="TileSet" load_steps=3 format=3]\n\n[ext_resource type="Texture2D" path="${res}/tileset.png" id="1"]\n\n`
     + `[sub_resource type="TileSetAtlasSource" id="atlas"]\ntexture = ExtResource("1")\ntexture_region_size = Vector2i(${T}, ${T})\n${tiles.join('\n')}\n\n`
     + `[resource]\ntile_size = Vector2i(${T}, ${T})\n${TILESET_LAYERS}${terrainHeader(L.terrains)}sources/0 = SubResource("atlas")\n`;
-  const zoneGd = (base => (base ? base + '/' : '') + 'sprites/_kiln/zone.gd')(res.replace(/(^|\/)levels\/[^/]+$/, ''));
-  const tilesGd = (base => (base ? base + '/' : '') + 'sprites/_kiln/level_tiles.gd')(res.replace(/(^|\/)levels\/[^/]+$/, ''));
+  const zoneGd = rtRes(baseOf(res), 'zone'), tilesGd = rtRes(baseOf(res), 'tiles');
   // res is ".../levels/<name>": the background scene lives next door in ".../backgrounds/<scene>/"
   const base = res.replace(/(^|\/)levels\/[^/]+$/, '');
   const bgRes = L.bg ? (base ? base + '/' : '') + `backgrounds/${L.bg}/${L.bg}.tscn` : null;
@@ -464,7 +464,7 @@ async function exportLevel() {
   try {
     await saveFiles(dir, [{ name: 'tileset.png', b64: toDataURL(tsImg) }, { name: `${L.name}.tres`, text: tres }, { name: `${L.name}.tscn`, text: tscn },
       { name: 'level.json', text: JSON.stringify(json) + '\n' }]);
-    await saveFiles('sprites/_kiln', [{ name: 'level_tiles.gd', text: LEVEL_TILES_GD }, { name: 'zone.gd', text: ZONE_GD }]).catch(() => {});
+    await writeRuntime({ tiles: LEVEL_TILES_GD, zone: ZONE_GD }).catch(() => {});
     changed(); toast(`Saved to ${dir}/${g.root ? ' (Godot paths)' : ''}`, 'ok');
   } catch (e) { toast('Save failed: ' + e.message, 'bad'); }
 }

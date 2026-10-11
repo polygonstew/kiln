@@ -3,13 +3,14 @@
 //   actorScene      <name>.tscn: CharacterBody2D (feet at 0) + AnimatedSprite2D + Body + Hurtbox / Hitbox areas
 //   projectileScene projectile_<name>.tscn: Area2D flying one of the actor's animations
 //   boxesOf         per-frame hit / hurt boxes in actor space (also written to manifest.json)
-//   JUICE_GD        sprites/_kiln/juice.gd: hit_flash, squash, shake, hurt, shoot, box following
-//   PROJECTILE_GD   sprites/_kiln/projectile.gd    FLASH_SHADER  sprites/_kiln/hit_flash.gdshader
+//   JUICE_GD        _kiln/actor/juice.gd: hit_flash, squash, shake, hurt, shoot, box following
+//   PROJECTILE_GD   _kiln/actor/projectile.gd    FLASH_SHADER  _kiln/actor/hit_flash.gdshader   (paths: layout.js)
 import { bbox } from './core.js';
 import { BRAINS, defaultBrain } from './brains.js';
+import { rtRes, brainPath, baseOf } from './layout.js';
 
 // Godot 4 drop-in: CharacterBody2D (origin at the feet) + AnimatedSprite2D + body hitbox, with the same
-// "juice" the Animate preview shows: hit_flash(), squash(), shake() from sprites/_kiln/juice.gd.
+// "juice" the Animate preview shows: hit_flash(), squash(), shake() from _kiln/actor/juice.gd.
 export const JUICE_GD = `extends CharacterBody2D
 ## Kiln juice: the hit flash, squash and stretch and screen shake you previewed in Kiln's Animate.
 ## Call them from your gameplay code, e.g. when the player is hit: hit_flash(); shake()
@@ -317,14 +318,14 @@ func _done() -> void:
 `;
 export function actorScene(a, res, hb) {
   const start = (a.anims.find(n => /idle|stand/i.test(n.name)) || a.anims[0]).name;
-  const shared = res.replace(/\/[^/]+$/, '') + '/_kiln', R = a.react || {}, pj = (a.projectiles || [])[0], br = brainOf(a);
+  const base = baseOf(res), R = a.react || {}, pj = (a.projectiles || [])[0], br = brainOf(a);
   return `[gd_scene load_steps=${pj ? 8 : 7} format=3]\n\n[ext_resource type="SpriteFrames" path="${res}/${a.name}.tres" id="1"]\n`
     + (pj ? `[ext_resource type="PackedScene" path="${res}/projectile_${pj.name}.tscn" id="4"]\n` : '')
-    + (br ? `[ext_resource type="Script" path="${shared}/brains/${br}.gd" id="5"]\n` : '')
+    + (br ? `[ext_resource type="Script" path="${base}${brainPath(br)}" id="5"]\n` : '')
     + Object.keys(a.sounds || {}).map(ev => `[ext_resource type="AudioStream" path="${res}/sfx_${ev}.wav" id="sfx_${ev}"]\n`).join('')
     + (a.vfx?.hit ? `[ext_resource type="PackedScene" path="${res}/vfx_hit.tscn" id="vfx_hit"]\n` : '')
-    + (talks(a) ? `[ext_resource type="Script" path="${shared}/lipsync.gd" id="lip"]\n` : '')
-    + `[ext_resource type="Script" path="${shared}/juice.gd" id="2"]\n[ext_resource type="Shader" path="${shared}/hit_flash.gdshader" id="3"]\n\n`
+    + (talks(a) ? `[ext_resource type="Script" path="${rtRes(base, 'lipsync')}" id="lip"]\n` : '')
+    + `[ext_resource type="Script" path="${rtRes(base, 'juice')}" id="2"]\n[ext_resource type="Shader" path="${rtRes(base, 'flash')}" id="3"]\n\n`
     + `[sub_resource type="ShaderMaterial" id="flash"]\nshader = ExtResource("3")\nshader_parameter/flash = 0.0\nshader_parameter/flash_color = Color(1, 1, 1, 1)\n\n`
     + `[sub_resource type="RectangleShape2D" id="body"]\nsize = Vector2(${hb.w}, ${hb.h})\n\n`
     + `[sub_resource type="RectangleShape2D" id="hurt"]\nsize = Vector2(${hb.w}, ${hb.h})\n\n`
@@ -356,10 +357,10 @@ export function boxesOf(a) {
 }
 // a projectile: Area2D flying one of the actor's animations (proj_<name>), with a round hit shape from its first frame
 export function projectileScene(a, res, pj) {
-  const shared = res.replace(/\/[^/]+$/, '') + '/_kiln', n = a.anims.find(x => x.name === pj.anim);
+  const base = baseOf(res), n = a.anims.find(x => x.name === pj.anim);
   const b = n && bbox(n.frames[0]), r = b ? Math.max(2, Math.round(Math.max(b.w, b.h) / 2)) : 4;
   const off = b ? `position = Vector2(${b.x + b.w / 2 - n.frames[0].width / 2}, ${b.y + b.h / 2 - n.frames[0].height / 2})\n` : '';
-  return `[gd_scene load_steps=4 format=3]\n\n[ext_resource type="SpriteFrames" path="${res}/${a.name}.tres" id="1"]\n[ext_resource type="Script" path="${shared}/projectile.gd" id="2"]\n`
+  return `[gd_scene load_steps=4 format=3]\n\n[ext_resource type="SpriteFrames" path="${res}/${a.name}.tres" id="1"]\n[ext_resource type="Script" path="${rtRes(base, 'projectile')}" id="2"]\n`
     + (pj.impact ? `[ext_resource type="PackedScene" path="${res}/vfx_${pj.name}_impact.tscn" id="3"]\n` : '') + '\n'
     + `[sub_resource type="CircleShape2D" id="c"]\nradius = ${r}.0\n\n`
     + `[node name="${pj.name}" type="Area2D"]\nscript = ExtResource("2")\nspeed = ${pj.speed}.0\ngravity_scale = ${pj.gravity}\nlifetime = ${pj.lifetime}\ndamage = ${pj.damage}\npierce = ${!!pj.pierce}\n${pj.impact ? 'impact_effect = ExtResource("3")\n' : ''}\n`

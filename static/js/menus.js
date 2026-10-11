@@ -1,6 +1,7 @@
 // Menus: the game's title menu, options (volumes, fullscreen, on/off options, the controls) and pause menu.
-// Edit the screens here with a live preview; saved as menus/<screen>.tscn + kiln_menu.gd + kiln_settings.gd,
+// Edit the screens here with a live preview; saved as menus/<screen>.tscn (+ _kiln/ui/menu.gd and settings.gd),
 // and ▶ Play uses them (title first, Esc pauses, options from either).
+import { writeRuntime } from './layout.js';
 import { h, api, toast, pref, field, select, range, check, rawURL } from './core.js';
 import { saveFiles, S as FS } from './files.js';
 import { registerKeys } from './wheel.js';
@@ -95,7 +96,7 @@ function drawRight() {
 async function exportMenus() {
   const g = await api('/api/godot?path=' + encodeURIComponent(FS.root)).catch(() => ({}));
   const base = g.root ? 'res://' + (FS.root.slice(g.root.length + 1) ? FS.root.slice(g.root.length + 1) + '/' : '') : '';
-  const files = [{ name: 'kiln_menu.gd', text: MENU_GD }, { name: 'kiln_settings.gd', text: SETTINGS_GD }, ...Object.values(M).filter(m => m.on).map(m => ({ name: m.id + '.tscn', text: menuScene(m, base) }))];
-  try { await saveFiles('menus', files); toast(`Saved ${files.length - 2} menu screens to menus/`, 'ok'); } catch (e) { toast('Save failed: ' + e.message, 'bad'); }
+  const files = Object.values(M).filter(m => m.on).map(m => ({ name: m.id + '.tscn', text: menuScene(m, base) }));
+  try { await saveFiles('menus', files); await writeRuntime({ menu: MENU_GD, settings: SETTINGS_GD }); toast(`Saved ${files.length} menu screens to menus/ (their scripts: _kiln/ui/)`, 'ok'); } catch (e) { toast('Save failed: ' + e.message, 'bad'); }
 }
 registerKeys('menus', [['Click a screen', 'Edit it'], ['+ Item', 'Add a button, slider or option']]);

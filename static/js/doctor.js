@@ -1,8 +1,9 @@
 // Doctor: checks the asset folder (server: /api/doctor) and lists what is wrong or odd, each with a fix or a
 // way to look at it: missing files scenes need, sprites too big or with too many colours, loose images, items
-// never saved for Godot, very heavy project files.
+// never saved for Godot, very heavy project files, and an older layout of Kiln's runtime (Tidy moves it into _kiln/).
 import { h, api, emit } from './core.js';
 import { S as FS, go } from './files.js';
+import { writeReadme } from './layout.js';
 
 const LEVEL = { bad: ['Problems', '#e5534b'], warn: ['Worth fixing', '#e3b04b'], info: ['Good to know', '#7cc4d9'] };
 
@@ -12,10 +13,13 @@ export async function openDoctor() {
     h('header', {}, h('span', { class: 'grow' }, 'Doctor: the asset folder'), h('button', { class: 'ibtn', onclick: () => m.remove() }, '✕')), body));
   document.body.append(m);
   const list = await api('/api/doctor?root=' + encodeURIComponent(FS.root)).catch(e => [{ level: 'bad', msg: 'Could not check: ' + e.message }]);
+  const tidyUp = (await api('/api/tidy?root=' + encodeURIComponent(FS.root)).catch(() => ({ steps: [] }))).steps;
+  if (tidyUp.length) list.unshift({ level: 'warn', fix: 'tidy', msg: `Kiln's runtime scripts are in the older places (${tidyUp.length} files in sprites/_kiln/, menus/, dialogue/, hud/…). Tidy puts them together in _kiln/ and fixes every scene that uses them.` });
   const fix = f => {
     if (f.fix === 'shrink') return h('button', { class: 'btn sm', title: 'Opens it in Animate and makes a smaller copy (the original stays)', onclick: () => { m.remove(); emit('tab', 'animate'); emit('shrink-actor', f.name); } }, 'Game-size copy');
     if (f.fix === 'open') return h('button', { class: 'btn sm ghost', onclick: () => { m.remove(); emit('tab', { actor: 'animate', scene: 'scenes', level: 'levels', hud: 'hud' }[f.kindOf] || 'files'); } }, 'Go there');
     if (f.fix === 'show') return h('button', { class: 'btn sm ghost', onclick: () => { m.remove(); emit('tab', 'files'); const p = FS.root + '/' + f.path; go(p.slice(0, p.lastIndexOf('/')), p.slice(p.lastIndexOf('/') + 1)); } }, 'Show');
+    if (f.fix === 'tidy') return h('button', { class: 'btn sm go', title: 'See what moves, then tidy', onclick: () => { m.remove(); openTidy(); } }, 'Tidy…');
     return '';
   };
   body.replaceChildren(list.length ? '' : h('p', { class: 'lg-ok' }, '✓ Nothing wrong found'),
@@ -25,3 +29,23 @@ export async function openDoctor() {
         ...fs.map(f => h('div', { class: 'doc-r', style: { borderLeftColor: c } }, h('span', { class: 'grow' }, f.msg), fix(f))));
     }));
 }
+
+// Tidy: what moves from the older layout into _kiln/ (layout.js), then one click; a backup of every changed file is kept
+export async function openTidy() {
+  const steps = (await api('/api/tidy?root=' + encodeURIComponent(FS.root)).catch(() => ({ steps: [] }))).steps;
+  const body = h('div', { class: 'body' });
+  const m = h('div', { class: 'modal', onclick: e => { if (e.target === m) m.remove(); } }, h('div', { style: { width: 'min(680px, 94vw)' } },
+    h('header', {}, h('span', { class: 'grow' }, 'Tidy the game files'), h('button', { class: 'ibtn', onclick: () => m.remove() }, '✕')), body));
+  document.body.append(m);
+  if (!steps.length) return body.replaceChildren(h('p', { class: 'lg-ok' }, '✓ Already tidy: Kiln\'s runtime is all in _kiln/ (see its README).'));
+  body.replaceChildren(h('p', { class: 'note', style: { marginTop: 0 } }, 'Kiln\'s runtime scripts go together in _kiln/ (actor/, brains/, level/, ui/) so your content folders hold only your content. Every scene and script that uses them is updated; a copy of each changed file goes to .trash. Your edited brains move as they are.'),
+    h('div', { class: 'doc-g' }, ...steps.map(([a, b, what]) => h('div', { class: 'doc-r' }, h('span', { class: 'grow mono', style: { fontSize: '12px' } }, `${a} → ${b}`), what === 'moves' ? '' : h('small', { class: 'faint' }, what)))),
+    h('div', { style: { display: 'flex', gap: '8px', marginTop: '12px' } }, h('button', { class: 'btn go', onclick: async () => {
+      const r = await api('/api/tidy', { root: FS.root }).catch(e => ({ err: e.message }));
+      if (r.err) return body.append(h('p', { class: 'note', style: { color: 'var(--bad)' } }, 'Could not tidy: ' + r.err));
+      await writeReadme();
+      body.replaceChildren(h('p', { class: 'lg-ok' }, `✓ Moved ${r.moved} files and updated ${r.rewritten} scenes and scripts.`), h('p', { class: 'note' }, `What changed and the originals: ${r.backup}/ (TIDY.md). Save your Logic graphs again to refresh their scripts.`));
+      emit('saved', FS.root);
+    } }, 'Tidy'), h('button', { class: 'btn ghost', onclick: () => m.remove() }, 'Not now')));
+}
+

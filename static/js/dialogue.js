@@ -1,13 +1,14 @@
 // Dialogue: conversations for the game, written as lines. Each line has a speaker (the cast: names, each can be an
 // actor), the words, an optional voice line (recorded in Puppet, with lip sync), and then: the next line, a jump,
 // the end, or choices (each with a condition on items or flags and things it does). The preview plays it. Save
-// writes dialogue/<name>.json and the runner (dialogue_godot.js) that plays it through the Kiln HUD in Godot.
+// writes dialogue/<name>.json, and the runner (dialogue_godot.js → _kiln/ui/dialogue.gd) plays it through the Kiln HUD in Godot.
 import { h, api, toast, pref, select } from './core.js';
 import { saveFiles, S as FS } from './files.js';
 import { listScenes } from './playbuild.js';
 import { gameJSON, DIALOGUE_GD } from './dialogue_godot.js';
 import { dialoguePlayer } from './dialogue_play.js';
 import { openProjects } from './projects.js';
+import { writeRuntime } from './layout.js';
 
 const IFS = [['', 'always'], ['item', 'if has item'], ['noitem', 'if lacks item'], ['flag', 'if flag set'], ['noflag', 'if flag not set']];
 const DOS = [['', 'does nothing'], ['give', 'gives item'], ['take', 'takes item'], ['flag', 'sets flag'], ['unflag', 'clears flag'], ['message', 'messages Logic']];
@@ -142,7 +143,8 @@ async function save() {
   const g = await api('/api/godot?path=' + encodeURIComponent(FS.root)).catch(() => ({}));
   const res = g.root ? 'res://' + FS.root.slice(g.root.length + 1) + '/' : 'res://';
   try {
-    await saveFiles('dialogue', [{ name: D.name + '.json', text: JSON.stringify(gameJSON(D, res), null, 1) + '\n' }, { name: 'kiln_dialogue.gd', text: DIALOGUE_GD }]);
+    await saveFiles('dialogue', [{ name: D.name + '.json', text: JSON.stringify(gameJSON(D, res), null, 1) + '\n' }]);
+    await writeRuntime({ dialogue: DIALOGUE_GD });
     V.state.textContent = ''; toast(`Saved dialogue/${D.name}.json`, 'ok');
   } catch (e) { toast('Save failed: ' + e.message, 'bad'); }
 }

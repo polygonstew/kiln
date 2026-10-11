@@ -10,6 +10,7 @@ import { BRAIN_GD } from './brains.js';
 import { wav, synth } from './sfx.js';
 import { vfxFiles, VFX_GD } from './vfx.js';
 import { saveFiles, S as FS } from './files.js';
+import { writeRuntime, ensureBrain, baseOf } from './layout.js';
 
 const slug = s => (s || 'actor').toLowerCase().replace(/[^a-z0-9_-]+/g, '_').replace(/^_|_$/g, '') || 'actor';
 
@@ -57,21 +58,17 @@ export async function saveActor(a, serialize, renamed) {
     if (Object.keys(boxesOf(a)).length) man.boxes = boxesOf(a);        // other engines: same boxes, centre-based, feet at 0
     files.find(f => f.name === 'manifest.json').text = JSON.stringify(man, null, 2) + '\n';
     files.push({ name: `${a.name}.tscn`, text: actorScene(a, res, man.hitbox) });
-    await saveFiles('sprites/_kiln', [{ name: 'juice.gd', text: JUICE_GD }, { name: 'hit_flash.gdshader', text: FLASH_SHADER }, { name: 'projectile.gd', text: PROJECTILE_GD },
-      ...(talks(a) ? [{ name: 'lipsync.gd', text: LIPSYNC_GD }] : [])]).catch(() => {});
+    await writeRuntime({ juice: JUICE_GD, flash: FLASH_SHADER, projectile: PROJECTILE_GD, ...(talks(a) ? { lipsync: LIPSYNC_GD } : {}) }).catch(() => {});
     for (const pj of a.projectiles || []) files.push({ name: `projectile_${pj.name}.tscn`, text: projectileScene(a, res, pj) });
     for (const [ev, p] of Object.entries(a.sounds || {})) files.push({ name: `sfx_${ev}.wav`, b64: wav(synth(p)) });
     // effects: the hit effect and each projectile's impact, as one-shot scenes next to the actor
-    const shared = res.replace(/\/[^/]+$/, '') + '/_kiln';
-    if (a.vfx?.hit) files.push(...vfxFiles('vfx_hit', a.vfx.hit, res, shared));
-    for (const pj of a.projectiles || []) if (pj.impact) files.push(...vfxFiles(`vfx_${pj.name}_impact`, pj.impact, res, shared));
-    if (a.vfx?.hit || (a.projectiles || []).some(pj => pj.impact)) await saveFiles('sprites/_kiln', [{ name: 'vfx.gd', text: VFX_GD }]).catch(() => {});
+    const base = baseOf(res);
+    if (a.vfx?.hit) files.push(...vfxFiles('vfx_hit', a.vfx.hit, res, base));
+    for (const pj of a.projectiles || []) if (pj.impact) files.push(...vfxFiles(`vfx_${pj.name}_impact`, pj.impact, res, base));
+    if (a.vfx?.hit || (a.projectiles || []).some(pj => pj.impact)) await writeRuntime({ vfx: VFX_GD }).catch(() => {});
     // the actor's brain script: written once, then it is yours to edit (Logic) and never overwritten
     const br = brainOf(a);
-    if (br) {
-      const have = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/sprites/_kiln/brains')).catch(() => ({ items: [] }));
-      if (!(have.items || []).some(i => i.name === br + '.gd')) await saveFiles('sprites/_kiln/brains', [{ name: br + '.gd', text: BRAIN_GD[br] }]).catch(() => {});
-    }
+    if (br) await ensureBrain(br, BRAIN_GD[br]).catch(() => {});
   }
   if (a.identity?.ref) files.push({ name: 'reference.png', b64: a.identity.ref });
   files.push(...await facesFiles(a));

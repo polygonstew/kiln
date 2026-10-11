@@ -22,6 +22,13 @@
 Point the asset folder at a game's assets (e.g. `~/.jcodes/pallidmask/assets`). Inside a Godot
 project, `.tres`/`.tscn` paths are written as `res://…` automatically (`/api/godot`).
 
+## _kiln/ (Kiln's runtime, layout.js)
+- `_kiln/actor/` juice.gd, hit_flash.gdshader, projectile.gd, lipsync.gd, vfx.gd · `_kiln/brains/` player.gd, patrol.gd, flyer.gd
+  (written once, yours) · `_kiln/level/` level_tiles.gd, zone.gd · `_kiln/ui/` hud.gd (every HUD shares it), menu.gd,
+  settings.gd (KilnSettings), dialogue.gd · `_kiln/README.md`. Kiln rewrites these on save, except brains/.
+- Older folders had them in sprites/_kiln/, menus/kiln_*.gd, dialogue/kiln_dialogue.gd, hud/<hud>/hud.gd: File → Tidy game
+  files (tidy.py) moves them and fixes every scene, keeping originals in .trash/<time>-tidy/ (TIDY.md).
+
 ## sprites/<actor>/manifest.json (same as Pallid Mask's SpriteForge)
 
 ```json

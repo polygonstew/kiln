@@ -6,9 +6,10 @@ import { drawText, measure, buildBMFont, FONTS } from './text.js';
 import { icon } from './icons.js';
 import { loadOwners, claim } from './owners.js';
 import { openProjects } from './projects.js';
+import { writeRuntime } from './layout.js';
 import { saveFiles, S as FS } from './files.js';
 import { STYLE } from './style.js';
-import { buildGodotHud } from './hud_godot.js';
+import { buildGodotHud, HUD_GD } from './hud_godot.js';
 
 /* ------------------------------------------------------------ glyphs ---- */
 const SHAPES = {
@@ -607,8 +608,9 @@ async function exportHud() {
   const fontFiles = G.fonts.flatMap(k => { const { canvas, fnt } = buildBMFont(k, { color: '#ffffff', name: `kiln_${k}_white` }); return [{ name: `kiln_${k}_white.png`, b64: canvas.toDataURL('image/png') }, { name: `kiln_${k}_white.fnt`, text: fnt }]; });
   try {
     await saveFiles(dir, files);
+    await writeRuntime({ hud: HUD_GD });
     if (fontFiles.length) await saveFiles('fonts', fontFiles);
-    toast(`Saved ${files.length} files to ${dir}/ (Godot scene ${HUD.name}.tscn + hud.gd)`, 'ok');
+    toast(`Saved ${files.length} files to ${dir}/ (Godot scene ${HUD.name}.tscn; its script is _kiln/ui/hud.gd)`, 'ok');
   } catch (e) { toast('Save failed: ' + e.message, 'bad'); }
 }
 // helpers the Godot builder needs

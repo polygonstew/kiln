@@ -1,7 +1,8 @@
 // Effect sprites: hit sparks, slashes, dust, explosions, sparkles and impact rings, drawn by code at game size
 // in a 3-colour set (hot, mid, dark). Each effect is a one-shot animation; in Godot it is a scene that plays where
-// it is placed and removes itself (_kiln/vfx.gd). Actors spawn theirs on a hit, projectiles on impact.
+// it is placed and removes itself (_kiln/actor/vfx.gd). Actors spawn theirs on a hit, projectiles on impact.
 import { h, newImg, toDataURL, toCanvas, toast, api } from './core.js';
+import { writeRuntime, rtRes } from './layout.js';
 import { saveFiles, S as FS } from './files.js';
 
 export const COLOURS = {
@@ -83,12 +84,13 @@ export const makeFrames = (v, size = v.size || 24) => KINDS[v.kind](size, COLOUR
 export const newVfx = (kind = 'spark', colours = 'fire', size = 24) => ({ kind, colours, size, seed: Math.floor(Math.random() * 1e9) });
 
 // frames → strip PNG + a scene that plays once and frees itself; `res` = where the files will be (res:// or relative)
-export function vfxFiles(name, v, res, shared) {
+// base: where the asset folder sits in the Godot project ('' or 'res://…/'), for the shared vfx.gd
+export function vfxFiles(name, v, res, base) {
   const fr = makeFrames(v), s = v.size || 24, strip = newImg(s * fr.length, s);
   fr.forEach((f, i) => { for (let y = 0; y < s; y++) strip.data.set(f.data.subarray(y * s * 4, (y + 1) * s * 4), (y * strip.width + i * s) * 4); });
   const subs = fr.map((_, i) => `[sub_resource type="AtlasTexture" id="f${i}"]\natlas = ExtResource("1")\nregion = Rect2(${i * s}, 0, ${s}, ${s})\n\n`).join('');
   const anim = `[{"frames": [${fr.map((_, i) => `{"duration": 1.0, "texture": SubResource("f${i}")}`).join(', ')}], "loop": false, "name": &"default", "speed": 16.0}]`;
-  const tscn = `[gd_scene load_steps=${fr.length + 4} format=3]\n\n[ext_resource type="Texture2D" path="${res}/${name}.png" id="1"]\n[ext_resource type="Script" path="${shared}/vfx.gd" id="2"]\n\n${subs}`
+  const tscn = `[gd_scene load_steps=${fr.length + 4} format=3]\n\n[ext_resource type="Texture2D" path="${res}/${name}.png" id="1"]\n[ext_resource type="Script" path="${rtRes(base, 'vfx')}" id="2"]\n\n${subs}`
     + `[sub_resource type="SpriteFrames" id="sf"]\nanimations = ${anim}\n\n[node name="${name}" type="AnimatedSprite2D"]\ntexture_filter = 1\nsprite_frames = SubResource("sf")\nscript = ExtResource("2")\n`;
   return [{ name: name + '.png', b64: toDataURL(strip) }, { name: name + '.tscn', text: tscn }];
 }
@@ -130,8 +132,8 @@ export function openVfxDesigner() {
         const n = name.value.toLowerCase().replace(/[^a-z0-9_]+/g, '_') || 'effect';
         const g = await api('/api/godot?path=' + encodeURIComponent(FS.root)).catch(() => ({}));
         const base = g.root ? 'res://' + FS.root.slice(g.root.length + 1) + '/' : '';
-        await saveFiles('sprites/_kiln', [{ name: 'vfx.gd', text: VFX_GD }]);
-        await saveFiles(`vfx/${n}`, vfxFiles(n, v, (base || '') + `vfx/${n}`, (base || '') + 'sprites/_kiln'));
+        await writeRuntime({ vfx: VFX_GD });
+        await saveFiles(`vfx/${n}`, vfxFiles(n, v, base + `vfx/${n}`, base));
         toast(`Saved vfx/${n}/${n}.tscn`, 'ok');
       } }, 'Save')),
     h('p', { class: 'note' }, 'A one-shot animation. In Godot, instance vfx/<name>.tscn where it should happen; it plays and removes itself.'));

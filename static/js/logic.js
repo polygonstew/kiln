@@ -72,7 +72,7 @@ async function refresh() {
 }
 function drawLeft() {
   const groups = {};
-  for (const p of list) { const g = p.startsWith('sprites/_kiln/brains/') ? 'Brains (yours to change)' : p.startsWith('sprites/_kiln/') ? 'Kiln\'s scripts' : p.startsWith('scripts/') ? 'Your scripts' : p.startsWith('logic/') ? 'Written by graphs' : p.split('/')[0]; (groups[g] ||= []).push(p); }
+  for (const p of list) { const g = /^(sprites\/)?_kiln\/brains\//.test(p) ? 'Brains (yours to change)' : /^(sprites\/)?_kiln\//.test(p) || /^(menus\/kiln_|dialogue\/kiln_)/.test(p) ? 'Kiln\'s scripts' : p.startsWith('scripts/') ? 'Your scripts' : p.startsWith('logic/') ? 'Written by graphs' : p.split('/')[0]; (groups[g] ||= []).push(p); }
   V.left.replaceChildren(G.listSec, h('div', { class: 'sec' }, h('h3', {}, 'Scripts', h('span', { class: 'grow' }), h('small', {}, list.length + ' .gd')),
     list.length ? '' : h('p', { class: 'note' }, 'No scripts yet. Kiln writes them when you save an actor, level or HUD; or start your own below.'),
     ...Object.entries(groups).map(([g, ps]) => h('div', { class: 'lg-group' }, h('div', { class: 'lg-gh' }, g),
@@ -106,7 +106,7 @@ async function open(p) {
   V.ed.set(t); dirty(false); V.path.textContent = p;
   const graph = p.match(/^logic\/(\w+)\.gd$/)?.[1];
   V.note.replaceChildren(graph ? h('span', {}, `Written by the graph "${graph}" on every Save, so change the graph instead (or use its "Make it my script"). `, h('button', { class: 'btn sm', onclick: () => G.open(graph) }, 'Open the graph'))
-    : p.startsWith('sprites/_kiln/') && !p.includes('/brains/') ? 'Kiln writes this file again whenever it saves an actor or level, so changes here do not last. Brains (and your scripts/) are never overwritten.' : '');
+    : /^(sprites\/)?_kiln\//.test(p) && !p.includes('/brains/') ? 'Kiln writes this file again whenever it saves an actor or level, so changes here do not last. Brains (and your scripts/) are never overwritten.' : '');
   V.note.style.display = V.note.textContent ? '' : 'none';
   outline(t); setMode('code'); drawRemove();
   V.probs && V.probs.replaceChildren(h('p', { class: 'note' }, 'Not checked yet.'));
@@ -129,8 +129,8 @@ async function check() {
 }
 // what removing a script means: yours → to .trash (Restore brings it back); a brain → back to Kiln's own (your copy to
 // .trash); a graph's script → delete the graph; Kiln's own scripts can't be removed (it writes them again on save)
-const KILN_OWN = /^(sprites\/_kiln\/[^/]+\.gd|hud\/.*\/hud\.gd|dialogue\/kiln_dialogue\.gd|menus\/kiln_\w+\.gd)$/;
-const kindOf = p => p.match(/^logic\/\w+\.gd$/) ? 'graph' : BRAINS[p.match(/^sprites\/_kiln\/brains\/(\w+)\.gd$/)?.[1]] ? 'brain' : KILN_OWN.test(p) ? 'kiln' : 'yours';
+const KILN_OWN = /^((sprites\/)?_kiln\/(?!brains\/).*\.gd|hud\/.*\/hud\.gd|dialogue\/kiln_dialogue\.gd|menus\/kiln_\w+\.gd)$/;   // either layout (layout.js, old)
+const kindOf = p => p.match(/^logic\/\w+\.gd$/) ? 'graph' : BRAINS[p.match(/^(?:sprites\/)?_kiln\/brains\/(\w+)\.gd$/)?.[1]] ? 'brain' : KILN_OWN.test(p) ? 'kiln' : 'yours';
 function drawRemove() {
   const k = cur ? kindOf(cur) : 'kiln';
   V.rm.textContent = k === 'brain' ? 'Reset' : 'Delete'; V.rm.disabled = !cur || k === 'kiln';
@@ -150,7 +150,7 @@ async function removeScript() {
   if (k === 'brain') {
     const id = p.match(/brains\/(\w+)\.gd$/)[1];
     if (!confirm(`Put back Kiln's original ${BRAINS[id].label} brain? Your edited copy goes to the .trash folder ("Removed scripts" can bring it back).`)) return;
-    await trash(p); await saveFiles('sprites/_kiln/brains', [{ name: id + '.gd', text: BRAIN_GD[id] }]);
+    await trash(p); await saveFiles(p.slice(0, p.lastIndexOf('/')), [{ name: id + '.gd', text: BRAIN_GD[id] }]);
     toast('Brain reset to Kiln\'s original', 'ok'); V.dirty = false; cur = null; await refresh(); return open(p);
   }
   if (!confirm(`Delete ${p}? It goes to the .trash folder; "Removed scripts" (left) can bring it back.`)) return;
