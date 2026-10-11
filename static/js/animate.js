@@ -865,7 +865,8 @@ async function makeMore(poses) {
 function puppet() {
   commitFloat();
   openPuppet(V.view, {
-    actor: () => A.actor, frame: () => frame(), changed: () => { A.dirty = true; clearTimeout(saveT); saveT = setTimeout(autosave, 1500); },
+    actor: () => A.actor, frame: () => frame(), isBlank, resize: resizeActor, setFrame: img => { pushUndo(); anim().frames[A.fi] = img; changed(true); },
+    changed: () => { A.dirty = true; clearTimeout(saveT); saveT = setTimeout(autosave, 1500); },
     redraw: () => { drawTimeline(); drawLeft(); drawEditor(); feedPlayer(); },
     // a baked motion becomes an animation of the actor (same name: replaced after asking, unless quiet)
     addAnim(name, frames, fps, loop, span, quiet) {

@@ -2,17 +2,20 @@
 // that says which pixels belong to which bone. Pose: drag a bone's tip to turn it, the hip to move the body; poses are
 // keyframes on a Flash-style timeline with tweens and easing. Presets (walk, run, attack…) fill a motion in one click.
 // Bake renders every frame into an ordinary Animate animation; the rig is kept on the actor (a.rig) for later.
+// An image dropped in (or Import image…) is rigged too: one drawing as it is, a sheet of parts via the kit screen.
 import { h, toast, toCanvas, toDataURL, imgData, checker } from './core.js';
 import { autoRig, skin, prepare, render, transforms, apply, motion as presetMotion, PRESETS, partsToB64, partsFromB64 } from './rig.js';
 import { drawTimeline, poseAt, valueAt, setKey, clearKey, keyFor, insertFrame, removeFrame } from './timeline.js';
 import { exportSkeleton } from './rig_godot.js';
+import { readImage, assemble, standIn, darkArt } from './rig_import.js';
+import { openKit } from './rig_kit.js';
 
 const HUES = [12, 200, 48, 280, 120, 330, 170, 30, 240, 90, 300, 60, 150, 0, 220];
 const boneColour = (i, a = 1) => `hsla(${HUES[i % HUES.length]}, 75%, 58%, ${a})`;
 
 export async function openPuppet(host, api) {
   const a = api.actor();
-  let R = a.rig || null, im = null, parts = null, P = null;
+  let R = a.rig || null, im = null, parts = null, P = null, bg = ['#2a2a28', '#313130'];
   let mode = R ? 'pose' : 'rig', tool = 'move', sel = 0, mi = 0, f = 0, playing = null, brush = 2, showParts = true, onion = true, addPivot = null;
   const undoS = [], redoS = [];
   const ov = h('div', { class: 'workshop puppet' });
@@ -26,6 +29,7 @@ export async function openPuppet(host, api) {
     R.motions ||= []; R.facing ||= 1; R.fill ??= true;
     if (!R.motions.length) R.motions.push(blankMotion('pose'));
     P = prepare(im, R, parts, R.fill);
+    bg = darkArt(im) ? ['#5c5c66', '#66666f'] : ['#2a2a28', '#313130'];
   }
   const blankMotion = name => ({ name, n: 8, fps: 10, loop: true, span: 1, labels: {}, keys: {} });
   const M = () => R.motions[mi];
@@ -44,6 +48,41 @@ export async function openPuppet(host, api) {
     delete R.parts_; await load(); sel = R.bones.findIndex(b => b.name === 'torso'); mode = 'rig'; save(); drawAll();
     toast(`Rigged with ${R.bones.length} bones. Check the coloured parts, fix them with the brush, then Pose`, 'ok');
   }
+  /* ------------------------------------------------- an image dropped in ---- */
+  async function importImage(url) {
+    const r = readImage(await imgData(url));
+    if (r.err) return toast(r.err, 'bad');
+    if (r.whole) return useFigure(r.whole);
+    openKit(ov, r, [a.w, a.h], { done: () => useKit(r.pieces), whole: useFigure });
+  }
+  const pickImage = () => { const i = h('input', { type: 'file', accept: 'image/*', onchange: () => readFile(i.files[0]) }); i.click(); };
+  const readFile = f => { if (!f?.type.startsWith('image/')) return toast('Drop an image (PNG, JPG, WebP, GIF)', 'bad'); const r = new FileReader(); r.onload = () => importImage(r.result); r.readAsDataURL(f); };
+  // the actor's frames must hold the figure: they grow (nothing is lost), after asking unless the actor is still empty
+  function roomFor(w, hh) {
+    if (w <= a.w && hh <= a.h) return true;
+    const W = Math.ceil(Math.max(w, a.w) / 8) * 8, H = Math.ceil(Math.max(hh, a.h) / 8) * 8;
+    if (!api.isBlank() && !confirm(`The figure is ${w}×${hh} pixels; ${a.name}'s frames are ${a.w}×${a.h}.\n\nMake the frames ${W}×${H}? Existing frames keep their art (feet stay on the bottom row).`)) return false;
+    api.resize(W, H); return true;
+  }
+  async function useFigure(fig) {
+    if (!roomFor(fig.width + 2, fig.height)) return;
+    const frame = standIn(fig, a.w, a.h);
+    if (api.isBlank()) api.setFrame(frame);
+    await rigFrom(frame);
+  }
+  // a kit: every piece is its bone's own pixels, so the parts are marked as painted (moving a joint keeps them)
+  async function useKit(pieces) {
+    const first = assemble(pieces, a.w, a.h);
+    if (first.err || !roomFor(first.size[0] + 2, first.size[1])) return first.err && toast(first.err, 'bad');
+    const k = assemble(pieces, a.w, a.h);
+    if (api.isBlank()) api.setFrame(k.im);
+    R = { w: k.im.width, h: k.im.height, bones: k.rig.bones, src: toDataURL(k.im), parts: partsToB64(k.rig.parts), facing: 1, fill: true, painted: true, motions: R?.motions || [] };
+    await load(); sel = Math.max(0, R.bones.findIndex(b => b.name === 'torso')); mode = 'rig'; tool = 'move'; save(); drawAll();
+    toast(`Assembled ${R.bones.length} bones from the parts. Check the joints (drag the dots), then Pose or Make a motion`, 'ok');
+  }
+  ov.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); e.stopPropagation(); } });
+  ov.addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); readFile([...e.dataTransfer.files][0]); });
+
   const reskin = () => { push(); parts = skin(im, R); P = prepare(im, R, parts, R.fill); R.painted = false; save(); drawAll(); };
 
   /* -------------------------------------------------------- the canvas ---- */
@@ -56,7 +95,7 @@ export async function openPuppet(host, api) {
     OX = Math.floor((W - im.width) / 2);
     cv.width = W * Z; cv.height = H * Z;
     const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
-    checker(x, cv.width, cv.height, Math.max(4, Z * 2), '#2a2a28', '#313130');
+    checker(x, cv.width, cv.height, Math.max(4, Z * 2), ...bg);
     let T;
     if (mode === 'rig') {
       x.drawImage(toCanvas(im), OX * Z, 0, im.width * Z, H * Z);
@@ -154,6 +193,7 @@ export async function openPuppet(host, api) {
       left.replaceChildren(h('div', { class: 'wk-card' }, h('h3', {}, 'Rig'),
         h('p', { class: 'note', style: { marginTop: 0 } }, 'Fit a skeleton to the frame open in Animate (a side-view character works best), or start with none and add bones one by one.'),
         h('button', { class: 'btn go', onclick: () => rigFrom(api.frame()) }, 'Rig this frame'), ' ',
+        h('button', { class: 'btn sm', title: 'Rig a picture: one drawing, or a sheet of separate body parts (head, torso, arms, legs…) that Kiln puts together. Or drop it anywhere here.', onclick: pickImage }, 'Import image…'), ' ',
         h('button', { class: 'btn sm ghost', onclick: async () => { R = { w: api.frame().width, h: api.frame().height, src: toDataURL(api.frame()), parts: partsToB64(new Uint8Array(api.frame().width * api.frame().height)), bones: [], facing: 1, fill: true, painted: true, motions: [] }; await load(); mode = 'rig'; tool = 'bone'; save(); drawAll(); toast('Click a joint, then the tip, to add a bone'); } }, 'Start empty')));
       return;
     }
@@ -171,7 +211,8 @@ export async function openPuppet(host, api) {
         h('label', { class: 'chk' }, h('input', { type: 'checkbox', checked: showParts, onchange: e => { showParts = e.target.checked; drawCanvas(); } }), ' show parts'), ' ',
         h('label', { class: 'chk', title: 'Fill the body behind a limb with the body\'s colours, so moving the limb leaves no hole' }, h('input', { type: 'checkbox', checked: R.fill, onchange: e => { push(); R.fill = e.target.checked; P = prepare(im, R, parts, R.fill); save(); drawCanvas(); } }), ' fill behind limbs'),
         h('div', { class: 'pp-row' }, h('button', { class: 'btn sm ghost', title: 'Give every pixel to its nearest bone again (undoes painting)', onclick: reskin }, 'Re-skin'),
-          h('button', { class: 'btn sm ghost', title: 'Rig the frame open in Animate again (keeps motions)', onclick: () => { if (confirm('Fit a new skeleton to the current Animate frame? Bones and parts are replaced; motions are kept.')) rigFrom(api.frame()); } }, 'Re-rig'))));
+          h('button', { class: 'btn sm ghost', title: 'Rig the frame open in Animate again (keeps motions)', onclick: () => { if (confirm('Fit a new skeleton to the current Animate frame? Bones and parts are replaced; motions are kept.')) rigFrom(api.frame()); } }, 'Re-rig'),
+          h('button', { class: 'btn sm ghost', title: 'Rig a picture instead: one drawing, or a sheet of separate body parts (or drop it here). Motions are kept.', onclick: pickImage }, 'Import image…'))));
   }
   const normZ = () => R.bones.slice().sort((u, v) => u.z - v.z).forEach((b, i) => { b.z = i; });
   function delBone(i) {
@@ -244,9 +285,9 @@ export async function openPuppet(host, api) {
       h('button', { class: 'btn sm ghost', title: 'Insert a frame here: later keys move one frame (F5)', onclick: () => { push(); insertFrame(m, f); save(); drawAll(); } }, '+ Frame'),
       h('button', { class: 'btn sm ghost', title: 'Remove this frame (Shift+F5)', onclick: () => { push(); removeFrame(m, f); f = Math.min(f, m.n - 1); save(); drawAll(); } }, '− Frame'),
       h('i', { class: 'sep' }),
-      kf ? [h('label', { class: 'chk', title: 'Motion tween: glide from this keyframe to the next one instead of holding still' }, h('input', { type: 'checkbox', checked: kf.key.tween, onchange: e => { push(); kf.key.tween = e.target.checked; save(); drawAll(); } }), ' tween'),
+      ...(kf ? [h('label', { class: 'chk', title: 'Motion tween: glide from this keyframe to the next one instead of holding still' }, h('input', { type: 'checkbox', checked: kf.key.tween, onchange: e => { push(); kf.key.tween = e.target.checked; save(); drawAll(); } }), ' tween'),
         h('span', { class: 'lbl', title: '-100 starts slow, +100 ends slow (like Flash)' }, 'Ease'), h('input', { type: 'range', min: -100, max: 100, step: 5, value: kf.key.ease || 0, style: { width: '90px' }, oninput: e => { kf.key.ease = +e.target.value; easeV.textContent = e.target.value; drawCanvas(); }, onchange: () => save() }), easeV = h('span', { class: 'mono faint', style: { width: '30px', fontSize: '11px' } }, String(kf.key.ease || 0)),
-        h('canvas', { class: 'pp-ease', width: 40, height: 20, title: 'The ease curve' })] : h('span', { class: 'faint', style: { fontSize: '11px' } }, 'No keyframe on this row yet'),
+        h('canvas', { class: 'pp-ease', width: 40, height: 20, title: 'The ease curve' })] : [h('span', { class: 'faint', style: { fontSize: '11px' } }, 'No keyframe on this row yet')]),
       h('i', { class: 'sep' }),
       h('input', { type: 'text', placeholder: 'label', value: m.labels?.[f] || '', title: 'A label on this frame (like Flash frame labels)', style: { width: '80px' }, onchange: e => { (m.labels ||= {}); if (e.target.value) m.labels[f] = e.target.value; else delete m.labels[f]; save(); drawTl(); } }));
     const ec = tlBar.querySelector('.pp-ease'); if (ec && kf) { const x = ec.getContext('2d'); x.strokeStyle = '#6f8fd9'; x.beginPath(); for (let i = 0; i <= 20; i++) { const t = i / 20, y = 18 - 16 * (kf.key.ease > 0 ? t + kf.key.ease / 100 * ((1 - (1 - t) * (1 - t)) - t) : t - kf.key.ease / 100 * (t * t - t)); i ? x.lineTo(2 + t * 36, y) : x.moveTo(2, y); } x.stroke(); }
@@ -269,7 +310,7 @@ export async function openPuppet(host, api) {
 
   /* ---------------------------------------------------------- keys & frame ---- */
   const keys = e => {
-    if (e.target.matches('input[type=text],input[type=number],textarea')) return;
+    if (e.target.matches('input[type=text],input[type=number],textarea') || ov.querySelector('.kit')) return;
     const k = e.key, ctrl = e.ctrlKey || e.metaKey; let done = true;
     if (ctrl && k.toLowerCase() === 'z') e.shiftKey ? redo() : undo();
     else if (ctrl && k.toLowerCase() === 'y') redo();

@@ -1,14 +1,19 @@
 # RESUME: Kiln state of build
 
-Last updated: 2026-10-10 evening (session 2 + loop runs 1–24 + user requests; the 45-min loop is PAUSED by the user).
+Last updated: 2026-10-10 night (session 3: Stage playtest room + Puppet image import; the 45-min loop is PAUSED by the user).
 
 ## At a glance (newest first)
 
-- **START HERE (next session):** docs/LOOP.md backlog order = Stage → playtest room, more Menus backgrounds, Logic node
+- 2026-10-10 night: **Stage = playtest room** (stage.js + playbuild.js buildGame + play.py bridge): the Godot web build
+  runs in the Stage; sliders tune the player live (main.gd reads window.kilnTune via JavaScriptBridge, brain retune()),
+  Keep → Animate (`tune-actor`), screenshot / WebM, log pane; ▶ Play = emit('play'). **Puppet import** (rig_import.js +
+  rig_kit.js): drop a picture or Import image… → one drawing is auto-rigged, a parts kit opens the kit screen.
+  animate.js saving moved to actor_save.js (animate.js ≈920 lines).
+- **START HERE (next session):** docs/LOOP.md backlog order = more Menus backgrounds, Logic node
   system, then items DB / 2D lighting / dialogue / cutscenes. A one-shot session-only timer may start a build at 22:04.
   The user's asset folder is now **library/games/untitled_demo** (they work in it live): read the root from
-  library/settings.json, sha1 it before/after every test, only create zz_ items and delete them. animate.js ≈996 lines:
-  split before adding. Restart `kiln` only when /api/status queue is 0.
+  library/settings.json, sha1 it before/after every test, only create zz_ items and delete them (a zz actor's save also
+  creates sprites/_kiln/ in an empty folder: remove it too). Restart `kiln` only when /api/status queue is 0.
 - 2026-10-10 evening: **Puppet** (Animate → Puppet: rig.js engine, puppet.js screen, timeline.js Flash-style timeline with
   tweens/ease, rig_godot.js Skeleton2D export) · **▶ Play** (play.py + playbuild.js: web build of the asset folder at
   /play/) · **Menus** area (key 0: title/options/pause → menus/*.tscn + KilnSettings) · **Logic** area (key 9: GDScript
