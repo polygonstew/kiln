@@ -261,7 +261,18 @@ override everything; each gets a Help section and a Godot export):**
 - 2026-10-10: user: 'Levels needs more controls' → leveltools.js (brush 1–3, rect, line, fill, pick, select + copy/cut/stamp/clear, undo/redo 60 steps over tiles/things/zones) + tool bar, keys (document-level while Levels is on screen: clicking the map gives no focus), Space+drag pan, +/− zoom, Clear level. Tested every tool + undo. Tour step added.
 - 2026-10-10: user: "demo compiled version to test-run; logic node system; main menu building and settings; shrink tabs". Done now: compact tabs (scroll if needed); ▶ Play = play.py (copy assets to build/game, rewrite paths to res://, project.godot gl_compatibility 480×270, Web preset no threads, godot --import + --export-debug, served at /play/) + playbuild.js (pick level/player/HUD/title, writes kiln_main.tscn + main.gd). Built the user's real assets (room + creepy_miner + hud) in 9 s, played in headless Chromium.
 - [x] DONE **Menus area** (menus.js + menus_godot.js: title/options/pause, KilnSettings, used by Play; verified title → play → Esc pause → resume in the web build).
+- [ ] **TOP PRIORITY: Bones / puppet animation (user: "could be a game changer")**. Engine DONE: static/js/rig.js
+  (autoRig: 11-bone side-view humanoid fitted to the sprite's box + leg runs; skin: pixel → nearest bone with body-layout
+  rules; prepare: EPX ×8 + "behind the limb" parent fill; render: RotSprite-style per bone back→front; PRESETS idle,
+  walk, run, attack, jump, hurt, death; motion(rig, kind, facing); lerpPose for keyframes). Tested headless: all presets
+  animate and keep the figure whole (death drops too low: clamp root dy to the frame). TODO (the UI, puppet.js, opened
+  from Animate like the Workshop): canvas with skeleton overlay (drag joints in Rig mode, drag tips to rotate / hip to
+  move in Pose mode), parts brush (paint pixels to the selected bone) + parts overlay, add/delete bones (pivot then tip,
+  parent = selected) for "piece by piece", facing right/left, preset buttons → poses, timeline with keyframes (lerpPose
+  between), play, Bake into an animation of the actor (name, fps, loop); save rig on the actor (a.rig: src, parts as
+  partsToB64, bones, motions). Help + tour + Playwright test on a zz actor.
 - [ ] NEXT (user asks): **Logic node system** (visual event → action graphs compiled to plain GDScript, editable in the GDScript editor).
 - 2026-10-10 NOTE: the user switched the asset folder to library/games/untitled_demo (20:01). Tests must read the root from library/settings.json, sha1 it before/after, and clean only their own files. A Menus test wrote kiln/menus-game.json there; removed, folder verified back to its state.
 - 2026-10-10: smoke caught /api/fs 500 on a missing folder (fresh asset folder has no concepts/) → empty listing. Scenes' starting preset was saved on mere opening (smoke wrote scene-pallid.json into the user's new folder; removed) → now saved only after a change. Tabs made very small (10px, no key badges; keys in tooltips).
+- 2026-10-10: user at 94% usage (resets 22:00): stopped after the rig engine + hand-off. Next session: build puppet.js first.
 
