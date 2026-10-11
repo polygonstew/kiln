@@ -21,7 +21,7 @@ const HEAD = (title, what) => `extends Node
 `;
 
 export const BRAIN_GD = {
-  player: HEAD('player (platformer)', 'Keyboard / gamepad: arrows or stick, Space / A to jump,\n## X to attack, C to shoot (actions "attack" and "shoot" are added if your project has none).') + `
+  player: HEAD('player (platformer)', 'Keys or a gamepad (KilnInput, _kiln/game/input.gd): move with arrows / WASD / stick,\n## jump Space / A (hold for higher), attack X / pad X, shoot C / pad B.') + `
 @export var speed := 90.0         ## run speed, px/s
 @export var jump_height := 40.0   ## px
 @export var jump_time := 0.35     ## seconds to the top of a jump
@@ -37,8 +37,7 @@ var _climbing := false
 
 func _ready() -> void:
 \tretune()
-\t_add_key("attack", KEY_X)
-\t_add_key("shoot", KEY_C)
+\tKilnInput.ensure()          # the game's actions on keys and a gamepad
 
 ## Work out gravity and jump speed from the jump numbers (call again after changing them, as Kiln's Stage does).
 func retune() -> void:
@@ -48,24 +47,24 @@ func retune() -> void:
 func _physics_process(delta: float) -> void:
 \tif actor.get("dead"):
 \t\treturn
-\tvar dir := Input.get_axis("ui_left", "ui_right")
+\tvar dir := Input.get_axis("move_left", "move_right")
 \tvar tiles := get_tree().get_first_node_in_group("kiln_tiles")
 \tvar here: String = tiles.kind_at(actor.global_position + Vector2(0, -4)) if tiles else ""
 \t# ladders: up or down on a ladder tile starts climbing, leaving the ladder stops it
-\tif here == "ladder" and (Input.is_action_pressed("ui_up") or Input.is_action_pressed("ui_down")):
+\tif here == "ladder" and (Input.is_action_pressed("move_up") or Input.is_action_pressed("move_down")):
 \t\t_climbing = true
 \tif here != "ladder":
 \t\t_climbing = false
 \tif _climbing:
-\t\tactor.velocity = Vector2(dir * speed * 0.5, Input.get_axis("ui_up", "ui_down") * climb_speed)
+\t\tactor.velocity = Vector2(dir * speed * 0.5, Input.get_axis("move_up", "move_down") * climb_speed)
 \telse:
 \t\tactor.velocity.y += gravity * (0.35 if here == "water" else 1.0) * delta
 \t\t_coyote = coyote_time if actor.is_on_floor() else _coyote - delta
-\t\tif Input.is_action_just_pressed("ui_accept") and (_coyote > 0.0 or here == "water"):
+\t\tif Input.is_action_just_pressed("jump") and (_coyote > 0.0 or here == "water"):
 \t\t\tactor.velocity.y = jump_velocity * (0.6 if here == "water" else 1.0)
 \t\t\t_coyote = 0.0
 \t\t\t_sound("jump")
-\t\tif Input.is_action_just_released("ui_accept") and actor.velocity.y < 0.0:
+\t\tif Input.is_action_just_released("jump") and actor.velocity.y < 0.0:
 \t\t\tactor.velocity.y *= 0.5   # let go early for a short hop
 \t\tactor.velocity.x = move_toward(actor.velocity.x, dir * speed, speed * 10.0 * delta)
 \tactor.move_and_slide()
@@ -106,13 +105,6 @@ func _sound(event: String) -> void:
 \tif actor.has_method("sfx"):
 \t\tactor.call("sfx", event)
 
-func _add_key(action: String, key: Key) -> void:
-\tif InputMap.has_action(action):
-\t\treturn
-\tInputMap.add_action(action)
-\tvar e := InputEventKey.new()
-\te.physical_keycode = key
-\tInputMap.action_add_event(action, e)
 `,
   patrol: HEAD('patrol', 'Walks back and forth, turns at walls and (optionally) ledges, hurts the player on touch.') + `
 @export var speed := 30.0

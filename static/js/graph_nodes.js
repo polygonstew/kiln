@@ -3,11 +3,13 @@
 //   flow   steers a chain (if, wait, repeat, only once…)
 //   act    does something (say a line, heal, spawn, play a sound, set a variable…)
 //   val    a value wired into another node's input (numbers, maths, comparisons, the player's health…)
+import { ACTIONS } from './input_godot.js';
+
 // Ports: exec ports carry "then"; data ports carry num | text | bool | any. A data input that is not wired uses the
 // field shown next to it. graph_compile.js walks the wires and calls these; the c object it passes is documented there.
 
-const KEYS = [['ui_accept', 'Jump (Space)'], ['attack', 'Attack (X)'], ['shoot', 'Shoot (C)'], ['ui_cancel', 'Pause (Esc)'],
-  ['ui_up', 'Up'], ['ui_down', 'Down'], ['ui_left', 'Left'], ['ui_right', 'Right'],
+// the game's actions (keys and gamepad, KilnInput) first, then single keys
+const KEYS = [...ACTIONS.map(([id, what, keys, pad]) => [id, `${what} (${keys} · pad ${pad})`]),
   ...'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('').map(k => ['key:' + k, 'Key ' + k]), ...'1234567890'.split('').map(k => ['key:' + k, 'Key ' + k])];
 export const KEY_OPTIONS = KEYS;
 // a key or action as a GDScript condition on an input event, or as "held now"
@@ -27,7 +29,7 @@ export const NODES = {
     outs: [['then', 'exec']], ev: () => ({ name: 'start', hook: f => [`${f}()`] }) },
   frame: { cat: 'event', label: 'Every frame', hint: 'Runs 60 times a second. delta = seconds since the last frame',
     outs: [['then', 'exec'], ['delta', 'num', 'delta']], ev: () => ({ name: 'every_frame', params: 'delta: float', frame: true }), out: { delta: () => 'delta' } },
-  key: { cat: 'event', label: 'When a key is pressed', fields: [['key', 'Key', 'key', 'key:E']], outs: [['then', 'exec']],
+  key: { cat: 'event', label: 'When a key is pressed', fields: [['key', 'Key', 'key', 'interact']], outs: [['then', 'exec']],
     ev: n => ({ name: 'key_' + slug(n.f.key.replace('key:', '')), input: keyPressed(n.f.key) }) },
   zone: { cat: 'event', label: 'When the player enters a zone', hint: 'A zone painted in Levels (Paint → Zones); its name',
     fields: [['zone', 'Zone', 'zone', '']], outs: [['then', 'exec'], ['who', 'any', 'who']],
@@ -118,7 +120,7 @@ export const NODES = {
   andor: { cat: 'val', label: 'And / or', ins: [['a', 'bool', '', true]], fields: [['op', '', 'sel', 'and', [['and', 'and'], ['or', 'or']]]], ins2: [['b', 'bool', '', true]], outs: [['v', 'bool']],
     out: { v: c => `(${c.in('a')} ${c.f.op} ${c.in('b')})` } },
   not: { cat: 'val', label: 'Not', ins: [['a', 'bool', '', true]], outs: [['v', 'bool']], out: { v: c => `(not ${c.in('a')})` } },
-  held: { cat: 'val', label: 'Key held', fields: [['key', '', 'key', 'ui_right']], outs: [['v', 'bool']], out: { v: c => keyHeld(c.f.key) } },
+  held: { cat: 'val', label: 'Key held', fields: [['key', '', 'key', 'move_right']], outs: [['v', 'bool']], out: { v: c => keyHeld(c.f.key) } },
   has: { cat: 'val', label: 'Has an item', ins: [['id', 'text', 'item', 'key']], outs: [['v', 'bool']], out: { v: c => `(_hud() != null and _hud().has_item(${c.in('id')}))` }, use: ['_hud'] },
   join: { cat: 'val', label: 'Join text', ins: [['a', 'text', '', 'Score: '], ['b', 'text', '', '']], outs: [['v', 'text']], out: { v: c => `(${c.in('a')} + ${c.in('b')})` } },
   flag: { cat: 'val', label: 'Dialogue flag is set', hint: 'A flag a dialogue line or choice set', fields: [['name', 'Flag', 'text', 'met_miner']], outs: [['v', 'bool']], out: { v: c => `_flag(${JSON.stringify(c.f.name)})` }, use: ['_flag'] },

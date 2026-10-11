@@ -5,16 +5,19 @@
 //   _kiln/brains/  player.gd, patrol.gd, flyer.gd: behaviours, written once and then yours to change
 //   _kiln/level/   level_tiles.gd (tile kinds, hazards), zone.gd (checkpoints, doors, messages…)
 //   _kiln/ui/      hud.gd, menu.gd, settings.gd (KilnSettings), dialogue.gd (the dialogue runner)
+//   _kiln/game/    input.gd (KilnInput: every action on keys and a gamepad)
 // Every save takes its paths from here, so the layout is defined in this one place. An older asset folder (runtime in
 // sprites/_kiln/, menus/kiln_menu.gd…) is moved here by File → Tidy game files (server: tidy.py).
 import { api } from './core.js';
 import { saveFiles, S as FS } from './files.js';
+import { INPUT_GD } from './input_godot.js';
 
 export const KILN = '_kiln';
 const FILES = {
   juice: 'actor/juice.gd', flash: 'actor/hit_flash.gdshader', projectile: 'actor/projectile.gd', lipsync: 'actor/lipsync.gd', vfx: 'actor/vfx.gd',
   tiles: 'level/level_tiles.gd', zone: 'level/zone.gd',
   hud: 'ui/hud.gd', menu: 'ui/menu.gd', settings: 'ui/settings.gd', dialogue: 'ui/dialogue.gd',
+  input: 'game/input.gd',
 };
 // a runtime file from the asset folder ('_kiln/actor/juice.gd'), and as a scene refers to it: base is '' (the asset
 // folder is the project) or 'res://<where the asset folder sits in the Godot project>/'
@@ -34,16 +37,18 @@ Small, commented GDScript your game uses. Everything else in this asset folder i
 - \`level/level_tiles.gd\`: what a tile is (solid, ladder, hazard…); \`level/zone.gd\`: checkpoints, doors, messages.
 - \`ui/hud.gd\`: the HUD's calls (set_health, say, add_item…); \`ui/menu.gd\` + \`ui/settings.gd\` (KilnSettings): menus and
   saved options; \`ui/dialogue.gd\`: plays conversations from dialogue/<name>.json.
+- \`game/input.gd\` (KilnInput): every action (move, jump, attack, shoot, interact, pause, inventory) on keys and a gamepad.
+  Set your own in Project Settings → Input Map; KilnInput only adds what is missing.
 
 Kiln writes these again when it saves (so it can fix them), except \`brains/\`. Change behaviour in brains/ or in your own
 scripts (scripts/, logic/), not here.
 `;
 
 export const writeReadme = () => saveFiles(KILN, [{ name: 'README.md', text: README }]);
-// write runtime files: { key: text }, grouped by folder, with the README beside them
+// write runtime files: { key: text }, grouped by folder, with the README and the controls (input.gd) beside them
 export async function writeRuntime(entries) {
   const byDir = {};
-  for (const [k, text] of Object.entries(entries)) { const p = rt(k), d = p.slice(0, p.lastIndexOf('/')); (byDir[d] ||= []).push({ name: p.slice(p.lastIndexOf('/') + 1), text }); }
+  for (const [k, text] of Object.entries({ ...entries, input: INPUT_GD })) { const p = rt(k), d = p.slice(0, p.lastIndexOf('/')); (byDir[d] ||= []).push({ name: p.slice(p.lastIndexOf('/') + 1), text }); }
   for (const [d, files] of Object.entries(byDir)) await saveFiles(d, files);
   await writeReadme();
 }

@@ -222,6 +222,13 @@ svg text { font-family: 'IBM Plex Sans Condensed'; }
 <li><b>Background</b>: a saved scene drawn behind the map and placed behind it in Godot.</li></ul>
 </section>
 
+<section id="controls"><h2>Controls: keys and gamepads</h2>
+<p>Every Kiln game knows the same actions, each on the keyboard and on a gamepad (Xbox names; any pad works), from <code>_kiln/game/input.gd</code> (<code>KilnInput.ensure()</code> adds the ones your project doesn't have; set your own in Godot's Project Settings → Input Map and they win):</p>
+<table><tr><th>Action</th><th>Keys</th><th>Gamepad</th></tr>
+<tr><td>move_left / move_right / move_up / move_down</td><td>arrows, WASD</td><td>left stick, D-pad</td></tr>
+<tr><td>jump</td><td>Space, Z</td><td>A</td></tr><tr><td>attack</td><td>X, J</td><td>X</td></tr><tr><td>shoot</td><td>C, K</td><td>B</td></tr>
+<tr><td>interact</td><td>E</td><td>Y</td></tr><tr><td>pause</td><td>Esc, P</td><td>Start</td></tr><tr><td>inventory</td><td>I, Tab</td><td>Back</td></tr></table>
+<p>The player brain, ▶ Play (pause: your pause menu, or a simple PAUSED), menus and dialogue choices (Godot's ui_ actions, which pads drive too) and Logic's <b>When a key is pressed</b> / <b>Key held</b> use them. Pads work in the Stage on Kiln's secure address.</p></section>
 <section id="play"><h2>Play: a test build of your game</h2>
 <p><b>▶ Play</b> (top bar) builds a small game from your asset folder with Godot and plays it in the <a href="#stage">Stage</a>: the level you pick with the player actor (the one whose Workshop role is Player), a camera that follows it, and your HUD. No level yet? You get a long floor in front of a scene. The build is a copy in <code>kiln/build/</code>: your files are only read. The last build stays at <code>/play/</code>.</p></section>
 <section id="menus"><h2>Menus: title, options, pause</h2>

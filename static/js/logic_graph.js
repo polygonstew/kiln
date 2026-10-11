@@ -9,6 +9,7 @@ import { graphView } from './graph_view.js';
 import { highlight } from './gdedit.js';
 import { listScenes } from './playbuild.js';
 import { openProjects } from './projects.js';
+import { writeRuntime } from './layout.js';
 
 const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_|_$/g, '');
 const VAR_TYPES = [['int', 'whole number'], ['float', 'number'], ['text', 'text'], ['bool', 'yes / no']];
@@ -102,7 +103,7 @@ export function graphArea({ setMode, openScript }) {
     if (!cur) return;
     clearTimeout(saveT); await keep();
     const text = code();
-    try { await saveFiles('logic', [{ name: cur.name + '.gd', text }]); written = text; code(); toast(`Saved logic/${cur.name}.gd`, 'ok'); } catch (e) { return toast('Save failed: ' + e.message, 'bad'); }
+    try { await saveFiles('logic', [{ name: cur.name + '.gd', text }]); await writeRuntime({}); written = text; code(); toast(`Saved logic/${cur.name}.gd`, 'ok'); } catch (e) { return toast('Save failed: ' + e.message, 'bad'); }
     V.probs.replaceChildren(h('p', { class: 'note' }, 'Asking Godot…'));
     const r = await api('/api/godot/check', { root: FS.root, path: `logic/${cur.name}.gd`, text }).catch(e => ({ errors: [{ line: 0, msg: e.message }] }));
     if (r.godot === false) return V.probs.replaceChildren(h('p', { class: 'note' }, 'Godot is not installed here, so the script was not checked.'));

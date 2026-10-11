@@ -97,7 +97,8 @@ export function compile(g, { name = 'logic', resPrefix = 'res://' } = {}) {
   ];
   if (vars.length) out.push('# variables (Logic → Variables)', ...vars.map(v => `var ${v.name}: ${VAR_TYPES[v.type] || 'float'} = ${literal(v.type === 'text' ? 'text' : v.type, v.value)}`), '');
   if (members.size) out.push('# what "Only the first time" and "At most every" remember', ...members.values(), '');
-  out.push('func _ready() -> void:', '\tadd_to_group("kiln_logic")   # so "Send a message" reaches this graph',
+  const usesInput = nodes.some(n => (n.type === 'key' || n.type === 'held') && !String(fieldsOf(n).key).startsWith('key:'));
+  out.push('func _ready() -> void:', '\tadd_to_group("kiln_logic")   # so "Send a message" reaches this graph', ...(usesInput ? ['\tKilnInput.ensure()   # the game\'s actions on keys and a gamepad (_kiln/game/input.gd)'] : []),
     '\tawait get_tree().process_frame   # the level, the player and the HUD are ready after this', ...tab(ready), '');
   if (frame.length) out.push('func _process(delta: float) -> void:', ...tab(frame), '');
   if (input.length) out.push('func _unhandled_input(event: InputEvent) -> void:', ...tab(input), '');

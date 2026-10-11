@@ -4,6 +4,7 @@
 import { api } from './core.js';
 import { S as FS } from './files.js';
 import { BRAIN_GD } from './brains.js';
+import { INPUT_GD } from './input_godot.js';
 
 const MAIN_GD = `extends Node2D
 ## Kiln demo: a title screen (optional), then the level with the player, a camera that follows it and the HUD.
@@ -27,6 +28,8 @@ var _tuned := ""
 const BRAIN := "res://_kiln/brains/player.gd"
 
 func _ready() -> void:
+\tprocess_mode = Node.PROCESS_MODE_ALWAYS    # Main hears Esc / Start while paused; the world under it pauses
+\tKilnInput.ensure()                         # keys and gamepad for every action (_kiln/game/input.gd)
 \tif OS.has_feature("web"):
 \t\t_web = JavaScriptBridge.get_interface("window")
 \tif title_menu:
@@ -71,9 +74,27 @@ func _on_menu(a: String) -> void:
 \t\t\tget_tree().reload_current_scene()
 
 func _unhandled_input(e: InputEvent) -> void:
-\tif playing and pause_menu and e.is_action_pressed("ui_cancel") and menus.is_empty():
+\tif not playing or not e.is_action_pressed("pause"):
+\t\treturn
+\tif pause_menu and menus.is_empty():
 \t\tget_tree().paused = true
 \t\t_open(pause_menu)
+\telif not pause_menu:
+\t\t_simple_pause()
+
+# no Kiln pause menu: Esc / Start still pauses, with a word on screen
+var _paused_label: CanvasLayer
+func _simple_pause() -> void:
+\tget_tree().paused = not get_tree().paused
+\tif _paused_label == null:
+\t\t_paused_label = CanvasLayer.new()
+\t\t_paused_label.layer = 40
+\t\tvar l := Label.new()
+\t\tl.text = "PAUSED"
+\t\tl.set_anchors_and_offsets_preset(Control.PRESET_CENTER)
+\t\t_paused_label.add_child(l)
+\t\tadd_child(_paused_label)
+\t_paused_label.visible = get_tree().paused
 
 func _title_screen() -> void:
 \tvar ui := CanvasLayer.new()
@@ -97,7 +118,7 @@ func _title_screen() -> void:
 \tplay.pressed.connect(func(): ui.queue_free(); _start())
 \tbox.add_child(play)
 \tvar help := Label.new()
-\thelp.text = "Arrows move · Space jumps · X attacks · C shoots"
+\thelp.text = "Arrows / stick move · Space / A jumps · X attacks · C / B shoots"
 \thelp.add_theme_font_size_override("font_size", 8)
 \thelp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 \tbox.add_child(help)
@@ -107,6 +128,7 @@ func _title_screen() -> void:
 func _start() -> void:
 \tplaying = true
 \tvar world := Node2D.new()
+\tworld.process_mode = Node.PROCESS_MODE_PAUSABLE
 \tadd_child(world)
 \tvar view := get_viewport_rect().size
 \tvar start := Vector2(48, view.y - 16)
@@ -161,6 +183,7 @@ func _start() -> void:
 \t\tvar n := Node.new()
 \t\tn.name = s.resource_path.get_file().get_basename()
 \t\tn.set_script(s)
+\t\tn.process_mode = Node.PROCESS_MODE_PAUSABLE
 \t\tadd_child(n)
 
 # ---- Kiln Stage: inside Kiln's Stage the sliders tune the player while you play, and the camera button asks
@@ -231,7 +254,7 @@ export async function buildGame(pick, onLog) {
   if (lg.length) props.push(`logic_scripts = Array[Script]([${lg.map((_, i) => `ExtResource("lg${i}")`).join(', ')}])`);
   const main = `[gd_scene load_steps=${ext.length + 2} format=3]\n\n[ext_resource type="Script" path="res://main.gd" id="main"]\n${ext.join('\n')}\n\n`
     + `[node name="Main" type="Node2D"]\nscript = ExtResource("main")\n${props.join('\n')}\ntitle = ${JSON.stringify(pick.name || 'Kiln demo')}\nshow_title = ${pick.start !== 'none'}\n`;
-  const files = { 'kiln_main.tscn': main, 'main.gd': MAIN_GD };
+  const files = { 'kiln_main.tscn': main, 'main.gd': MAIN_GD, '_kiln/game/input.gd': INPUT_GD };     // the controls, always current
   // the player brain main.gd falls back on: the folder's own copy (here or in the old sprites/_kiln/), else Kiln's
   const ls = async d => ((await api('/api/fs?path=' + encodeURIComponent(`${FS.root}/${d}`)).catch(() => ({ items: [] }))).items || []).map(i => i.name);
   if (!(await ls('_kiln/brains')).includes('player.gd')) files['_kiln/brains/player.gd'] = (await ls('sprites/_kiln/brains')).includes('player.gd')
