@@ -46,11 +46,12 @@ export const logic = {
       h('div', { class: 'bar' }, V.path, V.state, h('span', { class: 'grow' }),
         h('button', { class: 'btn sm', title: 'Ask Godot whether this script is valid (also runs on save)', onclick: check }, 'Check'),
         h('button', { class: 'btn sm ghost', title: 'Throw away unsaved changes', onclick: () => { if (cur) { V.ed.set(saved); dirty(false); } } }, 'Revert'),
+        V.rm = h('button', { class: 'btn sm ghost danger', onclick: removeScript }, 'Delete'),
         h('button', { class: 'btn sm go', title: 'Save (Ctrl+S); Godot checks it straight after', onclick: save }, 'Save')),
       V.note, h('div', { style: { flex: 1, minHeight: 0 } }, V.ed.el),
       h('div', { class: 'bar bot' }, h('span', { class: 'note', style: { margin: 0 } }, 'Tab / Shift+Tab indent · Enter keeps the indent · Ctrl+/ comments lines · Ctrl+S saves · Ctrl+F finds')));
     el.append(V.left, h('section', { class: 'stage', style: { display: 'flex', flexDirection: 'column' } }, V.codePane, G.center), V.right);
-    drawRight(); refresh(); G.refresh().then(() => { if (mode === 'graph' && pref.get('logic.graph', '')) G.open(pref.get('logic.graph', '')); else setMode('code'); });
+    drawRight(); drawRemove(); refresh(); G.refresh().then(() => { if (mode === 'graph' && pref.get('logic.graph', '')) G.open(pref.get('logic.graph', '')); else setMode('code'); });
     window.addEventListener('beforeunload', e => { if (V.dirty) e.preventDefault(); });
   },
   show() { refresh(); G?.refresh(); },
@@ -78,7 +79,8 @@ function drawLeft() {
       ...ps.map(p => h('button', { class: 'lg-file' + (p === cur && mode === 'code' ? ' on' : ''), title: p, onclick: () => open(p) }, p.split('/').pop().replace(/\.gd$/, ''), h('small', {}, p.split('/').slice(0, -1).join('/')))))),
     h('div', { style: { marginTop: '10px', display: 'flex', gap: '6px', flexWrap: 'wrap' } },
       V.newSel = select(Object.entries(NEW).map(([k, [l]]) => [k, l]), 'empty', () => {}),
-      h('button', { class: 'btn sm', title: 'A new script in scripts/', onclick: newScript }, 'New script'))));
+      h('button', { class: 'btn sm', title: 'A new script in scripts/', onclick: newScript }, 'New script'))), V.trash ||= h('div', { class: 'sec' }));
+  drawTrash();
 }
 function drawRight() {
   V.codeSide = h('div', {}, h('div', { class: 'sec' }, h('h3', {}, 'Problems'), V.probs = h('div', { class: 'lg-probs' }, h('p', { class: 'note' }, 'Godot checks the script when you save or press Check.'))),
@@ -106,7 +108,7 @@ async function open(p) {
   V.note.replaceChildren(graph ? h('span', {}, `Written by the graph "${graph}" on every Save, so change the graph instead (or use its "Make it my script"). `, h('button', { class: 'btn sm', onclick: () => G.open(graph) }, 'Open the graph'))
     : p.startsWith('sprites/_kiln/') && !p.includes('/brains/') ? 'Kiln writes this file again whenever it saves an actor or level, so changes here do not last. Brains (and your scripts/) are never overwritten.' : '');
   V.note.style.display = V.note.textContent ? '' : 'none';
-  outline(t); setMode('code');
+  outline(t); setMode('code'); drawRemove();
   V.probs && V.probs.replaceChildren(h('p', { class: 'note' }, 'Not checked yet.'));
   drawLeft();
 }
@@ -124,6 +126,52 @@ async function check() {
   if (r.godot === false) return V.probs.replaceChildren(h('p', { class: 'note' }, 'Godot is not installed on this machine, so scripts cannot be checked here.'));
   V.probs.replaceChildren(r.ok ? h('p', { class: 'lg-ok' }, '✓ Godot finds no problems') : h('div', {},
     ...r.errors.map(e => h('button', { class: 'lg-err', onclick: () => e.line && V.ed.goLine(e.line) }, h('b', {}, e.line ? 'Line ' + e.line : 'Godot'), h('span', {}, e.msg)))));
+}
+// what removing a script means: yours → to .trash (Restore brings it back); a brain → back to Kiln's own (your copy to
+// .trash); a graph's script → delete the graph; Kiln's own scripts can't be removed (it writes them again on save)
+const KILN_OWN = /^(sprites\/_kiln\/[^/]+\.gd|hud\/.*\/hud\.gd|dialogue\/kiln_dialogue\.gd|menus\/kiln_\w+\.gd)$/;
+const kindOf = p => p.match(/^logic\/\w+\.gd$/) ? 'graph' : BRAINS[p.match(/^sprites\/_kiln\/brains\/(\w+)\.gd$/)?.[1]] ? 'brain' : KILN_OWN.test(p) ? 'kiln' : 'yours';
+function drawRemove() {
+  const k = cur ? kindOf(cur) : 'kiln';
+  V.rm.textContent = k === 'brain' ? 'Reset' : 'Delete'; V.rm.disabled = !cur || k === 'kiln';
+  V.rm.title = { yours: 'Delete this script (it goes to the .trash folder: "Removed scripts" can bring it back)', brain: 'Put back Kiln\'s original brain (your edited copy goes to .trash)',
+    graph: 'Written by a graph: delete the graph instead', kiln: 'Kiln writes this file again when it saves, so it can\'t be deleted here' }[k];
+}
+const stamp = () => new Date().toISOString().replace(/[-:]/g, '').replace('T', '-').slice(0, 15);
+// into <asset folder>/.trash, with its old place in the name so Restore can put it back
+async function trash(p) {
+  await api('/api/fs', { op: 'mkdir', path: FS.root + '/.trash' });
+  await api('/api/fs', { op: 'rename', path: `${FS.root}/${p}`, to: `${FS.root}/.trash/${stamp()}-${p.replaceAll('/', '__')}` });
+}
+async function removeScript() {
+  if (!cur) return;
+  const k = kindOf(cur), p = cur;
+  if (k === 'graph') return G.remove(p.match(/^logic\/(\w+)\.gd$/)[1]);
+  if (k === 'brain') {
+    const id = p.match(/brains\/(\w+)\.gd$/)[1];
+    if (!confirm(`Put back Kiln's original ${BRAINS[id].label} brain? Your edited copy goes to the .trash folder ("Removed scripts" can bring it back).`)) return;
+    await trash(p); await saveFiles('sprites/_kiln/brains', [{ name: id + '.gd', text: BRAIN_GD[id] }]);
+    toast('Brain reset to Kiln\'s original', 'ok'); V.dirty = false; cur = null; await refresh(); return open(p);
+  }
+  if (!confirm(`Delete ${p}? It goes to the .trash folder; "Removed scripts" (left) can bring it back.`)) return;
+  await trash(p).catch(e => toast('Could not delete: ' + e.message, 'bad'));
+  toast(`Deleted ${p}`); V.dirty = false; cur = null; pref.set('logic.cur', ''); await refresh();
+}
+// scripts moved to .trash by Logic (old place kept in the name) or by Files (those go back to scripts/)
+async function drawTrash() {
+  const items = ((await api('/api/fs?path=' + encodeURIComponent(FS.root + '/.trash')).catch(() => ({ items: [] }))).items || []).filter(i => /\.gd$/.test(i.name)).sort((a, b) => b.name.localeCompare(a.name)).slice(0, 12);
+  V.trash.replaceChildren(...(items.length ? [h('h3', {}, 'Removed scripts', h('span', { class: 'grow' }), h('small', {}, items.length)),
+    ...items.map(i => {
+      const m = i.name.match(/^(\d{8})-(\d{6})-(.+)$/), to = m ? (m[3].includes('__') ? m[3].replaceAll('__', '/') : 'scripts/' + m[3]) : 'scripts/' + i.name;
+      return h('div', { class: 'lg-trash' }, h('span', { title: `${to}, removed ${m ? m[1].slice(6) + '/' + m[1].slice(4, 6) + ' ' + m[2].slice(0, 2) + ':' + m[2].slice(2, 4) : ''}` }, to.split('/').pop(), h('small', {}, ' ' + to.split('/').slice(0, -1).join('/'))),
+        h('button', { class: 'btn sm ghost', title: 'Put it back at ' + to, onclick: async () => {
+          if (list.includes(to) && !confirm(`${to} exists. Keep the current one in .trash and put this one back?`)) return;
+          if (list.includes(to)) await trash(to);
+          await api('/api/fs', { op: 'mkdir', path: `${FS.root}/${to.split('/').slice(0, -1).join('/')}` });
+          await api('/api/fs', { op: 'rename', path: i.path, to: `${FS.root}/${to}` }).then(() => toast('Restored ' + to, 'ok'), e => toast('Could not restore: ' + e.message, 'bad'));
+          cur = null; await refresh(); open(to);
+        } }, 'Restore'));
+    })] : []));
 }
 async function newScript() {
   const raw = prompt('Name for the script (saved in scripts/)', 'my_script'); if (!raw) return;

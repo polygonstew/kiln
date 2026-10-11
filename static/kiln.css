@@ -629,3 +629,4 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .dl-beat select, .dl-beat input[type=text], .dl-castrow select { width: auto; }
 .dl-head select { max-width: 230px; } .dl-foot select, .dl-chrow select, .dl-fx select { max-width: 240px; font-size: 12px; padding: 2px 4px; }
 .dl-chrow input[type=text] { flex: 1 1 200px; } .dl-fx input[type=text] { flex: 0 1 140px; } .dl-chrow.sub input[type=text] { flex: 0 1 120px; }
+.lg-trash { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 2px 0 2px 8px; font: 12px var(--mono); color: var(--dim); } .lg-trash small { color: var(--faint); font-size: 10px; }
