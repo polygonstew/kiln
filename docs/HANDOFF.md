@@ -43,8 +43,20 @@ Session 4 (2026-10-11) added, all committed and pushed on `main`:
 
 Verified in headless Godot: the adventure demo played through to its ending; flow video → timed choice → quick-time →
 check → end; story pages with a typed answer; top-down shooting + room camera; push crate + exit → next level.
-Not yet run in Godot: the stacker (stack demo) and the FMV/text demos end to end (their runtimes were tested on hand-made flows).
-Next: run the stack demo, a gamepad cursor for point & click, Flow node for cutscenes made in Puppet, more Rooms polish.
+Also verified: the stacker (bricks fall, land, next spawns). FMV/text templates were tested through hand-made flows, not their template builds.
+
+**Next (user, 2026-10-12, top priority):** "the current demos look pretty bad… make the pixelation an option, leaning toward
+the non-retro use, so users can use higher-end artwork, but keep all the retro approaches in; keep it modern feeling."
+1. A per-game **Look**: Modern (default for new games: smooth filtering, 1280×720 or 1920×1080 base, no forced pixelize) or
+   Pixel (today's 480×270, nearest filtering, Forge pixelize). Ask in New game next to the path; store in game-path.json.
+   Touch points: play.py project.godot (window size, stretch, default_texture_filter), every writer that hard-codes
+   `texture_filter = 1` (actor_godot, rooms, levels, hud, scenes), Forge's pixelize step (make it a toggle), Stage size.
+2. Better-looking templates: painted backgrounds/characters instead of code-drawn boxes. The user gave $5 of OpenRouter
+   credit (key pasted in chat 2026-10-12, "be tight with it") for template artwork; Kiln's cloud engine already uses
+   OpenRouter (cloud.py, cap KILN_CLOUD_CAP). Generate once, keep the art as files in the repo (e.g. static/templates/),
+   not regenerated per user.
+3. "Templates" is the UI name for demos (code still says demo*.js).
+4. Play lives inside tabs (Stage, Flow, Rooms); never put a global ▶ Play back in the top bar.
 
 ## Running
 
