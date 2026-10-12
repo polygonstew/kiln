@@ -70,9 +70,14 @@ library.tar.zst = all the user's games, plus a copy of the code). Everything bel
 1. DONE (session 6, after the credit top-up): **Camera** area (camera.js): dead zone, damping, look-ahead, bias, zoom,
    modes incl. scroll, confine; live sketch; camera/camera.json → main.gd. Verified in Godot (scroll + zoom).
 2. DONE: one items list: the game chip → Items… edits kiln/items-adventure.json (the game's items); the HUD inventory
-   widget has "Game's items" to fill itself from it. Still half-built:
+   widget has "Game's items" to fill itself from it. DONE: Godot skeleton export has the head views (Head_<view>) and mouths (Mouth_<shape>) on the head bone with
+   _kiln/actor/rig_face.gd (show_head, set_mouth, say = lip sync); verified in Godot. Still half-built:
    Godot skeleton export lacks head views + LipSync (rig_godot.js); 2D lighting; cutscenes.
-3. A "sleek pass": the user finds some things corny; review Gloop's look, emoji in UI, make defaults calm.
+3. **Audio section** (user asked 2026-10-12: "use audacity headless for the audio/music sections?"): Audacity has no
+   true headless mode (its mod-script-pipe needs the GUI running), so: ffmpeg (installed; sox is not) on the server for
+   trim, fade, normalize (loudnorm), loop points and convert to .ogg for music, plus an "Open in Audacity" button for
+   hand edits (audacity is installed at /usr/bin/audacity; the kiln user service may need DISPLAY to launch it).
+4. A "sleek pass": the user finds some things corny; review Gloop's look, emoji in UI, make defaults calm.
 4. Ideas from research to offer: Blender-style named workspaces across areas, Construct's pin-to-edge (done), Bitsy-like
    constraints for first games.
 

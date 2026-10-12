@@ -14,7 +14,7 @@ import { INPUT_GD } from './input_godot.js';
 
 export const KILN = '_kiln';
 const FILES = {
-  juice: 'actor/juice.gd', flash: 'actor/hit_flash.gdshader', projectile: 'actor/projectile.gd', lipsync: 'actor/lipsync.gd', vfx: 'actor/vfx.gd', ragdoll: 'actor/ragdoll.gd',
+  juice: 'actor/juice.gd', flash: 'actor/hit_flash.gdshader', projectile: 'actor/projectile.gd', lipsync: 'actor/lipsync.gd', vfx: 'actor/vfx.gd', ragdoll: 'actor/ragdoll.gd', rigface: 'actor/rig_face.gd',
   tiles: 'level/level_tiles.gd', zone: 'level/zone.gd', crate: 'level/crate.gd', button: 'level/button.gd', gate: 'level/gate.gd',
   hud: 'ui/hud.gd', menu: 'ui/menu.gd', settings: 'ui/settings.gd', dialogue: 'ui/dialogue.gd',
   input: 'game/input.gd',

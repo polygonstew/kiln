@@ -5,6 +5,53 @@ import { toDataURL, api } from './core.js';
 import { saveFiles, S as FS } from './files.js';
 import { poseAt } from './timeline.js';
 import { SHARP } from './gametype.js';
+import { writeRuntime, rtRes, baseOf } from './layout.js';
+
+// the puppet's head views and mouths in Godot (rig_face.gd on the rig's root): show_head(), set_mouth(), say()
+export const RIG_FACE_GD = `extends Node2D
+## Kiln puppet face: the head views and pixel mouths Puppet made, as sprites on the head bone (Head_<view>, Mouth_<shape>).
+##   show_head("front")      # one of the Head_* sprites; "" puts the drawn head back
+##   set_mouth("A")          # one of X A B C D E F G H
+##   say("res://sprites/miner/voice/hello.lipsync.json")   # plays the voice line, the mouth follows its cues
+const SHAPES := "XABCDEFGH"
+var _cues: Array = []
+var _player: AudioStreamPlayer
+
+func show_head(view: String) -> void:
+\tvar heads := find_children("Head_*", "Sprite2D")
+\tfor n in heads:
+\t\tn.visible = n.name == "Head_" + view
+\tif heads.size() and heads[0].get_parent().has_node("Part"):
+\t\theads[0].get_parent().get_node("Part").visible = view == ""
+
+func set_mouth(shape: String) -> void:
+\tfor n in find_children("Mouth_*", "Sprite2D"):
+\t\tn.visible = n.name == "Mouth_" + shape
+
+func say(lipsync_json: String) -> void:
+\tvar d = JSON.parse_string(FileAccess.get_file_as_string(lipsync_json))
+\tif not d is Dictionary:
+\t\treturn
+\t_cues = d.get("cues", [])
+\tif _player:
+\t\t_player.queue_free()
+\t_player = AudioStreamPlayer.new()
+\t_player.stream = load(lipsync_json.get_base_dir().path_join(d.get("sound", "")))
+\t_player.finished.connect(set_mouth.bind("X"))
+\tadd_child(_player)
+\t_player.play()
+
+func _process(_delta: float) -> void:
+\tif _player == null or not _player.playing:
+\t\treturn
+\tvar t := _player.get_playback_position()
+\tvar shape := "X"
+\tfor c in _cues:
+\t\tif c[0] > t:
+\t\t\tbreak
+\t\tshape = c[1]
+\tset_mouth(shape)
+`;
 
 const safe = n => (n || 'bone').replace(/[^A-Za-z0-9_]/g, '_');
 
@@ -51,9 +98,22 @@ export async function exportSkeleton(a, R, im, parts) {
     if (sprites[b.id]) s += `\n[node name="Part" type="Sprite2D" parent="Skeleton2D/${path(b)}"]\nz_index = ${Math.round(b.z)}\n${SHARP()}centered = false\nposition = Vector2(${sprites[b.id].x0 - b.x}, ${sprites[b.id].y0 - b.y})\ntexture = ExtResource("p${b.id}")\n`;
     return s;
   }).join('\n');
+  // the head views and mouths, on the head bone (hidden until shown), and rig_face.gd to switch them
+  const hi = Math.max(0, R.bones.findIndex(b => /head/i.test(b.name))), hb = R.bones[hi] || R.bones[R.bones.length - 1], faceExt = [];
+  let face = '';
+  if (hb && ((R.heads || []).length || Object.keys(R.mouths?.shapes || {}).length)) {
+    const at = `Skeleton2D/${path(hb)}`;
+    for (const hd of R.heads || []) { const n = safe(hd.view || hd.name || hd.id); files.push({ name: `head_${n}.png`, b64: hd.src }); faceExt.push(`[ext_resource type="Texture2D" path="${res}/head_${n}.png" id="h_${n}"]`);
+      face += `\n[node name="Head_${n}" type="Sprite2D" parent="${at}"]\nvisible = false\nz_index = ${Math.round(hb.z) + 1}\n${SHARP()}centered = false\nposition = Vector2(${-hd.ax}, ${-hd.ay})\ntexture = ExtResource("h_${n}")\n`; }
+    const mp = R.mouthAt || [hb.x, hb.y];
+    for (const [k, src] of Object.entries(R.mouths?.shapes || {})) { files.push({ name: `mouth_${k}.png`, b64: src }); faceExt.push(`[ext_resource type="Texture2D" path="${res}/mouth_${k}.png" id="m_${k}"]`);
+      face += `\n[node name="Mouth_${k}" type="Sprite2D" parent="${at}"]\nvisible = ${k === 'X'}\nz_index = ${Math.round(hb.z) + 2}\n${SHARP()}position = Vector2(${mp[0] - hb.x}, ${mp[1] - hb.y})\ntexture = ExtResource("m_${k}")\n`; }
+    faceExt.push(`[ext_resource type="Script" path="${rtRes(baseOf(res.replace(/\/rig$/, '')), 'rigface')}" id="rf"]`);
+    await writeRuntime({ rigface: RIG_FACE_GD });
+  }
   const first = anims[0]?.name;
-  const tscn = `[gd_scene load_steps=${R.bones.length + anims.length + 2} format=3]\n\n${ext}\n\n${anims.map(x => x.text).join('\n')}\n${lib}\n`
-    + `[node name="${safe(a.name)}_rig" type="Node2D"]\n\n[node name="Skeleton2D" type="Skeleton2D" parent="."]\nposition = Vector2(${-Math.round(im.width / 2)}, ${-im.height})\n\n${nodes}\n`
+  const tscn = `[gd_scene load_steps=${R.bones.length + anims.length + faceExt.length + 2} format=3]\n\n${ext}\n${faceExt.join('\n')}\n\n${anims.map(x => x.text).join('\n')}\n${lib}\n`
+    + `[node name="${safe(a.name)}_rig" type="Node2D"]\n${face ? 'script = ExtResource("rf")\n' : ''}\n[node name="Skeleton2D" type="Skeleton2D" parent="."]\nposition = Vector2(${-Math.round(im.width / 2)}, ${-im.height})\n\n${nodes}\n${face}\n`
     + `[node name="AnimationPlayer" type="AnimationPlayer" parent="."]\n${lib ? 'libraries = {\n"": SubResource("lib")\n}\n' : ''}${first ? `autoplay = "${first}"\n` : ''}`;
   files.push({ name: `${a.name}_rig.tscn`, text: tscn });
   await saveFiles(dir, files);
