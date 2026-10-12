@@ -12,6 +12,7 @@ import { endTour } from './tour.js';     // tours start from Help, Gloop or Shif
 import { initJourney } from './journey.js';
 import './gametype.js';        // the game's path (kind of game): tint, tabs, brains per role
 import { initTop, markTab } from './topbar.js';
+import { dockArea } from './dock.js';
 
 const mods = [files];
 const optional = ['gamedoc', 'flow', 'forge', 'animate', 'scenes', 'levels', 'rooms', 'cards', 'hud', 'stage', 'concepts', 'logic', 'dialogue', 'menus'];
@@ -32,6 +33,7 @@ function show(id) {
     $('#views').append(el);
     m.mount(el);
     views[m.id] = el;
+    dockArea(m.id, el);     // its side panels become dockable (dock.js)
   }
   for (const [k, el] of Object.entries(views)) el.classList.toggle('on', k === m.id);
   markTab(m.id);

@@ -32,7 +32,8 @@ function drawTabs() {
   const tabs = main(), rest = mods.filter(m => !tabs.some(([id]) => id === m.id));
   const tab = (id, label) => { const m = mods.find(x => x.id === id); return h('button', { 'data-id': id, title: m.key ? `${m.title} (key ${m.key})` : m.title, onclick: () => go(id) }, label); };
   document.querySelector('#tabs').replaceChildren(...tabs.map(([id, label]) => tab(id, label)),
-    rest.length ? h('button', { class: 'tb-more', title: 'Every other area: still here, just out of the way on this path', onclick: e => moreMenu(e.currentTarget, rest) }, 'More ▾') : '');
+    rest.length ? h('button', { class: 'tb-more', title: 'Every other area: still here, just out of the way on this path', onclick: e => moreMenu(e.currentTarget, rest) }, 'More ▾') : '',
+    h('button', { class: 'tb-more tb-layout', title: 'This area\'s panels: show or put away, saved layouts, Simple mode', onclick: e => layoutPop(e.currentTarget) }, 'Layout ▾'));
   markTab(cur);
 }
 
@@ -45,6 +46,10 @@ function popup(anchor, items) {
   return pop;
 }
 const row = (label, hint, run) => h('button', { title: hint, onclick: () => { document.querySelector('.tb-pop')?.remove(); run(); } }, label, hint ? h('small', {}, hint) : '');
+// the dock layout of the area on screen (dock.js): panels, saved layouts, Simple mode
+function layoutPop(anchor) {
+  import('./dock.js').then(D => popup(anchor, D.layoutMenu(cur).map(([label, run]) => run ? row(label, '', run) : h('div', { class: 'tb-sub' }, label))));
+}
 function moreMenu(anchor, rest) { popup(anchor, rest.map(m => row(m.title, '', () => go(m.id)))); }
 function gameMenu(e) {
   const godot = document.querySelector('#rootchip .godot');

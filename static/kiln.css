@@ -859,3 +859,42 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .rb-page { max-height: 76vh; overflow: auto; } .rb-sec { position: relative; margin-bottom: 12px; } .rb-sec .ibtn { position: absolute; right: 0; top: 0; }
 .rb-title { width: calc(100% - 30px); font: 600 14px var(--cond); letter-spacing: .06em; text-transform: uppercase; color: var(--ember2); background: none; border: 0; padding: 2px 0; }
 .rb-sec textarea { width: 100%; font: 13px/1.5 var(--sans); }
+
+/* Docks (dock.js): panels in left / right / bottom docks around the area's canvas; drag titles, fold, pin, resize */
+.ws.dk { grid-template-columns: var(--dkL, 300px) minmax(0, 1fr) var(--dkR, 330px); grid-template-rows: minmax(0, 1fr) var(--dkB, 0px); grid-template-areas: "l s r" "l b r"; }
+.ws.dk > .dk-src, .dk-hold { display: none !important; }
+.ws.dk > section.stage { grid-area: s; }
+.dk-zone { grid-area: l; position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; background: var(--p1); overflow: hidden; }
+.dk-zone.dk-r { grid-area: r; border-left: 1px solid var(--line); } .dk-zone.dk-l { border-right: 1px solid var(--line); } .dk-zone.dk-b { grid-area: b; border-top: 1px solid var(--line); }
+.dk-zone.empty { display: none; }
+.dk-list { flex: 1; min-height: 0; overflow: auto; overflow-x: hidden; }
+.dk-b .dk-list { display: flex; overflow: auto hidden; } .dk-b .dk-panel { flex: 0 0 auto; width: 320px; overflow: auto; border-right: 1px solid var(--line); border-bottom: 0; }
+.dk-bar { position: absolute; top: 4px; right: 6px; z-index: 4; opacity: 0; transition: opacity .15s; } .dk-zone:hover .dk-bar { opacity: 1; }
+.dk-l .dk-bar { right: 8px; } .dk-r .dk-bar { right: auto; left: 8px; }
+.dk-pin { background: var(--p3); border: 1px solid var(--line2); color: var(--dim); font-size: 11px; padding: 1px 6px; border-radius: 3px; cursor: pointer; } .dk-pin:hover { color: var(--ember); border-color: var(--ember); }
+.dk-size { position: absolute; z-index: 5; } .dk-l .dk-size { right: -3px; top: 0; bottom: 0; width: 6px; cursor: ew-resize; } .dk-r .dk-size { left: -3px; top: 0; bottom: 0; width: 6px; cursor: ew-resize; }
+.dk-b .dk-size { top: -3px; left: 0; right: 0; height: 6px; cursor: ns-resize; } .dk-size:hover { background: color-mix(in srgb, var(--ember) 50%, transparent); }
+/* a panel's title is its handle */
+.dk-head { cursor: grab; user-select: none; display: flex; align-items: center; gap: 6px; }
+.dk-grip { font-style: normal; color: var(--faint); font-size: 10px; letter-spacing: -2px; opacity: .5; } .dk-head:hover .dk-grip { opacity: 1; color: var(--ember); }
+.dk-x { margin-left: auto; order: 99; background: none; border: 0; color: var(--faint); cursor: pointer; font-size: 11px; opacity: 0; } .dk-head:hover .dk-x { opacity: 1; } .dk-x:hover { color: var(--bad); }
+.dk-head .grow + .dk-x, .dk-head > .grow ~ .dk-x { margin-left: 4px; }
+.dk-panel.dk-folded > :not(h3) { display: none !important; } .dk-panel.dk-folded { padding-bottom: 8px; } .dk-panel.dk-folded .dk-head::after { content: '▸'; color: var(--faint); margin-left: 4px; }
+.dk-mini { margin: 0 0 6px; }
+/* dragging: a ghost, a drop line, and empty docks as drop strips */
+.dk-ghost { position: fixed; z-index: 999; pointer-events: none; padding: 4px 10px; background: var(--ember); color: #000; font: 600 11px var(--cond); letter-spacing: .08em; text-transform: uppercase; border-radius: 3px; box-shadow: 0 6px 20px #000a; }
+.dk-mark { height: 3px; background: var(--ember); margin: 2px 8px; border-radius: 2px; } .dk-b .dk-mark { width: 3px; height: auto; margin: 8px 2px; }
+.dk-dragging .dk-zone.empty { display: flex; position: absolute; z-index: 40; background: color-mix(in srgb, var(--ember) 12%, var(--p1)); border: 2px dashed var(--ember); }
+.dk-dragging .dk-zone.empty.dk-l { left: 0; top: 0; bottom: 0; width: 70px; } .dk-dragging .dk-zone.empty.dk-r { right: 0; top: 0; bottom: 0; width: 70px; }
+.dk-dragging .dk-zone.empty.dk-b { left: 25%; right: 25%; bottom: 0; height: 70px; }
+/* pinned: a thin strip on the edge; pointing at it slides the dock out over the canvas */
+.dk-zone.pinned:not(.peek) .dk-list { display: none; } .dk-zone.pinned:not(.peek) .dk-bar { opacity: 1; top: 8px; left: 3px; right: auto; }
+.dk-zone.pinned:not(.peek)::after { content: 'PANELS'; position: absolute; top: 46px; left: 9px; writing-mode: vertical-rl; font: 600 10px var(--cond); letter-spacing: .2em; color: var(--faint); }
+.dk-zone.dk-b.pinned:not(.peek)::after { writing-mode: horizontal-tb; top: 8px; left: 40px; }
+.dk-zone.pinned.peek { position: absolute; z-index: 30; box-shadow: 0 10px 40px #000c; }
+.dk-zone.dk-l.pinned.peek { left: 0; top: 0; bottom: 0; width: var(--full); } .dk-zone.dk-r.pinned.peek { right: 0; top: 0; bottom: 0; width: var(--full); }
+.dk-zone.dk-b.pinned.peek { left: var(--dkL); right: var(--dkR); bottom: 0; height: var(--full); }
+/* Simple mode hides the advanced panels */
+body.simple .dk-panel[data-adv] { display: none !important; }
+@media (max-width: 1000px) { .ws.dk { grid-template-columns: var(--dkL, 260px) minmax(0, 1fr) 0; } .ws.dk .dk-r { display: none; } }
+.tb-sub { padding: 8px 10px 2px; font: 600 9px var(--cond); letter-spacing: .14em; text-transform: uppercase; color: var(--faint); } #tabs .tb-layout { margin-left: 6px; }
