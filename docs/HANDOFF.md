@@ -1,6 +1,6 @@
 # HANDOFF: start here (next session)
 
-Written 2026-10-11 at the end of session 4; updated 2026-10-12 (Export game, File → New / Open game). Read this, then `CLAUDE.md` (rules), then whatever doc the task needs:
+Written 2026-10-11 at the end of session 4; updated 2026-10-12 (Export game, File → New / Open game, Game doc, layer controls). Read this, then `CLAUDE.md` (rules), then whatever doc the task needs:
 `docs/DEVELOPING.md` (code map, events, API), `docs/FORMATS.md` (what Kiln writes), `docs/LOOP.md` (backlog + log),
 `docs/RESUME.md` (the long running log: engines, machine limits, gotchas).
 
@@ -27,6 +27,8 @@ Session 4 (2026-10-11) added, all committed and pushed on `main`:
 | Forge makers | What are you making? → Sprite (+ UI pieces), **Background** in depth layers → Scenes, **Tileset** → Levels, **Icon set** → icons/ |
 | Export game (10-12) | release.py (on play.prepare) + release.js: five targets as zips in build/releases/; shipped games set `playtest = false` |
 | File menu (10-12) | games.js New game / Open game; New / Open / Save press buttons marked `data-file` (see DEVELOPING Conventions) |
+| Game doc (10-12) | first tab: the design doc (gamedoc*.js), Stuck? sparks, ✦ free ideas (writer.py), pitch page, docs/GAME.md |
+| Layers (10-12) | layers.js: one modern layer list in Scenes, HUD, Levels; eye/lock in Puppet rows and the Forge Background maker |
 
 ## Running
 
