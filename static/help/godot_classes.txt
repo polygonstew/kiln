@@ -1,0 +1,317 @@
+## CharacterBody2D (inherits PhysicsBody2D)
+A 2D physics body specialized for characters moved by script. CharacterBody2D is a specialized class for physics bodies that are meant to be user-controlled. They are not affected by physics at all, but they affect other physics bodies in their path. They are mainly used to provide high-level API to move objects with wall and slope detection (move_and_slide method) in addition to the general collision detection provided by PhysicsBody2D.move_and_collide. This makes it useful for highly configurable physics bodies that must move in specific ways and collide with the world, as is often the case with user-controlled characters. For game objects that don't require complex movement or collision detection, such as moving platforms, AnimatableBody2D is simpler to configure.
+Properties: floor_block_on_wall, floor_constant_speed, floor_max_angle, floor_snap_length, floor_stop_on_slope, max_slides, motion_mode, platform_floor_layers, platform_on_leave, platform_wall_layers, safe_margin, slide_on_ceiling, up_direction, velocity, wall_min_slide_angle
+Methods: apply_floor_snap, get_floor_angle, get_floor_normal, get_last_motion, get_last_slide_collision, get_platform_velocity, get_position_delta, get_real_velocity, get_slide_collision, get_slide_collision_count, get_wall_normal, is_on_ceiling, is_on_ceiling_only, is_on_floor, is_on_floor_only, is_on_wall, is_on_wall_only, move_and_slide
+Signals: 
+
+## Camera2D (inherits Node2D)
+Camera node for 2D scenes. Camera node for 2D scenes. It forces the screen (current layer) to scroll following this node. This makes it easier (and faster) to program scrollable scenes than manually changing the position of CanvasItem-based nodes. Cameras register themselves in the nearest Viewport node (when ascending the tree). Only one camera can be active per viewport. If no viewport is available ascending the tree, the camera will register in the global viewport. This node is intended to be a simple helper to get things going quickly, but more functionality may be desired to change how the camera works. To make your own custom camera node, inherit it from Node2D and change the transform of the canvas by setting Viewport.canvas_transform in Viewport (you can obtain the current Viewport by using Node.get_viewport). Note that the Camera2D node's Node2D.global_position doesn't represent the actual position of the screen, which may differ due to applied smoothing or limits. You can use
+Properties: anchor_mode, custom_viewport, drag_bottom_margin, drag_horizontal_enabled, drag_horizontal_offset, drag_left_margin, drag_right_margin, drag_top_margin, drag_vertical_enabled, drag_vertical_offset, editor_draw_drag_margin, editor_draw_limits, editor_draw_screen, enabled, ignore_rotation, limit_bottom, limit_enabled, limit_left, limit_right, limit_smoothed, limit_top, offset, position_smoothing_enabled, position_smoothing_speed, process_callback, rotation_smoothing_enabled, rotation_smoothing_speed, zoom
+Methods: align, force_update_scroll, get_drag_margin, get_limit, get_screen_center_position, get_screen_rotation, get_target_position, is_current, make_current, reset_smoothing, set_drag_margin, set_limit
+Signals: 
+
+## AnimatedSprite2D (inherits Node2D)
+Sprite node that contains multiple textures as frames to play for animation. AnimatedSprite2D is similar to the Sprite2D node, except it carries multiple textures as animation frames. Animations are created using a SpriteFrames resource, which allows you to import image files (or a folder containing said files) to provide the animation frames for the sprite. The SpriteFrames resource can be configured in the editor via the SpriteFrames bottom panel.
+Properties: animation, autoplay, centered, flip_h, flip_v, frame, frame_progress, offset, speed_scale, sprite_frames
+Methods: get_playing_speed, is_playing, pause, play, play_backwards, set_frame_and_progress, stop
+Signals: animation_changed, animation_finished, animation_looped, frame_changed, sprite_frames_changed
+
+## Sprite2D (inherits Node2D)
+General-purpose sprite node. A node that displays a 2D texture. The texture displayed can be a region from a larger atlas texture, or a frame from a sprite sheet animation.
+Properties: centered, flip_h, flip_v, frame, frame_coords, hframes, offset, region_enabled, region_filter_clip_enabled, region_rect, texture, vframes
+Methods: get_rect, is_pixel_opaque
+Signals: frame_changed, texture_changed
+
+## Area2D (inherits CollisionObject2D)
+A region of 2D space that detects other CollisionObject2Ds entering or exiting it. Area2D is a region of 2D space defined by one or multiple CollisionShape2D or CollisionPolygon2D child nodes. It detects when other CollisionObject2Ds enter or exit it, and it also keeps track of which collision objects haven't exited it yet (i.e. which one are overlapping it). This node can also locally alter or override physics parameters (gravity, damping) and route audio to custom audio buses. Note: Areas and bodies created with PhysicsServer2D might not interact as expected with Area2Ds, and might not emit signals or track objects correctly.
+Properties: angular_damp, angular_damp_space_override, audio_bus_name, audio_bus_override, gravity, gravity_direction, gravity_point, gravity_point_center, gravity_point_unit_distance, gravity_space_override, linear_damp, linear_damp_space_override, monitorable, monitoring, priority
+Methods: get_overlapping_areas, get_overlapping_bodies, has_overlapping_areas, has_overlapping_bodies, overlaps_area, overlaps_body
+Signals: area_entered, area_exited, area_shape_entered, area_shape_exited, body_entered, body_exited, body_shape_entered, body_shape_exited
+
+## CollisionShape2D (inherits Node2D)
+A node that provides a Shape2D to a CollisionObject2D parent. A node that provides a Shape2D to a CollisionObject2D parent and allows it to be edited. This can give a detection shape to an Area2D or turn a PhysicsBody2D into a solid object.
+Properties: debug_color, disabled, one_way_collision, one_way_collision_direction, one_way_collision_margin, shape
+Methods: 
+Signals: 
+
+## CollisionPolygon2D (inherits Node2D)
+A node that provides a polygon shape to a CollisionObject2D parent. A node that provides a polygon shape to a CollisionObject2D parent and allows it to be edited. The polygon can be concave or convex. This can give a detection shape to an Area2D, turn a PhysicsBody2D into a solid object, or give a hollow shape to a StaticBody2D. Warning: A non-uniformly scaled CollisionPolygon2D will likely not behave as expected. Make sure to keep its scale the same on all axes and adjust its polygon instead.
+Properties: build_mode, disabled, one_way_collision, one_way_collision_direction, one_way_collision_margin, polygon
+Methods: 
+Signals: 
+
+## RigidBody2D (inherits PhysicsBody2D)
+A 2D physics body that is moved by a physics simulation. RigidBody2D implements full 2D physics. It cannot be controlled directly, instead, you must apply forces to it (gravity, impulses, etc.), and the physics simulation will calculate the resulting movement, rotation, react to collisions, and affect other physics bodies in its path. The body's behavior can be adjusted via lock_rotation, freeze, and freeze_mode. By changing various properties of the object, such as mass, you can control how the physics simulation acts on it. A rigid body will always maintain its shape and size, even when forces are applied to it. It is useful for objects that can be interacted with in an environment, such as a tree that can be knocked over or a stack of crates that can be pushed around. If you need to directly affect the body, prefer _integrate_forces as it allows you to directly access the physics state. If you need to override the default physics behavior, you can write a custom force integration fu
+Properties: angular_damp, angular_damp_mode, angular_velocity, can_sleep, center_of_mass, center_of_mass_mode, constant_force, constant_torque, contact_monitor, continuous_cd, custom_integrator, freeze, freeze_mode, gravity_scale, inertia, linear_damp, linear_damp_mode, linear_velocity, lock_rotation, mass, max_contacts_reported, physics_material_override, sleeping
+Methods: _integrate_forces, add_constant_central_force, add_constant_force, add_constant_torque, apply_central_force, apply_central_impulse, apply_force, apply_impulse, apply_torque, apply_torque_impulse, get_colliding_bodies, get_contact_count, set_axis_velocity
+Signals: body_entered, body_exited, body_shape_entered, body_shape_exited, sleeping_state_changed
+
+## StaticBody2D (inherits PhysicsBody2D)
+A 2D physics body that can't be moved by external forces. When moved manually, it doesn't affect other bodies in its path. A static 2D physics body. It can't be moved by external forces or contacts, but can be moved manually by other means such as code, AnimationMixers (with AnimationMixer.callback_mode_process set to AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_PHYSICS), and RemoteTransform2D. When StaticBody2D is moved, it is teleported to its new position without affecting other physics bodies in its path. If this is not desired, use AnimatableBody2D instead. StaticBody2D is useful for completely static objects like floors and walls, as well as moving surfaces like conveyor belts and circular revolving platforms (by using constant_linear_velocity and constant_angular_velocity).
+Properties: constant_angular_velocity, constant_linear_velocity, physics_material_override
+Methods: 
+Signals: 
+
+## TileMapLayer (inherits Node2D)
+Node for 2D tile-based maps. Node for 2D tile-based maps. A TileMapLayer uses a TileSet which contain a list of tiles which are used to create grid-based maps. Unlike the TileMap node, which is deprecated, TileMapLayer has only one layer of tiles. You can use several TileMapLayer to achieve the same result as a TileMap node. For performance reasons, all TileMap updates are batched at the end of a frame. Notably, this means that scene tiles from a TileSetScenesCollectionSource are initialized after their parent. This is only queued when inside the scene tree. To force an update earlier on, call update_internals. Note: For performance and compatibility reasons, the coordinates serialized by TileMapLayer are limited to 16-bit signed integers, i.e. the range for X and Y coordinates is from -32768 to 32767. When saving tile data, tiles outside this range are wrapped.
+Properties: collision_enabled, collision_visibility_mode, enabled, navigation_enabled, navigation_visibility_mode, occlusion_enabled, physics_quadrant_size, rendering_quadrant_size, tile_map_data, tile_set, use_kinematic_bodies, x_draw_order_reversed, y_sort_origin
+Methods: _tile_data_runtime_update, _update_cells, _use_tile_data_runtime_update, clear, erase_cell, fix_invalid_tiles, get_cell_alternative_tile, get_cell_atlas_coords, get_cell_source_id, get_cell_tile_data, get_coords_for_body_rid, get_navigation_map, get_neighbor_cell, get_pattern, get_surrounding_cells, get_used_cells, get_used_cells_by_id, get_used_rect, has_body_rid, is_cell_flipped_h, is_cell_flipped_v, is_cell_transposed, local_to_map, map_pattern, map_to_local, notify_runtime_tile_data_update, set_cell, set_cells_terrain_connect, set_cells_terrain_path, set_navigation_map, set_pattern, update_internals
+Signals: changed
+
+## TileSet (inherits Resource)
+Tile library for tilemaps. A TileSet is a library of tiles for a TileMapLayer. A TileSet handles a list of TileSetSource, each of them storing a set of tiles. Tiles can either be from a TileSetAtlasSource, which renders tiles out of a texture with support for physics, navigation, etc., or from a TileSetScenesCollectionSource, which exposes scene-based tiles. Tiles are referenced by using three IDs: their source ID, their atlas coordinates ID, and their alternative tile ID. A TileSet can be configured so that its tiles expose more or fewer properties. To do so, the TileSet resources use property layers, which you can add or remove depending on your needs. For example, adding a physics layer allows giving collision shapes to your tiles. Each layer has dedicated properties (physics layer and mask), so you may add several TileSet physics layers for each type of collision you need. See the functions to add new layers for more information.
+Properties: tile_layout, tile_offset_axis, tile_shape, tile_size, uv_clipping
+Methods: add_custom_data_layer, add_navigation_layer, add_occlusion_layer, add_pattern, add_physics_layer, add_source, add_terrain, add_terrain_set, cleanup_invalid_tile_proxies, clear_terrains, clear_tile_proxies, get_alternative_level_tile_proxy, get_coords_level_tile_proxy, get_custom_data_layer_by_name, get_custom_data_layer_name, get_custom_data_layer_type, get_custom_data_layers_count, get_navigation_layer_layer_value, get_navigation_layer_layers, get_navigation_layers_count, get_next_source_id, get_occlusion_layer_light_mask, get_occlusion_layer_sdf_collision, get_occlusion_layers_count, get_pattern, get_patterns_count, get_physics_layer_collision_layer, get_physics_layer_collision_mask, get_physics_layer_collision_priority, get_physics_layer_physics_material, get_physics_layers_count, get_source, get_source_count, get_source_id, get_source_level_tile_proxy, get_terrain_color, get_terrain_name, get_terrain_set_mode, get_terrain_sets_count, get_terrains_count
+Signals: 
+
+## Skeleton2D (inherits Node2D)
+The parent of a hierarchy of Bone2Ds, used to create a 2D skeletal animation. Skeleton2D parents a hierarchy of Bone2D nodes. It holds a reference to each Bone2D's rest pose and acts as a single point of access to its bones. To set up different types of inverse kinematics for the given Skeleton2D, a SkeletonModificationStack2D should be created. The inverse kinematics be applied by increasing SkeletonModificationStack2D.modification_count and creating the desired number of modifications.
+Properties: 
+Methods: execute_modifications, get_bone, get_bone_count, get_bone_local_pose_override, get_modification_stack, get_skeleton, set_bone_local_pose_override, set_modification_stack
+Signals: bone_setup_changed
+
+## Bone2D (inherits Node2D)
+A joint used with Skeleton2D to control and animate other nodes. A hierarchy of Bone2Ds can be bound to a Skeleton2D to control and animate other Node2D nodes. You can use Bone2D and Skeleton2D nodes to animate 2D meshes created with the Polygon2D UV editor. Each bone has a rest transform that you can reset to with apply_rest. These rest poses are relative to the bone's parent. If in the editor, you can set the rest pose of an entire skeleton using a menu option, from the code, you need to iterate over the bones to set their individual rest poses.
+Properties: rest
+Methods: apply_rest, get_autocalculate_length_and_angle, get_bone_angle, get_index_in_skeleton, get_length, get_skeleton_rest, set_autocalculate_length_and_angle, set_bone_angle, set_length
+Signals: 
+
+## AnimationPlayer (inherits AnimationMixer)
+A node used for animation playback. An animation player is used for general-purpose playback of animations. It contains a dictionary of AnimationLibrary resources and custom blend times between animation transitions. Some methods and properties use a single key to reference an animation directly. These keys are formatted as the key for the library, followed by a forward slash, then the key for the animation within the library, for example "movement/run". If the library's key is an empty string (known as the default library), the forward slash is omitted, being the same key used by the library. AnimationPlayer is better-suited than Tween for more complex animations, for example ones with non-trivial timings. It can also be used over Tween if the animation track editor is more convenient than doing it in code. Updating the target properties of animations occurs at the process frame.
+Properties: assigned_animation, autoplay, current_animation, current_animation_length, current_animation_position, movie_quit_on_finish, playback_auto_capture, playback_auto_capture_duration, playback_auto_capture_ease_type, playback_auto_capture_transition_type, playback_default_blend_time, speed_scale
+Methods: animation_get_next, animation_set_next, clear_queue, get_blend_time, get_method_call_mode, get_playing_speed, get_process_callback, get_queue, get_root, get_section_end_time, get_section_start_time, has_section, is_animation_active, is_playing, pause, play, play_backwards, play_section, play_section_backwards, play_section_with_markers, play_section_with_markers_backwards, play_with_capture, queue, reset_section, seek, set_blend_time, set_method_call_mode, set_process_callback, set_root, set_section, set_section_with_markers, stop
+Signals: animation_changed, current_animation_changed
+
+## Animation (inherits Resource)
+Holds data that can be used to animate anything in the engine. This resource holds data that can be used to animate anything in the engine. Animations are divided into tracks and each track must be linked to a node. The state of that node can be changed through time, by adding timed keys (events) to the track. # This creates an animation that makes the node "Enemy" move to the right by # 100 pixels in 2.0 seconds. var animation = Animation.new() var track_index = animation.add_track(Animation.TYPE_VALUE) animation.track_set_path(track_index, "Enemy:position:x") animation.track_insert_key(track_index, 0.0, 0) animation.track_insert_key(track_index, 2.0, 100) animation.length = 2.0 // This creates an animation that makes the node "Enemy" move to the right by // 100 pixels in 2.0 seconds. var animation = new Animation(); int trackIndex = animation.AddTrack(Animation.TrackType.Value); animation.TrackSetPath(trackIndex, "Enemy:position:x"); animation.TrackInsertKey(trackIndex, 0.0f, 0); ani
+Properties: capture_included, length, loop_mode, step
+Methods: add_marker, add_track, animation_track_get_key_animation, animation_track_insert_key, animation_track_set_key_animation, audio_track_get_key_end_offset, audio_track_get_key_start_offset, audio_track_get_key_stream, audio_track_insert_key, audio_track_is_use_blend, audio_track_set_key_end_offset, audio_track_set_key_start_offset, audio_track_set_key_stream, audio_track_set_use_blend, bezier_track_get_key_in_handle, bezier_track_get_key_out_handle, bezier_track_get_key_value, bezier_track_insert_key, bezier_track_interpolate, bezier_track_set_key_in_handle, bezier_track_set_key_out_handle, bezier_track_set_key_value, blend_shape_track_insert_key, blend_shape_track_interpolate, clear, compress, copy_track, find_track, get_marker_at_time, get_marker_color, get_marker_names, get_marker_time, get_next_marker, get_prev_marker, get_track_count, has_marker, method_track_get_name, method_track_get_params, optimize, position_track_insert_key
+Signals: 
+
+## SpriteFrames (inherits Resource)
+Sprite frame library for AnimatedSprite2D and AnimatedSprite3D. Sprite frame library for an AnimatedSprite2D or AnimatedSprite3D node. Contains frames and animation data for playback.
+Properties: 
+Methods: add_animation, add_frame, clear, clear_all, duplicate_animation, get_animation_loop, get_animation_loop_mode, get_animation_names, get_animation_speed, get_frame_count, get_frame_duration, get_frame_texture, has_animation, remove_animation, remove_frame, rename_animation, set_animation_loop, set_animation_loop_mode, set_animation_speed, set_frame
+Signals: 
+
+## CanvasLayer (inherits Node)
+A node used for independent rendering of objects within a 2D scene. CanvasItem-derived nodes that are direct or indirect children of a CanvasLayer will be drawn in that layer. The layer is a numeric index that defines the draw order. The default 2D scene renders with index 0, so a CanvasLayer with index -1 will be drawn below, and a CanvasLayer with index 1 will be drawn above. This order will hold regardless of the CanvasItem.z_index of the nodes within each layer. CanvasLayers can be hidden and they can also optionally follow the viewport. This makes them useful for HUDs like health bar overlays (on layers 1 and higher) or backgrounds (on layers -1 and lower). Note: Embedded Windows are placed on layer 1024. CanvasItems on layers 1025 and higher appear in front of embedded windows. Note: Each CanvasLayer is drawn on one specific Viewport and cannot be shared between multiple Viewports, see custom_viewport. When using multiple Viewports, for example in a split-screen game, you need to
+Properties: custom_viewport, follow_viewport_enabled, follow_viewport_scale, layer, offset, rotation, scale, transform, visible
+Methods: get_canvas, get_final_transform, hide, show
+Signals: visibility_changed
+
+## Control (inherits CanvasItem)
+Base class for all GUI controls. Adapts its position and size based on its parent control. Base class for all UI-related nodes. Control features a bounding rectangle that defines its extents, an anchor position relative to its parent control or the current viewport, and offsets relative to the anchor. The offsets update automatically when the node, any of its parents, or the screen size change. For more information on Godot's UI system, anchors, offsets, and containers, see the related tutorials in the manual. To build flexible UIs, you'll need a mix of UI elements that inherit from Control and Container nodes. Note: Since both Node2D and Control inherit from CanvasItem, they share several concepts from the class such as the CanvasItem.z_index and CanvasItem.visible properties. User Interface nodes and input Godot propagates input events via viewports. Each Viewport is responsible for propagating InputEvents to their child nodes. As the SceneTree.root is a Window, this already happens 
+Properties: accessibility_controls_nodes, accessibility_described_by_nodes, accessibility_description, accessibility_flow_to_nodes, accessibility_labeled_by_nodes, accessibility_live, accessibility_name, anchor_bottom, anchor_left, anchor_right, anchor_top, auto_translate, clip_contents, custom_maximum_size, custom_minimum_size, focus_behavior_recursive, focus_mode, focus_neighbor_bottom, focus_neighbor_left, focus_neighbor_right, focus_neighbor_top, focus_next, focus_previous, global_position, grow_horizontal, grow_vertical, layout_direction, localize_numeral_system, mouse_behavior_recursive, mouse_default_cursor_shape, mouse_filter, mouse_force_pass_scroll_events, offset_bottom, offset_left, offset_right, offset_top, offset_transform_enabled, offset_transform_pivot, offset_transform_pivot_ratio, offset_transform_position
+Methods: _accessibility_get_contextual_info, _can_drop_data, _drop_data, _get_accessibility_container_name, _get_cursor_shape, _get_drag_data, _get_maximum_size, _get_minimum_size, _get_tooltip, _get_tooltip_auto_translate_mode_at, _gui_input, _has_point, _make_custom_tooltip, _structured_text_parser, accept_event, accessibility_drag, accessibility_drop, add_theme_color_override, add_theme_constant_override, add_theme_font_override, add_theme_font_size_override, add_theme_icon_override, add_theme_stylebox_override, begin_bulk_theme_override, end_bulk_theme_override, find_next_valid_focus, find_prev_valid_focus, find_valid_focus_neighbor, force_drag, get_anchor, get_begin, get_bound_minimum_size, get_combined_maximum_size, get_combined_minimum_size, get_combined_pivot_offset, get_cursor_shape, get_end, get_focus_mode_with_override, get_focus_neighbor, get_global_rect
+Signals: focus_entered, focus_exited, gui_input, maximum_size_changed, minimum_size_changed, mouse_entered, mouse_exited, resized, size_flags_changed, theme_changed
+
+## Label (inherits Control)
+A control for displaying plain text. A control for displaying plain text. It gives you control over the horizontal and vertical alignment and can wrap the text inside the node's bounding rectangle. It doesn't support bold, italics, or other rich text formatting. For that, use RichTextLabel instead. Note: A single Label node is not designed to display huge amounts of text. To display large amounts of text in a single node, consider using RichTextLabel instead as it supports features like an integrated scroll bar and threading. RichTextLabel generally performs better when displaying large amounts of text (several pages or more).
+Properties: autowrap_mode, autowrap_trim_flags, clip_text, ellipsis_char, horizontal_alignment, justification_flags, label_settings, language, lines_skipped, max_lines_visible, mouse_filter, paragraph_separator, size_flags_vertical, structured_text_bidi_override, structured_text_bidi_override_options, tab_stops, text, text_direction, text_overrun_behavior, uppercase, vertical_alignment, visible_characters, visible_characters_behavior, visible_ratio
+Methods: get_character_bounds, get_line_count, get_line_height, get_total_character_count, get_visible_line_count
+Signals: 
+
+## Button (inherits BaseButton)
+A themed button that can contain text and an icon. Button is the standard themed button. It can contain text and an icon, and it will display them according to the current Theme. Example: Create a button and connect a method that will be called when the button is pressed: func _ready(): var button = Button.new() button.text = "Click me" button.pressed.connect(_button_pressed) add_child(button) func _button_pressed(): print("Hello world!") public override void _Ready() { var button = new Button(); button.Text = "Click me"; button.Pressed += ButtonPressed; AddChild(button); } private void ButtonPressed() { GD.Print("Hello world!"); } See also BaseButton which contains common properties and methods associated with this node. Note: Buttons support multitouch via touch input, allowing multiple buttons to be pressed at the same time. Otherwise, mouse input is used, limiting interaction to one button press at a time.
+Properties: alignment, autowrap_mode, autowrap_trim_flags, clip_text, expand_icon, flat, icon, icon_alignment, language, text, text_direction, text_overrun_behavior, vertical_icon_alignment
+Methods: 
+Signals: 
+
+## Timer (inherits Node)
+A countdown timer. The Timer node is a countdown timer and is the simplest way to handle time-based logic in the engine. When a timer reaches the end of its wait_time, it will emit the timeout signal. After a timer enters the scene tree, it can be manually started with start. A timer node is also started automatically if autostart is true. Without requiring much code, a timer node can be added and configured in the editor. The timeout signal it emits can also be connected through the Signals dock in the editor: func _on_timer_timeout(): print("Time to attack!") Note: To create a one-shot timer without instantiating a node, use SceneTree.create_timer. Note: Timers are affected by Engine.time_scale unless ignore_time_scale is true. The higher the time scale, the sooner timers will end. How often a timer processes may depend on the framerate or Engine.physics_ticks_per_second.
+Properties: autostart, ignore_time_scale, one_shot, paused, process_callback, time_left, wait_time
+Methods: is_stopped, start, stop
+Signals: timeout
+
+## AudioStreamPlayer (inherits Node)
+A node for audio playback. The AudioStreamPlayer node plays an audio stream non-positionally. It is ideal for user interfaces, menus, or background music. To use this node, stream needs to be set to a valid AudioStream resource. Playing more than one sound at the same time is also supported, see max_polyphony. If you need to play audio at a specific position, use AudioStreamPlayer2D or AudioStreamPlayer3D instead.
+Properties: autoplay, bus, max_polyphony, mix_target, pitch_scale, playback_type, playing, stream, stream_paused, volume_db, volume_linear
+Methods: get_playback_position, get_stream_playback, has_stream_playback, play, seek, stop
+Signals: finished
+
+## AudioStreamPlayer2D (inherits Node2D)
+Plays positional sound in 2D space. Plays audio that is attenuated with distance to the listener. By default, audio is heard from the screen center. This can be changed by adding an AudioListener2D node to the scene and enabling it by calling AudioListener2D.make_current on it. See also AudioStreamPlayer to play a sound non-positionally. Note: Hiding an AudioStreamPlayer2D node does not disable its audio output. To temporarily disable an AudioStreamPlayer2D's audio output, set volume_db to a very low value like -100 (which isn't audible to human hearing).
+Properties: area_mask, attenuation, autoplay, bus, max_distance, max_polyphony, panning_strength, pitch_scale, playback_type, playing, stream, stream_paused, volume_db, volume_linear
+Methods: get_playback_position, get_stream_playback, has_stream_playback, play, seek, stop
+Signals: finished
+
+## VideoStreamPlayer (inherits Control)
+A control used for video playback. A control used for playback of VideoStream resources. Supported video formats are Ogg Theora (.ogv, VideoStreamTheora) and any format exposed via a GDExtension plugin. Warning: On Web, video playback will perform poorly due to missing architecture-specific assembly optimizations.
+Properties: audio_track, autoplay, buffering_msec, bus, expand, loop, paused, speed_scale, stream, stream_position, volume, volume_db
+Methods: get_stream_length, get_stream_name, get_video_texture, is_playing, play, stop
+Signals: finished
+
+## Polygon2D (inherits Node2D)
+A 2D polygon. A Polygon2D is defined by a set of points. Each point is connected to the next, with the final point being connected to the first, resulting in a closed polygon. Polygon2Ds can be filled with color (solid or gradient) or filled with a given texture.
+Properties: antialiased, color, internal_vertex_count, invert_border, invert_enabled, offset, polygon, polygons, skeleton, texture, texture_offset, texture_rotation, texture_scale, uv, vertex_colors
+Methods: add_bone, clear_bones, erase_bone, get_bone_count, get_bone_path, get_bone_weights, set_bone_path, set_bone_weights
+Signals: 
+
+## Node2D (inherits CanvasItem)
+A 2D game object, inherited by all 2D-related nodes. Has a position, rotation, scale, and skew. A 2D game object, with a transform (position, rotation, and scale). All 2D nodes, including physics objects and sprites, inherit from Node2D. Use Node2D as a parent node to move, scale and rotate children in a 2D project. Also gives control of the node's render order. Note: Since both Node2D and Control inherit from CanvasItem, they share several concepts from the class such as the CanvasItem.z_index and CanvasItem.visible properties.
+Properties: global_position, global_rotation, global_rotation_degrees, global_scale, global_skew, global_transform, position, rotation, rotation_degrees, scale, skew, transform
+Methods: apply_scale, get_angle_to, get_relative_transform_to_parent, global_translate, look_at, move_local_x, move_local_y, rotate, to_global, to_local, translate
+Signals: 
+
+## Marker2D (inherits Node2D)
+Generic 2D position hint for editing. Generic 2D position hint for editing. It's just like a plain Node2D, but it displays as a cross in the 2D editor at all times. You can set the cross' visual size by using the gizmo in the 2D editor while the node is selected.
+Properties: gizmo_extents
+Methods: 
+Signals: 
+
+## GPUParticles2D (inherits Node2D)
+A 2D particle emitter. 2D particle node used to create a variety of particle systems and effects. GPUParticles2D features an emitter that generates some number of particles at a given rate. Use the process_material property to add a ParticleProcessMaterial to configure particle appearance and behavior. Alternatively, you can add a ShaderMaterial which will be applied to all particles. 2D particles can optionally collide with LightOccluder2D, but they don't collide with PhysicsBody2D nodes.
+Properties: amount, amount_ratio, collision_base_size, draw_order, emitting, explosiveness, fixed_fps, fract_delta, interp_to_end, interpolate, lifetime, local_coords, one_shot, preprocess, process_material, randomness, seed, speed_scale, sub_emitter, texture, trail_enabled, trail_lifetime, trail_section_subdivisions, trail_sections, use_fixed_seed, visibility_rect
+Methods: capture_rect, convert_from_particles, emit_particle, request_particles_process, restart
+Signals: finished
+
+## PointLight2D (inherits Light2D)
+Positional 2D light source. Casts light in a 2D environment. This light's shape is defined by a (usually grayscale) texture.
+Properties: height, offset, texture, texture_scale
+Methods: 
+Signals: 
+
+## RayCast2D (inherits Node2D)
+A ray in 2D space, used to find the first collision object it intersects. A raycast represents a ray from its origin to its target_position that finds the closest object along its path, if it intersects any. RayCast2D can ignore some objects by adding them to an exception list, by making its detection reporting ignore Area2Ds (collide_with_areas) or PhysicsBody2Ds (collide_with_bodies), or by configuring physics layers. RayCast2D calculates intersection every physics frame, and it holds the result until the next physics frame. For an immediate raycast, or if you want to configure a RayCast2D multiple times within the same physics frame, use force_raycast_update. To sweep over a region of 2D space, you can approximate the region with multiple RayCast2Ds or use ShapeCast2D.
+Properties: collide_with_areas, collide_with_bodies, collision_mask, enabled, exclude_parent, hit_from_inside, target_position
+Methods: add_exception, add_exception_rid, clear_exceptions, force_raycast_update, get_collider, get_collider_rid, get_collider_shape, get_collision_mask_value, get_collision_normal, get_collision_point, is_colliding, remove_exception, remove_exception_rid, set_collision_mask_value
+Signals: 
+
+## InputMap (inherits Object)
+A singleton that manages all InputEventActions. Manages all InputEventAction which can be created/modified from the project settings menu Project > Project Settings > Input Map or in code with add_action and action_add_event. See Node._input.
+Properties: 
+Methods: action_add_event, action_erase_event, action_erase_events, action_get_deadzone, action_get_events, action_has_event, action_set_deadzone, add_action, erase_action, event_is_action, get_action_description, get_actions, has_action, load_from_project_settings
+Signals: project_settings_loaded
+
+## Input (inherits Object)
+A singleton for handling inputs. The Input singleton handles key presses, mouse buttons and movement, gamepads, and input actions. Actions and their events can be set in the Input Map tab in Project > Project Settings, or with the InputMap class. Note: Input's methods reflect the global input state and are not affected by Control.accept_event or Viewport.set_input_as_handled, as those methods only deal with the way input is propagated in the SceneTree.
+Properties: emulate_mouse_from_touch, emulate_touch_from_mouse, ignore_joypad_on_unfocused_application, mouse_mode, use_accumulated_input
+Methods: action_press, action_release, add_joy_mapping, clear_joy_motion_sensors_calibration, flush_buffered_events, get_accelerometer, get_action_raw_strength, get_action_strength, get_axis, get_connected_joypads, get_current_cursor_shape, get_gravity, get_gyroscope, get_joy_accelerometer, get_joy_axis, get_joy_gravity, get_joy_guid, get_joy_gyroscope, get_joy_info, get_joy_motion_sensors_calibration, get_joy_motion_sensors_rate, get_joy_name, get_joy_vibration_duration, get_joy_vibration_remaining_duration, get_joy_vibration_strength, get_last_mouse_screen_velocity, get_last_mouse_velocity, get_magnetometer, get_mouse_button_mask, get_vector, has_joy_light, has_joy_motion_sensors, has_joy_vibration, is_action_just_pressed, is_action_just_pressed_by_event, is_action_just_released, is_action_just_released_by_event, is_action_pressed, is_anything_pressed, is_joy_button_pressed
+Signals: joy_connection_changed
+
+## PinJoint2D (inherits Joint2D)
+A physics joint that attaches two 2D physics bodies at a single point, allowing them to freely rotate. A physics joint that attaches two 2D physics bodies at a single point, allowing them to freely rotate. For example, a RigidBody2D can be attached to a StaticBody2D to create a pendulum or a seesaw.
+Properties: angular_limit_enabled, angular_limit_lower, angular_limit_upper, motor_enabled, motor_target_velocity, softness
+Methods: 
+Signals: 
+
+## TextureProgressBar (inherits Range)
+Texture-based progress bar. Useful for loading screens and life or stamina bars. TextureProgressBar works like ProgressBar, but uses up to 3 textures instead of Godot's Theme resource. It can be used to create horizontal, vertical and radial progress bars.
+Properties: fill_mode, mouse_filter, nine_patch_stretch, radial_center_offset, radial_fill_degrees, radial_initial_angle, size_flags_vertical, step, stretch_margin_bottom, stretch_margin_left, stretch_margin_right, stretch_margin_top, texture_over, texture_progress, texture_progress_offset, texture_under, tint_over, tint_progress, tint_under
+Methods: get_stretch_margin, set_stretch_margin
+Signals: 
+
+## TextureRect (inherits Control)
+A control that displays a texture. A control that displays a texture, for example an icon inside a GUI. The texture's placement can be controlled with the stretch_mode property. It can scale, tile, or stay centered inside its bounding rectangle.
+Properties: expand_mode, flip_h, flip_v, mouse_filter, stretch_mode, texture
+Methods: 
+Signals: 
+
+## Tween (inherits RefCounted)
+Lightweight object used for general-purpose animation via script, using Tweeners. Tweens are mostly useful for animations requiring a numerical property to be interpolated over a range of values. The name tween comes from in-betweening, an animation technique where you specify keyframes and the computer interpolates the frames that appear between them. Animating something with a Tween is called tweening. Tween is more suited than AnimationPlayer for animations where you don't know the final values in advance. For example, interpolating a dynamically-chosen camera zoom value is best done with a Tween; it would be difficult to do the same thing with an AnimationPlayer node. Tweens are also more light-weight than AnimationPlayer, so they are very much suited for simple animations or general tasks that don't require visual tweaking provided by the editor. They can be used in a "fire-and-forget" manner for some logic that normally would be done by code. You can e.g. make something shoot per
+Properties: 
+Methods: bind_node, chain, custom_step, get_loops_left, get_total_elapsed_time, has_tweeners, interpolate_value, is_running, is_valid, kill, parallel, pause, play, set_ease, set_ignore_time_scale, set_loops, set_parallel, set_pause_mode, set_process_mode, set_speed_scale, set_trans, stop, tween_await, tween_callback, tween_interval, tween_method, tween_property, tween_subtween
+Signals: finished, loop_finished, step_finished
+
+## Line2D (inherits Node2D)
+A 2D polyline that can optionally be textured. This node draws a 2D polyline, i.e. a shape consisting of several points connected by segments. Line2D is not a mathematical polyline, i.e. the segments are not infinitely thin. It is intended for rendering and it can be colored and optionally textured. Warning: Certain configurations may be impossible to draw nicely, such as very sharp angles. In these situations, the node uses fallback drawing logic to look decent. Note: Line2D is drawn using a 2D mesh.
+Properties: antialiased, begin_cap_mode, closed, default_color, end_cap_mode, gradient, joint_mode, points, round_precision, sharp_limit, texture, texture_mode, width, width_curve
+Methods: add_point, clear_points, get_point_count, get_point_position, remove_point, set_point_position
+Signals: 
+
+## Parallax2D (inherits Node2D)
+A node used to create a parallax scrolling background. A Parallax2D is used to create a parallax effect. It can move at a different speed relative to the camera movement using scroll_scale. This creates an illusion of depth in a 2D game. If manual scrolling is desired, the Camera2D position can be ignored with ignore_camera_scroll. Note: Any changes to this node's position made after it enters the scene tree will be overridden if ignore_camera_scroll is false or screen_offset is modified.
+Properties: autoscroll, follow_viewport, ignore_camera_scroll, limit_begin, limit_end, physics_interpolation_mode, repeat_size, repeat_times, screen_offset, scroll_offset, scroll_scale
+Methods: 
+Signals: 
+
+## HBoxContainer (inherits BoxContainer)
+A container that arranges its child controls horizontally. A variant of BoxContainer that can only arrange its child controls horizontally. Child controls are rearranged automatically when their minimum size changes.
+Properties: 
+Methods: 
+Signals: 
+
+## VBoxContainer (inherits BoxContainer)
+A container that arranges its child controls vertically. A variant of BoxContainer that can only arrange its child controls vertically. Child controls are rearranged automatically when their minimum size changes.
+Properties: 
+Methods: 
+Signals: 
+
+## PanelContainer (inherits Container)
+A container that keeps its child controls within the area of a StyleBox. A container that keeps its child controls within the area of a StyleBox. Useful for giving controls an outline.
+Properties: mouse_filter
+Methods: 
+Signals: 
+
+## NinePatchRect (inherits Control)
+A control that displays a texture by keeping its corners intact, but tiling its edges and center. Also known as 9-slice panels, NinePatchRect produces clean panels of any size based on a small texture. To do so, it splits the texture in a 3×3 grid. When you scale the node, it tiles the texture's edges horizontally or vertically, tiles the center on both axes, and leaves the corners unchanged.
+Properties: axis_stretch_horizontal, axis_stretch_vertical, draw_center, mouse_filter, patch_margin_bottom, patch_margin_left, patch_margin_right, patch_margin_top, region_rect, texture
+Methods: get_patch_margin, set_patch_margin
+Signals: texture_changed
+
+## ColorRect (inherits Control)
+A control that displays a solid color rectangle. Displays a rectangle filled with a solid color. If you need to display the border alone, consider using a Panel instead.
+Properties: color
+Methods: 
+Signals: 
+
+## LineEdit (inherits Control)
+An input field for single-line text. LineEdit provides an input field for editing a single line of text. - When the LineEdit control is focused using the keyboard arrow keys, it will only gain focus and not enter edit mode. - To enter edit mode, click on the control with the mouse, see also keep_editing_on_text_submit. - To exit edit mode, press ui_text_submit or ui_cancel (by default Escape) actions. - Check edit, unedit, is_editing, and editing_toggled for more information. While entering text, it is possible to insert special characters using Unicode, OEM or Windows alt codes: - To enter Unicode codepoints, hold Alt and type the codepoint on the numpad. For example, to enter the character á (U+00E1), hold Alt and type +E1 on the numpad (the leading zeroes can be omitted). - To enter OEM codepoints, hold Alt and type the code on the numpad. For example, to enter the character á (OEM 160), hold Alt and type 160 on the numpad. - To enter Windows codepoints, hold Alt and type the code o
+Properties: alignment, backspace_deletes_composite_character_enabled, caret_blink, caret_blink_interval, caret_column, caret_force_displayed, caret_mid_grapheme, clear_button_enabled, context_menu_enabled, deselect_on_focus_loss_enabled, drag_and_drop_selection_enabled, draw_control_chars, editable, emoji_menu_enabled, expand_to_text_length, flat, focus_mode, icon_expand_mode, keep_editing_on_text_submit, language, max_length, middle_mouse_paste_enabled, mouse_default_cursor_shape, placeholder_text, right_icon, right_icon_scale, secret, secret_character, select_all_on_focus, selecting_enabled, shortcut_keys_enabled, structured_text_bidi_override, structured_text_bidi_override_options, text, text_direction, virtual_keyboard_enabled, virtual_keyboard_show_on_focus, virtual_keyboard_type
+Methods: apply_ime, cancel_ime, clear, delete_char_at_caret, delete_text, deselect, edit, get_menu, get_next_composite_character_column, get_previous_composite_character_column, get_scroll_offset, get_selected_text, get_selection_from_column, get_selection_to_column, has_ime_text, has_redo, has_selection, has_undo, insert_text_at_caret, is_editing, is_menu_visible, menu_option, select, select_all, unedit
+Signals: editing_toggled, text_change_rejected, text_changed, text_submitted
+
+## SceneTree (inherits MainLoop)
+Manages the game loop via a hierarchy of nodes. As one of the most important classes, the SceneTree manages the hierarchy of nodes in a scene, as well as scenes themselves. Nodes can be added, fetched and removed. The whole scene tree (and thus the current scene) can be paused. Scenes can be loaded, switched and reloaded. You can also use the SceneTree to organize your nodes into groups: every node can be added to as many groups as you want to create, e.g. an "enemy" group. You can then iterate these groups or even call methods and set properties on all the nodes belonging to any given group. SceneTree is the default MainLoop implementation used by the engine, and is thus in charge of the game loop.
+Properties: auto_accept_quit, current_scene, debug_collisions_hint, debug_navigation_hint, debug_paths_hint, edited_scene_root, multiplayer_poll, paused, physics_interpolation, quit_on_go_back, root
+Methods: call_group, call_group_flags, change_scene_to_file, change_scene_to_node, change_scene_to_packed, create_timer, create_tween, get_first_node_in_group, get_frame, get_multiplayer, get_node_count, get_node_count_in_group, get_nodes_in_group, get_processed_tweens, has_group, is_accessibility_enabled, is_accessibility_supported, notify_group, notify_group_flags, queue_delete, quit, reload_current_scene, set_group, set_group_flags, set_multiplayer, unload_current_scene
+Signals: node_added, node_configuration_warning_changed, node_removed, node_renamed, physics_frame, process_frame, scene_changed, tree_changed, tree_process_mode_changed
+
+## PackedScene (inherits Resource)
+An abstraction of a serialized scene. A simplified interface to a scene file. Provides access to operations and checks that can be performed on the scene resource itself. Can be used to save a node to a file. When saving, the node as well as all the nodes it owns get saved (see Node.owner property). Note: The node doesn't need to own itself. Example: Load a saved scene: # Use load() instead of preload() if the path isn't known at compile-time. var scene = preload("res://scene.tscn").instantiate() # Add the node as a child of the node the script is attached to. add_child(scene) // C# has no preload, so you have to always use ResourceLoader.Load<PackedScene>(). var scene = ResourceLoader.Load<PackedScene>("res://scene.tscn").Instantiate(); // Add the node as a child of the node the script is attached to. AddChild(scene); Example: Save a node with different owners. The following example creates 3 objects: Node2D (node), RigidBody2D (body) and CollisionObject2D (collision). collision is a 
+Properties: 
+Methods: can_instantiate, get_state, instantiate, pack
+Signals: 
+
+## ResourceLoader (inherits Object)
+A singleton for loading resource files. A singleton used to load resource files from the filesystem. It uses the many ResourceFormatLoader classes registered in the engine (either built-in or from a plugin) to load files into memory and convert them to a format that can be used by the engine. Note: You have to import the files into the engine first to load them using load. If you want to load Images at run-time, you may use Image.load. If you want to import audio files, you can use the snippet described in AudioStreamMP3.data. Note: Non-resource files such as plain text files cannot be read using ResourceLoader. Use FileAccess for those files instead, and be aware that non-resource files are not exported by default (see notes in the FileAccess class description for instructions on exporting them).
+Properties: 
+Methods: add_resource_format_loader, exists, get_cached_ref, get_dependencies, get_recognized_extensions_for_type, get_resource_uid, has_cached, list_directory, load, load_threaded_get, load_threaded_get_status, load_threaded_request, remove_resource_format_loader, set_abort_on_missing_resources
+Signals: 
+
+## FileAccess (inherits RefCounted)
+Provides methods for file reading and writing operations. This class can be used to permanently store data in the user device's file system and to read from it. This is useful for storing game save data or player configuration files. Example: How to write and read from a file. The file named "save_game.dat" will be stored in the user data folder, as specified in the Data paths documentation: func save_to_file(content): var file = FileAccess.open("user://save_game.dat", FileAccess.WRITE) file.store_string(content) func load_from_file(): var file = FileAccess.open("user://save_game.dat", FileAccess.READ) var content = file.get_as_text() return content public void SaveToFile(string content) { using var file = FileAccess.Open("user://save_game.dat", FileAccess.ModeFlags.Write); file.StoreString(content); } public string LoadFromFile() { using var file = FileAccess.Open("user://save_game.dat", FileAccess.ModeFlags.Read); string content = file.GetAsText(); return content; } A FileAccess inst
+Properties: big_endian
+Methods: close, create_temp, eof_reached, file_exists, flush, get_16, get_32, get_64, get_8, get_access_time, get_as_text, get_buffer, get_csv_line, get_double, get_error, get_extended_attribute, get_extended_attribute_string, get_extended_attributes_list, get_file_as_bytes, get_file_as_string, get_float, get_half, get_hidden_attribute, get_length, get_line, get_md5, get_modified_time, get_open_error, get_pascal_string, get_path, get_path_absolute, get_position, get_read_only_attribute, get_real, get_sha256, get_size, get_unix_permissions, get_var, is_open, open
+Signals: 
+
+## DirAccess (inherits RefCounted)
+Provides methods for managing directories and their content. This class is used to manage directories and their content, even outside of the project folder. DirAccess can't be instantiated directly. Instead it is created with a static method that takes a path for which it will be opened. Most of the methods have a static alternative that can be used without creating a DirAccess. Static methods only support absolute paths (including res:// and user://). # Standard var dir = DirAccess.open("user://levels") dir.make_dir("world1") # Static DirAccess.make_dir_absolute("user://levels/world1") Note: Accessing project ("res://") directories once exported may behave unexpectedly as some files are converted to engine-specific formats and their original source files may not be present in the expected PCK package. Because of this, to access resources in an exported project, it is recommended to use ResourceLoader instead of FileAccess. Here is an example on how to iterate through the files of a di
+Properties: include_hidden, include_navigational
+Methods: change_dir, copy, copy_absolute, create_link, create_temp, current_is_dir, dir_exists, dir_exists_absolute, file_exists, get_current_dir, get_current_drive, get_directories, get_directories_at, get_drive_count, get_drive_label, get_drive_name, get_files, get_files_at, get_filesystem_type, get_next, get_open_error, get_space_left, is_bundle, is_case_sensitive, is_equivalent, is_link, list_dir_begin, list_dir_end, make_dir, make_dir_absolute, make_dir_recursive, make_dir_recursive_absolute, open, read_link, remove, remove_absolute, rename, rename_absolute
+Signals: 
+
+## JSON (inherits Resource)
+Helper class for creating and parsing JSON data. The JSON class enables all data types to be converted to and from a JSON string. This is useful for serializing data, e.g. to save to a file or send over the network. stringify is used to convert any data type into a JSON string. parse is used to convert any existing JSON data into a Variant that can be used within Godot. If successfully parsed, use data to retrieve the Variant, and use @GlobalScope.typeof to check if the Variant's type is what you expect. JSON Objects are converted into a Dictionary, but JSON data can be used to store Arrays, numbers, Strings and even just a boolean. var data_to_send = ["a", "b", "c"] var json_string = JSON.stringify(data_to_send) # Save data # ... # Retrieve data var json = JSON.new() var error = json.parse(json_string) if error == OK: var data_received = json.data if typeof(data_received) == TYPE_ARRAY: print(data_received) # Prints the array. else: print("Unexpected data") else: print("JSON Parse Err
+Properties: data
+Methods: from_native, get_error_line, get_error_message, get_parsed_text, parse, parse_string, stringify, to_native
+Signals: 
+
+## OS (inherits Object)
+Provides access to common operating system functionalities. The OS class wraps the most common functionalities for communicating with the host operating system, such as the video driver, delays, environment variables, execution of binaries, command line, etc. Note: In Godot 4, OS functions related to window management, clipboard, and TTS were moved to the DisplayServer singleton (and the Window class). Functions related to time were removed and are only available in the Time class.
+Properties: delta_smoothing, low_processor_usage_mode, low_processor_usage_mode_sleep_usec
+Methods: add_logger, alert, close_midi_inputs, crash, create_instance, create_process, delay_msec, delay_usec, execute, execute_with_pipe, find_keycode_from_string, get_cache_dir, get_cmdline_args, get_cmdline_user_args, get_config_dir, get_connected_midi_inputs, get_data_dir, get_distribution_name, get_entropy, get_environment, get_executable_path, get_granted_permissions, get_keycode_string, get_locale, get_locale_language, get_main_thread_id, get_memory_info, get_model_name, get_name, get_process_exit_code, get_process_id, get_processor_count, get_processor_name, get_restart_on_exit_arguments, get_static_memory_peak_usage, get_static_memory_usage, get_stderr_type, get_stdin_type, get_stdout_type, get_system_ca_certificates
+Signals: 
+
+## Engine (inherits Object)
+Provides access to engine properties. The Engine singleton allows you to query and modify the project's run-time parameters, such as frames per second, time scale, and others. It also stores information about the current build of Godot, such as the current version.
+Properties: max_fps, max_physics_steps_per_frame, physics_jitter_fix, physics_ticks_per_second, print_error_messages, print_to_stdout, time_scale
+Methods: capture_script_backtraces, get_architecture_name, get_author_info, get_copyright_info, get_donor_info, get_frames_drawn, get_frames_per_second, get_license_info, get_license_text, get_main_loop, get_physics_frames, get_physics_interpolation_fraction, get_process_frames, get_script_language, get_script_language_count, get_singleton, get_singleton_list, get_version_info, get_write_movie_path, has_singleton, is_editor_hint, is_embedded_in_editor, is_in_physics_frame, register_script_language, register_singleton, unregister_script_language, unregister_singleton
+Signals: 
+
+## Node (inherits Object)
+Base class for all scene objects. Nodes are Godot's building blocks. They can be assigned as the child of another node, resulting in a tree arrangement. A given node can contain any number of nodes as children with the requirement that all siblings (direct children of a node) should have unique names. A tree of nodes is called a scene. Scenes can be saved to the disk and then instantiated into other scenes. This allows for very high flexibility in the architecture and data model of Godot projects. Scene tree: The SceneTree contains the active tree of nodes. When a node is added to the scene tree, it receives the NOTIFICATION_ENTER_TREE notification and its _enter_tree callback is triggered. Child nodes are always added after their parent node, i.e. the _enter_tree callback of a parent node will be triggered before its child's. Once all nodes have been added in the scene tree, they receive the NOTIFICATION_READY notification and their respective _ready callbacks are triggered. For group
+Properties: auto_translate_mode, editor_description, multiplayer, name, owner, physics_interpolation_mode, process_mode, process_physics_priority, process_priority, process_thread_group, process_thread_group_order, process_thread_messages, scene_file_path, unique_name_in_owner
+Methods: _enter_tree, _exit_tree, _get_accessibility_configuration_warnings, _get_configuration_warnings, _get_focused_accessibility_element, _input, _physics_process, _process, _ready, _shortcut_input, _unhandled_input, _unhandled_key_input, add_child, add_sibling, add_to_group, atr, atr_n, call_deferred_thread_group, call_thread_safe, can_auto_translate, can_process, create_tween, duplicate, find_child, find_children, find_parent, get_accessibility_element, get_child, get_child_count, get_children, get_groups, get_index, get_last_exclusive_window, get_multiplayer_authority, get_node, get_node_and_resource, get_node_or_null, get_node_rpc_config, get_orphan_node_ids, get_parent
+Signals: child_entered_tree, child_exiting_tree, child_order_changed, editor_description_changed, editor_state_changed, ready, renamed, replacing_by, tree_entered, tree_exited, tree_exiting

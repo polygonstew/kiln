@@ -13,6 +13,7 @@ import video
 import audio
 import setup
 import writer
+import helpbot
 from store import settings, save_settings
 from cloud import CF_FREE, has_cf, CLOUD_CAP, cf_used, cloud_image, cloud_spent, free_today, keys, openrouter_left, post_json
 from checks import GODOT, list_scripts, check_script, doctor, snapshot, history, restore_copy
@@ -731,6 +732,8 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/cloudimg':
                 f = CLOUD_DIR / Path(q.get('f', '')).name
                 return self.send(200, f.read_bytes(), 'image/png') if f.exists() else self.send(404, {'err': 'gone'})
+            if u.path == '/api/ask/status':     # Gloop's answers: is the small local helper installed, download progress
+                return self.send(200, {'local': helpbot.local_ready(), 'fetch': helpbot.FETCH})
             if u.path == '/api/keys':           # which services are connected (last 4 characters only)
                 return self.send(200, setup.status())
             if u.path == '/api/projects':
@@ -776,6 +779,11 @@ class H(BaseHTTPRequestHandler):
                 g = godot_root(str(r))
                 base = ('res://' + (str(r.relative_to(g)) + '/' if str(r) != g else '')) if g else ''
                 return self.send(200, tidy.apply(r, base))
+            if u.path == '/api/ask':            # Gloop: a short answer to "how do I…?" from Kiln's own guide and docs (helpbot.py)
+                return self.send(200, helpbot.ask(str(b.get('q', ''))[:400], keys(), b.get('prefer', 'auto')))
+            if u.path == '/api/ask/fetch':      # download the small local helper (~1 GB) in the background
+                helpbot.fetch_model()
+                return self.send(200, {'ok': True})
             if u.path == '/api/write':          # Game doc: a few ideas from a free text engine
                 try:
                     return self.send(200, {'ideas': writer.ideas(keys(), b.get('part', ''), b.get('section', ''), b.get('doc', ''), b.get('text', ''))})

@@ -8,7 +8,8 @@ from cloud import OWN, cf_env, keys, read_env
 SERVICES = {
     'cloudflare': ['CF_ACCOUNT_ID', 'CF_API_TOKEN'],     # free daily pictures
     'openrouter': ['OPENROUTER_API_KEY'],                # paid pictures (backup) and writing
-    'gemini': ['GEMINI_API_KEY'],                        # free writing help
+    'gemini': ['GEMINI_API_KEY'],                        # free writing help and Gloop's answers
+    'groq': ['GROQ_API_KEY'],                            # free alternative for Gloop's answers
 }
 
 
@@ -42,6 +43,8 @@ def test(service):
             req = urllib.request.Request('https://openrouter.ai/api/v1/key', headers={'Authorization': 'Bearer ' + k.get('OPENROUTER_API_KEY', '')})
         elif service == 'gemini':
             req = urllib.request.Request('https://generativelanguage.googleapis.com/v1beta/models?key=' + k.get('GEMINI_API_KEY', ''))
+        elif service == 'groq':
+            req = urllib.request.Request('https://api.groq.com/openai/v1/models', headers={'Authorization': 'Bearer ' + k.get('GROQ_API_KEY', ''), 'User-Agent': 'kiln'})
         else:
             return {'ok': False, 'why': 'unknown service'}
         urllib.request.urlopen(req, timeout=15).read()

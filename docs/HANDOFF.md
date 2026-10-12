@@ -81,7 +81,7 @@ library.tar.zst = all the user's games, plus a copy of the code). Everything bel
    hand edits (audacity is installed at /usr/bin/audacity; the kiln user service may need DISPLAY to launch it).
 4. DONE 2026-10-12: Edit → Services & keys… (setup.js/setup.py) for new users' Forge keys. Template art repainted in
    the art directions (Style bible presets; total template spend ~$2.65 of the $5 OpenRouter key).
-5. **Built-in help answers (user idea 2026-10-12, not built):** ship a small local model for "ask about Kiln" in the
+5. DONE 2026-10-12 (session 7): **Ask Gloop** (ask.js, helpsearch.py, helpbot.py, tools/godot_docs.py, Groq key card). Engines: own Gemini/Groq key → local llama-server + GGUF (~/.local/share/kiln/models/help.gguf is a symlink to this machine's Ollama qwen2.5:1.5b blob; players get it via the "Get my little brain" button) → passages only. Local answers take 10-40 s on this CPU. Original idea: ship a small local model for "ask about Kiln" in the
    Gloop helper: Qwen2.5-1.5B-Instruct Q4 GGUF (~1 GB, already in the user's Ollama as qwen2.5:1.5b) or Qwen3-1.7B /
    Llama 3.2 3B, run by llama.cpp's llama-server (one binary, no Ollama needed for players). Answer only from
    retrieved text: split help.html + docs/*.md (~200 KB) into sections, pick the top 3-4 by BM25 (plain Python, no

@@ -179,3 +179,6 @@ Links open meta.ai and others in a tab on the user's own device; images come bac
 - Playwright test harness used this session: `python3 -m venv /tmp/.../pw && pip install playwright`,
   launch with `executable_path='/usr/bin/chromium'`. After setting localStorage, reload the page;
   changing only the hash doesn't re-route.
+
+## 2026-10-12 session 7: Ask Gloop
+Handoff item 5 built: ask.js, helpsearch.py (BM25), helpbot.py (key → local llama-server → passages), tools/godot_docs.py, Groq card in Services & keys. llama-cpp installed with pacman on this machine; help.gguf symlinks the Ollama qwen2.5:1.5b blob. Local answers take 10-40 s on the 4-core CPU (streaming would help perceived speed).

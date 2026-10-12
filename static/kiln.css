@@ -829,6 +829,9 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .gl-eyes { transform-origin: 32px 30px; animation: gl-blink 4.2s infinite; }
 .gl-say { position: relative; max-width: 340px; margin-bottom: 40px; padding: 10px 12px; background: var(--p1); border: 1px solid #5fd36b; border-radius: 10px 10px 10px 2px; box-shadow: 0 10px 30px #000a; }
 .gl-say p { margin: 0 0 8px; line-height: 1.4; } .gl-btns { display: flex; flex-wrap: wrap; gap: 4px; }
+.gl-ask .gl-say { width: min(420px, 90vw); max-width: none; } .gl-ask input { width: 100%; box-sizing: border-box; margin-bottom: 8px; }
+.gl-ans { max-height: 46vh; overflow: auto; } .gl-ans .gl-text { white-space: pre-wrap; } .gl-src { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 0 0 8px; font-size: 12px; } .gl-src a { color: #5fd36b; }
+.gl-pass { margin: 0 0 8px; padding: 6px 8px; background: var(--p2, #0003); border-radius: 6px; font-size: 12px; } .gl-pass p { margin: 2px 0 0; color: var(--dim); }
 @keyframes gl-in { from { transform: translate(-120px, 40px) scale(.6); opacity: 0; } to { transform: none; opacity: 1; } }
 @keyframes gl-out { to { transform: translate(-140px, 30px) scale(.6); opacity: 0; } }
 @keyframes gl-jiggle { 0%, 100% { transform: scale(1, 1); } 45% { transform: scale(1.05, .94); } 60% { transform: scale(.97, 1.04); } }

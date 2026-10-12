@@ -37,6 +37,7 @@ Rules for keeping Kiln readable are in CLAUDE.md ("Stay understandable"). Rough 
 - **Dialogue:** dialogue.js (area: dialogues, cast, lines), dialogue_play.js (preview), dialogue_godot.js (game JSON + kiln_dialogue.gd runner)
 - **Forge makers:** forge_kit.js (generator choice, genOne with a picture-kind hint: sprite / scene / layer / texture; trimFrame), forge_bg.js (Background in depth layers → Scenes), forge_sets.js (Tileset → Levels, Icon set → icons/)
 - **Areas:** files, forge, animate (+ actor_save, workshop, motion, sheets, slicer, player), scenes (+ procgen), levels, hud, stage (playtest room: playbuild.js + play.py), concepts
+- **Ask Gloop (session 6):** ask.js (the question bubble: Help → Ask Gloop…), helpsearch.py (BM25 over help.html sections + FORMATS/ARCHITECTURE/DEVELOPING/CONSISTENCY + static/help/godot_classes.txt from tools/godot_docs.py), helpbot.py (prompt from the top 3 passages; engines: own Gemini/Groq key, else llama-server + a GGUF in ~/.local/share/kiln/models, else the passages themselves; `fetch_model()` downloads Qwen2.5-1.5B Q4).
 - **Godot writers:** actor_godot.js (actor scene + juice.gd/projectile.gd), hud_godot.js, the export parts of scenes.js / levels.js
 - **Server:** server.py (stdlib): files, projects, generation queue, cloud budget, Godot plugin endpoints; checks.py: GDScript list/check, Doctor, snapshots
 - **Actor extras:** workshop.js, actor_tools.js (CHARACTER.md, game-size copy), brains.js, sfx.js, vfx.js; Puppet: puppet.js, rig.js, timeline.js, rig_godot.js, rig_import.js (picture → figure or parts kit → rig), rig_kit.js (kit screen), face.js (heads + pixel mouths), puppet_face.js (Head & mouth card), lipsync.js (voice line → mouth cues); **Level extras:** tilekinds.js, zones.js, autotile.js
@@ -82,6 +83,7 @@ Rules for keeping Kiln readable are in CLAUDE.md ("Stay understandable"). Rough 
 | `GET /api/godot?path=` | the Godot project containing a path, or null |
 | `GET /api/index` · `GET /api/inbox?since=` · `GET /api/apps` · `GET /api/settings` | Ctrl+K, Downloads/concepts inbox, Desk, settings |
 | `POST /api/play/build {root, files, opts}` · `GET /api/play/status` · `GET /play/…` | ▶ Play web build (play.py) |
+| `POST /api/ask {q, prefer?}` → `{answer, sources, mode: key\|local\|search\|none, passages?, can_fetch?}` | Gloop's answers (helpbot.py); `prefer:'local'` tries the local engine first. `GET /api/ask/status` → `{local, fetch}`; `POST /api/ask/fetch` downloads the model |
 | `POST /api/write {part, section, doc, text}` → `{ideas}` or `{err}` | Game doc ✦: ideas from free text engines only (writer.py) |
 | `POST /api/release {root, files, opts, targets}` · `GET /api/release/status` · `GET /api/release/file?f=` | Export game (release.py → build/releases/*.zip) |
 

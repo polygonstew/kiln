@@ -1,5 +1,5 @@
 // Services & keys (Edit → Services & keys…): step by step, connect the services Forge paints and writes with. Free
-// daily pictures (Cloudflare), a paid backup (OpenRouter) and free writing help (Gemini). Paste a key, Save, Test.
+// daily pictures (Cloudflare), a paid backup (OpenRouter) and free writing help (Gemini, Groq). Paste a key, Save, Test.
 // Keys stay on this computer (server: setup.py → ~/.config/kiln/keys.env); the page only ever sees the last 4 characters.
 import { h, api, toast } from './core.js';
 
@@ -16,6 +16,9 @@ const CARDS = [
   ['gemini', 'Writing help (free)', 'Names, descriptions, ideas and conversations.', [
     ['Sign in with a Google account and press "Create API key"', 'https://aistudio.google.com/apikey']],
     [['GEMINI_API_KEY', 'Key']]],
+  ['groq', 'Better answers from Gloop (free, optional)', 'Gloop answers "how do I…?" on this computer without it. A key makes the answers quicker and fuller (Gemini above works too).', [
+    ['Sign in and press "Create API Key"', 'https://console.groq.com/keys']],
+    [['GROQ_API_KEY', 'Key']]],
 ];
 
 export async function openSetup() {
