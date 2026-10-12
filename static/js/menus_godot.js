@@ -16,6 +16,9 @@ signal action(name: String)
 @export var dim := 0.55                 ## how dark the cover over the background is (0..1)
 @export var font_size := 16
 @export var background: PackedScene     ## a Kiln scene behind the menu (optional)
+@export var picture: Texture2D          ## or a picture behind it (used when there is no scene)
+@export var video: VideoStream          ## or a looping, silent video (used when there is neither)
+@export var font: Font                  ## the text font (optional: Godot's own when empty)
 @export var align_left := false
 
 func _ready() -> void:
@@ -24,6 +27,24 @@ func _ready() -> void:
 \tKilnSettings.load_all()
 \tif background:
 \t\tadd_child(background.instantiate())
+\telif picture:
+\t\tvar pic := TextureRect.new()
+\t\tpic.texture = picture
+\t\tpic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+\t\tpic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+\t\tpic.mouse_filter = Control.MOUSE_FILTER_IGNORE
+\t\tpic.set_anchors_preset(Control.PRESET_FULL_RECT)
+\t\tadd_child(pic)
+\telif video:
+\t\tvar vp := VideoStreamPlayer.new()
+\t\tvp.stream = video
+\t\tvp.expand = true
+\t\tvp.loop = true
+\t\tvp.volume_db = -80.0
+\t\tvp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+\t\tvp.set_anchors_preset(Control.PRESET_FULL_RECT)
+\t\tadd_child(vp)
+\t\tvp.play()
 \tvar cover := ColorRect.new()
 \tcover.color = Color(0, 0, 0, dim)
 \tcover.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -36,6 +57,7 @@ func _ready() -> void:
 \t\tt.text = title
 \t\tt.add_theme_font_size_override("font_size", font_size * 2)
 \t\tt.add_theme_color_override("font_color", accent)
+\t\t_font(t)
 \t\tt.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if align_left else HORIZONTAL_ALIGNMENT_CENTER
 \t\tbox.add_child(t)
 \tvar first: Control = null
@@ -92,11 +114,17 @@ func _label(text: String) -> Label:
 \tl.text = text
 \tl.add_theme_font_size_override("font_size", font_size)
 \tl.add_theme_color_override("font_color", text_color)
+\t_font(l)
 \treturn l
+
+func _font(c: Control) -> void:
+\tif font:
+\t\tc.add_theme_font_override("font", font)
 
 func _style(b: BaseButton) -> void:
 \tb.add_theme_font_size_override("font_size", font_size)
 \tb.add_theme_color_override("font_color", text_color)
+\t_font(b)
 \tfor s in ["font_hover_color", "font_focus_color", "font_pressed_color"]:
 \t\tb.add_theme_color_override(s, accent)
 
@@ -168,13 +196,20 @@ static func controls_text() -> String:
 \treturn "\\n".join(lines)
 `;
 
-// one menu screen as a scene; base = path prefix of the asset folder ('' or 'res://…/')
+// one menu screen as a scene; base = path prefix of the asset folder ('' or 'res://…/'). Behind it: a scene, a picture
+// (pictures/…) or a video (videos/….ogv), by m.bgKind; the text font is fonts/<m.font>.
 export function menuScene(m, base) {
-  const bg = m.background ? `[ext_resource type="PackedScene" path="${base}backgrounds/${m.background}/${m.background}.tscn" id="bg"]\n` : '';
+  const kind = m.bgKind ?? (m.background ? 'scene' : '');
+  const ext = [];
+  const add = (type, path, id) => { ext.push(`[ext_resource type="${type}" path="${path}" id="${id}"]`); return id; };
+  const bg = kind === 'scene' && m.background ? add('PackedScene', `${base}backgrounds/${m.background}/${m.background}.tscn`, 'bg') : '';
+  const pic = kind === 'picture' && m.bgPicture ? add('Texture2D', base + m.bgPicture, 'pic') : '';
+  const vid = kind === 'video' && m.bgVideo ? add('VideoStream', base + m.bgVideo, 'vid') : '';
+  const font = m.font ? add('FontFile', `${base}fonts/${m.font}`, 'font') : '';
   const c = h => { const n = parseInt(h.slice(1), 16); return `Color(${((n >> 16) & 255) / 255}, ${((n >> 8) & 255) / 255}, ${(n & 255) / 255}, 1)`; };
   const items = '[' + m.items.map(it => '{' + Object.entries(it).filter(([, v]) => v !== '' && v != null).map(([k, v]) => `"${k}": ${JSON.stringify(v)}`).join(', ') + '}').join(', ') + ']';
-  return `[gd_scene load_steps=${bg ? 3 : 2} format=3]\n\n[ext_resource type="Script" path="${rtRes(base, 'menu')}" id="1"]\n${bg}\n`
+  return `[gd_scene load_steps=${ext.length + 2} format=3]\n\n[ext_resource type="Script" path="${rtRes(base, 'menu')}" id="1"]\n${ext.join('\n')}\n\n`
     + `[node name="${m.id}" type="Control"]\nlayout_mode = 3\nanchors_preset = 15\nanchor_right = 1.0\nanchor_bottom = 1.0\nscript = ExtResource("1")\n`
     + `title = ${JSON.stringify(m.title || '')}\nitems = ${items}\naccent = ${c(m.accent || '#ff5b2e')}\ntext_color = ${c(m.text || '#ebe3d0')}\ndim = ${m.dim ?? .55}\nfont_size = ${m.fontSize || 16}\nalign_left = ${!!m.left}\n`
-    + (bg ? 'background = ExtResource("bg")\n' : '');
+    + (bg ? 'background = ExtResource("bg")\n' : '') + (pic ? 'picture = ExtResource("pic")\n' : '') + (vid ? 'video = ExtResource("vid")\n' : '') + (font ? 'font = ExtResource("font")\n' : '');
 }

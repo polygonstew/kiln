@@ -9,7 +9,7 @@ export function h(tag, attrs = {}, ...kids) {
     if (v == null || v === false) continue;
     if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
     else if (k === 'class') e.className = v;
-    else if (k === 'style' && typeof v === 'object') Object.assign(e.style, v);
+    else if (k === 'style' && typeof v === 'object') { for (const [p, x] of Object.entries(v)) p.startsWith('--') ? e.style.setProperty(p, x) : (e.style[p] = x); }   // --custom properties need setProperty
     else if (k in e && k !== 'list' && k !== 'type') e[k] = v;
     else e.setAttribute(k, v === true ? '' : v);
   }

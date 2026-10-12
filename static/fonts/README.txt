@@ -1,0 +1,1 @@
+Fonts for Menus (Font choice), all under the SIL Open Font License 1.1 (OFL.txt): Press Start 2P, Silkscreen, VT323, Creepster, Bangers, MedievalSharp, Uncial Antiqua, Pirata One, Almendra, Metal Mania, IBM Plex Mono, Jacquard 24. Source: github.com/google/fonts (ofl/). The list the page offers is static/js/menu_fonts.js.

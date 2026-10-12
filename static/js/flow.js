@@ -11,6 +11,7 @@ import { flowJSON, FLOW_GD, FLOW } from './flow_godot.js';
 import { STORY, STORY_GD } from './story_godot.js';
 import { listScenes } from './playbuild.js';
 import { pickPicture } from './pictures.js';
+import { addVideo } from './video_add.js';
 import { GAME } from './gametype.js';
 
 const get = id => fetch('/api/project?id=' + encodeURIComponent(id)).then(r => r.ok ? r.json() : null).catch(() => null);
@@ -186,29 +187,6 @@ async function preview(video) {
     h('div', { class: 'body' }, src ? h('video', { src: '/api/fs/raw?path=' + encodeURIComponent(src.path), controls: true, autoplay: true, style: { width: '100%' } }) : h('p', { class: 'note' }, 'The original is not in videos/.src/, so it cannot be previewed here; it plays in the game.'))));
   document.body.append(m);
 }
-// a video from the computer: uploaded into videos/.src/, then turned into videos/<name>.ogv by the server (ffmpeg)
-function addVideo(then) {
-  const file = h('input', { type: 'file', accept: 'video/*', onchange: async () => {
-    const f = file.files[0]; if (!f) return;
-    const name = slug(prompt('Name for this video', f.name.replace(/\.\w+$/, '')) || ''); if (!name) return;
-    toast(`Uploading ${f.name}…`);
-    const b64 = await new Promise(r => { const fr = new FileReader(); fr.onload = () => r(fr.result); fr.readAsDataURL(f); });
-    const ext = (f.name.match(/\.\w+$/) || ['.mp4'])[0].toLowerCase();
-    await saveFiles('videos/.src', [{ name: name + ext, b64 }]);
-    const r = await api('/api/video', { path: `${FS.root}/videos/.src/${name}${ext}`, name }).catch(e => ({ err: e.message }));
-    if (r.err) return toast('Could not convert it: ' + r.err, 'bad');
-    toast('Converting it for Godot (Ogg Theora)…');
-    for (;;) {
-      await new Promise(ok => setTimeout(ok, 1500));
-      const st = await api('/api/video/status').catch(() => ({}));
-      if (st.running) continue;
-      if (st.ok) { toast(`${st.file} is ready`, 'ok'); await loadLists(); then(st.file); } else toast('Conversion failed: ' + (st.log || []).slice(-1)[0], 'bad');
-      break;
-    }
-  } });
-  file.click();
-}
-
 async function titleCard(n, then) {
   const text = prompt('Words on the card', n.name); if (!text) return;
   const r = await api('/api/video/card', { text, seconds: Math.max(2, Math.min(8, 1.5 + text.length / 10)), name: 'card_' + (slug(n.name) || 'title'), colour: '10223a' }).catch(e => ({ err: e.message }));
@@ -242,7 +220,7 @@ function inspector() {
       const name = (slug(n.name) || 'picture') + (key === 'picture' ? '' : '_' + key);
       await saveFiles('pictures', [{ name: name + '.png', b64: key === 'portrait' ? await cutOut(b64) : b64 }]); set(key)(`pictures/${name}.png`); }) }, n[key] ? 'Change' : 'Pick…'),
     n[key] ? h('button', { class: 'ibtn', title: 'No picture', onclick: () => set(key)('') }, '✕') : ''), key === 'portrait' ? 'Who is talking: stands on the right, over the background' : 'Copied into pictures/');
-  const vid = k => field('Video', h('span', { class: 'rm-pic' }, select(opts(L.videos, L.videos.length ? 'Pick a video…' : 'None yet'), n[k] || '', set(k)), h('button', { class: 'btn sm', title: 'A video file from your computer: Kiln turns it into Ogg Theora for Godot', onclick: () => addVideo(set(k)) }, 'Add…'),
+  const vid = k => field('Video', h('span', { class: 'rm-pic' }, select(opts(L.videos, L.videos.length ? 'Pick a video…' : 'None yet'), n[k] || '', set(k)), h('button', { class: 'btn sm', title: 'A video file from your computer: Kiln turns it into Ogg Theora for Godot', onclick: () => addVideo(async f => { await loadLists(); set(k)(f); }) }, 'Add…'),
     h('button', { class: 'btn sm ghost', title: 'Words on a plain colour for a few seconds: a stand-in until the scene is filmed, a chapter title, credits', onclick: () => titleCard(n, set(k)) }, 'Title card…')), 'videos/*.ogv');
   const k = n.kind, body = [];
   if (k === 'video') body.push(vid('video'), field('', check('Space / Esc / a click skips it', n.skip !== false, set('skip', false))));

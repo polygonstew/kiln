@@ -6,6 +6,9 @@ import { h, api, toast, pref, field, select, range, check, rawURL } from './core
 import { saveFiles, S as FS } from './files.js';
 import { registerKeys } from './wheel.js';
 import { MENU_GD, SETTINGS_GD, menuScene } from './menus_godot.js';
+import { BUNDLED, gameFonts, useFont, fontFile, cssFamily } from './menu_fonts.js';
+import { pickPicture } from './pictures.js';
+import { addVideo } from './video_add.js';
 
 const ACTIONS = [['start', 'Start the game'], ['rules', 'How to play (the rule book)'], ['open:options', 'Open options'], ['back', 'Back'], ['resume', 'Resume'], ['title', 'Quit to title'], ['quit', 'Quit the game'],
   ['volume', 'Volume slider'], ['fullscreen', 'Fullscreen on/off'], ['toggle', 'On/off option'], ['controls', 'Show the controls']];
@@ -15,7 +18,7 @@ export const DEFAULTS = () => ({
     { label: 'Fullscreen', action: 'fullscreen' }, { label: 'Screen shake', action: 'toggle', key: 'screen_shake' }, { label: 'Controls', action: 'controls' }, { label: 'Back', action: 'back' }] },
   pause: { id: 'pause', on: true, title: 'Paused', dim: .7, items: [{ label: 'Resume', action: 'resume' }, { label: 'How to play', action: 'rules' }, { label: 'Options', action: 'open:options' }, { label: 'Quit to title', action: 'title' }] },
 });
-let M = null, cur = 'title', V = {}, saveT, scenes = [];
+let M = null, cur = 'title', V = {}, saveT, scenes = [], videos = [], myFonts = [];
 
 export const menus = {
   id: 'menus', title: 'Menus', key: '0',
@@ -29,13 +32,27 @@ export const menus = {
     M = r?.menus || DEFAULTS();
     const b = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/backgrounds')).catch(() => ({ items: [] }));
     scenes = (b.items || []).filter(i => i.dir).map(i => i.name);
+    await loadMedia();
     draw();
+    // menus edited before they were written for Godot (older Kiln needed Save menus): write them now so ▶ Play sees them
+    const made = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/menus')).catch(() => ({ items: [] }));
+    if (r?.menus && !(made.items || []).some(i => i.name === 'title.tscn')) exportMenus(true);
   },
   show() { if (M) draw(); },
   // Save all / the demo game: the saved menus, written for Godot
   async saveProject(id) { const d = await fetch('/api/project?id=' + encodeURIComponent(id)).then(r => r.json()); M = d.menus; draw(); await exportMenus(); },
 };
-function changed() { clearTimeout(saveT); saveT = setTimeout(() => api('/api/project', { id: 'menus-game', data: { meta: { kind: 'menus', name: 'game' }, menus: M } }).catch(() => {}), 800); drawPreview(); }
+async function loadMedia() {
+  const v = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/videos')).catch(() => ({ items: [] }));
+  videos = (v.items || []).filter(i => /\.ogv$/i.test(i.name)).map(i => 'videos/' + i.name);
+  myFonts = await gameFonts();
+}
+// every edit is kept (menus-game.json) and written for Godot (menus/*.tscn) a moment later, so ▶ Play always has the latest
+function changed() {
+  clearTimeout(saveT);
+  saveT = setTimeout(async () => { await api('/api/project', { id: 'menus-game', data: { meta: { kind: 'menus', name: 'game' }, menus: M } }).catch(() => {}); exportMenus(true); }, 800);
+  drawPreview();
+}
 function draw() { drawLeft(); drawRight(); drawPreview(); }
 
 function drawLeft() {
@@ -53,8 +70,11 @@ function drawLeft() {
       field('Use it', check(cur === 'title' ? 'show before the game' : cur === 'pause' ? 'Esc pauses the game' : 'reachable from the menus', m.on, v => { m.on = v; changed(); drawLeft(); }))),
     h('div', { class: 'sec' }, h('h3', {}, 'This screen'),
       field('Title', h('input', { type: 'text', value: m.title || '', oninput: e => { m.title = e.target.value; changed(); } })),
-      field('Behind it', select([['', cur === 'pause' ? 'The game (dimmed)' : 'Plain colour'], ...scenes.map(n => [n, 'Scene: ' + n])], m.background || '', v => { m.background = v; changed(); })),
+      field('Behind it', select([['', cur === 'pause' ? 'The game (dimmed)' : 'Plain colour'], ['scene', 'A scene (live layers)'], ['picture', 'A picture'], ['video', 'A video (loops, silent)']], kind(m), v => { m.bgKind = v; changed(); drawLeft(); })),
+      ...behindPicker(m),
       field('Dim', range(m.dim ?? .55, 0, 1, .05, v => { m.dim = +v; changed(); }, v => Math.round(v * 100) + '%')),
+      field('Font', select([['', 'Plain (Godot\'s own)'], ...BUNDLED, ...myFonts], m.font || '', async v => { m.font = v; await useFont(v); changed(); }), ),
+      h('p', { class: 'note', style: { margin: '0 0 6px' } }, 'Your own .ttf / .otf: put it in the game\'s fonts/ folder (Files) and it shows up here.'),
       field('Text size', range(m.fontSize || 16, 8, 32, 1, v => { m.fontSize = +v; changed(); }, v => v + ' px')),
       field('Colours', h('span', { style: { display: 'flex', gap: '6px' } }, h('input', { type: 'color', value: m.accent || '#ff5b2e', title: 'Title and the chosen item', oninput: e => { m.accent = e.target.value; changed(); } }),
         h('input', { type: 'color', value: m.text || '#ebe3d0', title: 'Text', oninput: e => { m.text = e.target.value; changed(); } }))),
@@ -63,21 +83,55 @@ function drawLeft() {
       h('button', { class: 'btn sm ghost', style: { marginTop: '8px' }, title: 'Put this screen back the way Kiln first made it', onclick: () => { if (confirm(`Put "${cur}" back to Kiln's default?`)) { M[cur] = DEFAULTS()[cur]; changed(); draw(); } } }, 'Reset this screen')));
 }
 
+const kind = m => m.bgKind ?? (m.background ? 'scene' : '');
+// the picker under "Behind it": which scene / picture / video, and a way to add one
+function behindPicker(m) {
+  const k = kind(m);
+  if (k === 'scene') return [field('Scene', select([['', scenes.length ? 'Pick a scene…' : 'None yet: make one in Scenes'], ...scenes.map(n => [n, n])], m.background || '', v => { m.background = v; changed(); }))];
+  if (k === 'picture') return [field('Picture', h('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, h('span', { class: 'note', style: { margin: 0 } }, m.bgPicture ? m.bgPicture.replace(/^pictures\//, '') : 'none yet'),
+    h('button', { class: 'btn sm', title: 'A scene of yours (flattened), a picture in this game, or a file from your computer', onclick: () => pickPicture('A picture behind this screen', async url => {
+      let path;
+      if (url.startsWith('data:')) { path = `pictures/menu_${cur}_${Date.now().toString(36)}.${url.startsWith('data:image/jpeg') ? 'jpg' : url.startsWith('data:image/webp') ? 'webp' : 'png'}`; await saveFiles('pictures', [{ name: path.slice(9), b64: url }]); }
+      else path = decodeURIComponent(new URL(url, location.href).searchParams.get('path') || '').slice(FS.root.length + 1);
+      m.bgPicture = path; changed(); drawLeft();
+    }) }, m.bgPicture ? 'Change…' : 'Pick…')))];
+  if (k === 'video') return [field('Video', h('span', { style: { display: 'flex', gap: '6px' } },
+    select([['', videos.length ? 'Pick a video…' : 'None yet'], ...videos.map(v => [v, v.slice(7)])], m.bgVideo || '', v => { m.bgVideo = v; changed(); }),
+    h('button', { class: 'btn sm', title: 'Add a video file from your computer (it is converted for Godot)', onclick: () => addVideo(async f => { await loadMedia(); m.bgVideo = f; changed(); drawLeft(); }) }, 'Add…')))];
+  return [];
+}
+
 // the preview: the same layout the Godot script builds, in HTML at 480×270, scaled up crisply
+let previewN = 0;
+const wroteFont = new Set();      // bundled fonts already copied into this game's fonts/ (reset when the game changes: Kiln restarts)
 async function drawPreview() {
-  const m = M[cur], s = m.fontSize || 16;
-  const bg = m.background ? await sceneThumb(m.background) : null;
+  const me = ++previewN, m = M[cur], s = m.fontSize || 16, k = kind(m);
+  await useFont(m.font);
+  const scene = k === 'scene' && m.background ? await sceneThumb(m.background) : null;
+  const pic = k === 'picture' && m.bgPicture ? rawURL(`${FS.root}/${m.bgPicture}`) : null;
+  const vsrc = k === 'video' && m.bgVideo ? await videoSource(m.bgVideo) : null;
+  if (me !== previewN) return;              // a newer edit is already drawing
+  const bg = scene || pic;
   const rows = m.items.map(it => it.action === 'volume' ? h('div', { class: 'mn-r' }, it.label, h('span', { class: 'mn-slider' }, h('i', { style: { width: '80%' } })))
     : it.action === 'fullscreen' || it.action === 'toggle' ? h('div', { class: 'mn-r' }, it.label, h('span', { class: 'mn-check' }))
       : it.action === 'controls' ? h('div', { class: 'mn-r mn-small' }, 'Left: ←  Right: →  Accept: Enter, Space  Attack: X  Shoot: C')
         : h('div', { class: 'mn-r mn-btn' }, it.label));
   if (rows[0]) rows[0].classList.add('focus');
-  const screen = h('div', { class: 'mn-screen', style: { '--a': m.accent || '#ff5b2e', '--t': m.text || '#ebe3d0', '--s': s + 'px', background: bg ? `url(${bg}) center bottom / cover` : cur === 'pause' ? '#3a3d48' : '#111' } },
+  const screen = h('div', { class: 'mn-screen', style: { '--a': m.accent || '#ff5b2e', '--t': m.text || '#ebe3d0', '--s': s + 'px', fontFamily: cssFamily(m.font), background: bg ? `url(${bg}) center / cover` : cur === 'pause' && !k ? '#3a3d48' : '#111' } },
+    vsrc ? h('video', { class: 'mn-vid', src: vsrc, autoplay: true, loop: true, muted: true, playsinline: true }) : '',
     h('div', { class: 'mn-dim', style: { opacity: m.dim ?? .55 } }),
     h('div', { class: 'mn-box' + (m.left ? ' left' : '') }, m.title ? h('div', { class: 'mn-title' }, m.title) : '', ...rows));
-  const k = Math.max(1, Math.floor(Math.min((V.pv.parentElement.clientWidth - 30) / 480, (V.pv.parentElement.clientHeight - 30) / 270)));
-  screen.style.transform = `scale(${k})`; V.pv.style.width = 480 * k + 'px'; V.pv.style.height = 270 * k + 'px';
+  const z = Math.max(1, Math.floor(Math.min((V.pv.parentElement.clientWidth - 30) / 480, (V.pv.parentElement.clientHeight - 30) / 270)));
+  screen.style.transform = `scale(${z})`; V.pv.style.width = 480 * z + 'px'; V.pv.style.height = 270 * z + 'px';
   V.pv.replaceChildren(screen);
+  const vid = screen.querySelector('video'); if (vid) { vid.muted = true; vid.play().catch(() => {}); }
+}
+// browsers can't play Theora: the preview uses the original kept in videos/.src/ (video.py)
+async function videoSource(file) {
+  const base = file.split('/').pop().replace(/\.ogv$/i, '');
+  const r = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/videos/.src')).catch(() => ({ items: [] }));
+  const src = (r.items || []).find(i => i.name.replace(/\.\w+$/, '') === base);
+  return src ? '/api/fs/raw?path=' + encodeURIComponent(src.path) : null;
 }
 const thumbs = {};
 async function sceneThumb(name) {     // the scene's layers flattened, for the preview background
@@ -95,10 +149,15 @@ function drawRight() {
     h('div', { class: 'sec' }, h('h3', {}, 'In your own Godot code'),
       h('pre', { class: 'mn-code' }, 'var m = preload("res://menus/title.tscn").instantiate()\nadd_child(m)\nm.action.connect(func(a):\n\tif a == "start": m.queue_free()\n)\nKilnSettings.flag("screen_shake")\nKilnSettings.volume("Music")')));
 }
-async function exportMenus() {
+async function exportMenus(quiet) {
   const g = await api('/api/godot?path=' + encodeURIComponent(FS.root)).catch(() => ({}));
   const base = g.root ? 'res://' + (FS.root.slice(g.root.length + 1) ? FS.root.slice(g.root.length + 1) + '/' : '') : '';
   const files = Object.values(M).filter(m => m.on).map(m => ({ name: m.id + '.tscn', text: menuScene(m, base) }));
-  try { await saveFiles('menus', files); await writeRuntime({ menu: MENU_GD, settings: SETTINGS_GD }); toast(`Saved ${files.length} menu screens to menus/ (their scripts: _kiln/ui/)`, 'ok'); } catch (e) { toast('Save failed: ' + e.message, 'bad'); }
+  try {
+    const fonts = await Promise.all([...new Set(Object.values(M).filter(m => m.on && m.font && !wroteFont.has(m.font)).map(m => m.font))].map(async f => ({ name: f, b64: await fontFile(f) })));
+    if (fonts.some(f => f.b64)) await saveFiles('fonts', fonts.filter(f => f.b64));
+    fonts.forEach(f => wroteFont.add(f.name));
+    await saveFiles('menus', files); await writeRuntime({ menu: MENU_GD, settings: SETTINGS_GD });
+    if (!quiet) toast(`Saved ${files.length} menu screens to menus/ (their scripts: _kiln/ui/)`, 'ok'); } catch (e) { toast('Save failed: ' + e.message, 'bad'); }
 }
 registerKeys('menus', [['Click a screen', 'Edit it'], ['+ Item', 'Add a button, slider or option']]);

@@ -12,7 +12,7 @@
   palettes/             <name>.hex + <name>.png
   levels/<level>/       tileset.png, <level>.tres (TileSet), <level>.tscn (background + TileMapLayer + actors + PlayerStart), level.json
   concepts/<session>/   concept images + notes.md (Concepts area, Kiln Studio)
-  menus/                title / options / pause scenes (Menus)
+  menus/                title / options / pause scenes (Menus; behind: scene, picture or looping video; font from fonts/)
   dialogue/             <name>.json conversations (Dialogue); voice lines live in sprites/<actor>/voice/
   logic/                <graph>.gd compiled Logic graphs and your own scripts (Play runs every logic/*.gd)
   docs/                 GAME.md, pitch.html, game_doc.html (Game doc → Save doc; editable source kiln/gamedoc-game.json)
