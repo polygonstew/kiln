@@ -26,13 +26,13 @@ window/size/viewport_height={h}
 window/size/window_width_override={w3}
 window/size/window_height_override={h3}
 window/size/mode={mode}
-window/stretch/mode="viewport"
+window/stretch/mode="{stretch}"
 window/stretch/scale_mode="{scale_mode}"
 
 [rendering]
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
-textures/canvas_textures/default_texture_filter=0
+textures/canvas_textures/default_texture_filter={tex_filter}
 textures/vram_compression/import_etc2_astc=true
 '''
 PRESETS = '''[preset.0]
@@ -98,9 +98,11 @@ def prepare(game, asset_root, files, opts, say=None):
         (game / 'icon.ico').write_bytes(ico(png))
         icon = 'config/icon="res://icon.png"\n'
     w, h, k = int(opts.get('w', 480)), int(opts.get('h', 270)), max(1, min(6, int(opts.get('scale', 3))))
+    modern = opts.get('look') == 'modern'          # Modern look: smooth scaling and filtering; Pixel: sharp, whole pixels
     (game / 'project.godot').write_text(PROJECT.format(
         name=str(opts.get('name', 'Kiln demo')).replace('"', ''), version=str(opts.get('version', '1.0')).replace('"', ''), icon=icon,
-        w=w, h=h, w3=w * k, h3=h * k, mode=3 if opts.get('fullscreen') else 0, scale_mode='integer' if opts.get('pixel_perfect', True) else 'fractional'))
+        w=w, h=h, w3=w * k, h3=h * k, mode=3 if opts.get('fullscreen') else 0, scale_mode='integer' if opts.get('pixel_perfect', True) and not modern else 'fractional',
+        stretch='canvas_items' if modern else 'viewport', tex_filter=1 if modern else 0))
     say('importing assets (Godot)…')
     r = subprocess.run([godot, '--headless', '--path', str(game), '--import'], capture_output=True, text=True, timeout=600)
     for e in [l for l in (r.stdout + r.stderr).splitlines() if 'ERROR' in l][:12]:

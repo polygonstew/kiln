@@ -76,6 +76,8 @@ func _physics_process(delta: float) -> void:
 \t\tvar crate := c.get_collider() as Node
 \t\tif crate and crate.is_in_group("pushable") and absf(c.get_normal().x) > 0.7:
 \t\t\tcrate.push(-c.get_normal().x)
+\t\telif crate is RigidBody2D:                    # physics things (Levels → Things): a shove
+\t\t\tcrate.apply_central_impulse(-c.get_normal() * 12.0)
 \tif dir != 0.0:
 \t\tsprite.flip_h = dir < 0.0
 \tif Input.is_action_just_pressed("attack"):

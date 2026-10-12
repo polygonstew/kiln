@@ -5,7 +5,7 @@ import { api, pref } from './core.js';
 import { S as FS } from './files.js';
 import { BRAIN_GD } from './brains.js';
 import { INPUT_GD } from './input_godot.js';
-import { GAME, P, roleBrain } from './gametype.js';
+import { GAME, P, roleBrain, LOOK } from './gametype.js';
 import { ADVENTURE, adventureRuntime } from './adventure_godot.js';
 import { STACKER, STACKER_GD } from './stacker_godot.js';
 import { FLOW, FLOW_GD, flowJSON } from './flow_godot.js';
@@ -416,7 +416,7 @@ const CONTROLS = {
 // Build for the Stage: onLog(lines) gets the build log as it grows; resolves true when the game is ready at /play/.
 export async function buildGame(pick, onLog) {
   const files = await gameFiles(pick);
-  const r = await api('/api/play/build', { root: FS.root, files, opts: { name: pick.name, w: 480, h: 270 } }).catch(e => ({ err: e.message }));
+  const r = await api('/api/play/build', { root: FS.root, files, opts: { name: pick.name, w: LOOK().w, h: LOOK().h, look: GAME.look } }).catch(e => ({ err: e.message }));
   if (r.err) { onLog([r.err]); return false; }
   for (;;) {
     await new Promise(ok => setTimeout(ok, 1200));

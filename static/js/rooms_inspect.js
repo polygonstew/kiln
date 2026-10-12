@@ -84,5 +84,6 @@ function hotspotPanel(q, x) {
         shows.kind ? `${shows.kind}:${shows.name || shows.path}` : '', v => { const [k, ...rest] = v.split(':'), n = rest.join(':'); q.shows = !k ? {} : k === 'actor' ? { kind: 'actor', name: n, flip: !!shows.flip } : { kind: 'picture', path: n }; x.changed(true); }),
         'Stands at the bottom of the shape; hidden with the hotspot'),
       shows.kind === 'actor' ? field('', check('faces left', !!shows.flip, v => { q.shows.flip = v; x.changed(true); })) : '',
+      shows.kind === 'picture' ? field('Size', range(shows.scale || 1, .1, 2, .05, v => { q.shows.scale = v; x.changed(); }, v => Math.round(v * 100) + '%')) : '',
       h('p', { class: 'note' }, `The hero walks to the white "stand" mark first (${standOf(q).join(', ')}): drag it.`)));
 }

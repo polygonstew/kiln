@@ -2,6 +2,7 @@
 // falls, slides while pushed and settles on whole tiles. Placed in Levels → Things → Crate, it looks like the tile that
 // was picked; saved as a CharacterBody2D running _kiln/level/crate.gd (group "pushable": the platformer brain pushes it).
 // A crate is an entity { type: 'crate', tile, x, y } (x, y = the middle of its bottom edge, in level pixels).
+import { SHARP } from './gametype.js';
 
 export const CRATE_GD = `extends CharacterBody2D
 ## Kiln crate: a box the player pushes (the platformer brain calls push() when it walks into one). It falls with
@@ -51,7 +52,7 @@ export function crateParts(ents, T, cols, tsRes, crateGd) {
     subs: `[sub_resource type="RectangleShape2D" id="crate_shape"]\nsize = Vector2(${T - 0.5}, ${T})\n\n`
       + tiles.map(t => `[sub_resource type="AtlasTexture" id="crate_${t}"]\natlas = ExtResource("crate_ts")\nregion = Rect2(${(t % cols) * T}, ${Math.floor(t / cols) * T}, ${T}, ${T})\n\n`).join(''),
     nodes: crates.map((e, i) => `[node name="Crate_${i + 1}" type="CharacterBody2D" parent="."]\nposition = Vector2(${e.x}, ${e.y})\nscript = ExtResource("crate")\ntile = ${T}.0\n\n`
-      + `[node name="Sprite" type="Sprite2D" parent="Crate_${i + 1}"]\ntexture_filter = 1\nposition = Vector2(0, ${-T / 2})\ntexture = SubResource("crate_${e.tile}")\n\n`
+      + `[node name="Sprite" type="Sprite2D" parent="Crate_${i + 1}"]\n${SHARP()}position = Vector2(0, ${-T / 2})\ntexture = SubResource("crate_${e.tile}")\n\n`
       + `[node name="Shape" type="CollisionShape2D" parent="Crate_${i + 1}"]\nposition = Vector2(0, ${-T / 2})\nshape = SubResource("crate_shape")\n\n`).join(''),
   };
 }

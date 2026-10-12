@@ -235,7 +235,7 @@ function inspector() {
     h('button', { class: 'btn sm ghost', title: 'Words on a plain colour for a few seconds: a stand-in until the scene is filmed, a chapter title, credits', onclick: () => titleCard(n, set(k)) }, 'Title card…')), 'videos/*.ogv');
   const k = n.kind, body = [];
   if (k === 'video') body.push(vid('video'), field('', check('Space / Esc / a click skips it', n.skip !== false, set('skip', false))));
-  if (k === 'menu') body.push(field('Screen', select(opts(L.menus, 'Make one in Menus'), n.menu || 'title', set('menu')), 'Its "start" button ends this scene'));
+  if (k === 'menu') body.push(field('Screen', select(opts(L.menus, 'Make one in Menus'), n.menu || 'title', set('menu')), 'Its "start" button ends this scene'), pic());
   if (k === 'level') body.push(field('Level', select(opts(L.levels, 'Pick a level…'), n.level || '', set('level')), 'A Door zone going to "Next in the game Flow" ends it'));
   if (k === 'room') body.push(field('Room', select(opts(Object.keys(L.rooms), 'Pick a room…'), n.room || '', set('room')), 'A "Leaves" hotspot ends it'),
     n.room ? field('Arrive at', select((L.rooms[n.room] || ['start']).map(e => [e, e]), n.entry || 'start', set('entry'))) : '');

@@ -1,8 +1,8 @@
 // Rooms → Items: every item of the adventure (its name, picture and what the hero says about it) and the
 // combinations (this + that → something new). Kept as the project kiln/items-adventure.json; Save room writes
 // adventure/items.json for the game. Pictures come from icons/ (Forge → Icon set makes a matching set).
-import { h, api, rawURL } from './core.js';
-import { S as FS } from './files.js';
+import { h, api, rawURL, imgData } from './core.js';
+import { S as FS, saveFiles } from './files.js';
 
 const slug = s => String(s || 'item').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'item';
 const ls = async rel => ((await api('/api/fs?path=' + encodeURIComponent(FS.root + '/' + rel)).catch(() => ({ items: [] }))).items || []);
@@ -19,11 +19,20 @@ export async function openItems(I, save) {
   let t = 0; const keep = () => { clearTimeout(t); t = setTimeout(() => save(I), 500); };
   const opts = (v, none) => [h('option', { value: '' }, none), ...I.items.map(i => h('option', { value: i.id, selected: i.id === v }, i.name))];
   const pic = it => h('button', { class: 'it-pic', title: 'Pick its picture (from icons/)', onclick: () => pickIcon(it) }, it.icon ? h('img', { src: rawURL(FS.root + '/' + it.icon) }) : '?');
+  // your own picture, or one cut out of a sheet: its background removed, 96 px tall, saved as icons/items/<id>.png
+  const own = (it, fromSheet) => import('./pictures.js').then(P => (fromSheet ? P.pickFromSheet : P.pickPicture)(`Picture for ${it.name}`, async url => {
+    const { cutout } = await import('./cutout.js'), im = cutout(await imgData(url), { height: 96 });
+    const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; c.getContext('2d').putImageData(im, 0, 0);
+    await saveFiles('icons/items', [{ name: it.id + '.png', b64: c.toDataURL('image/png') }]);
+    it.icon = `icons/items/${it.id}.png`; keep(); draw();
+  }));
   function pickIcon(it) {
     const box = h('div', { class: 'it-icons' }, h('button', { onclick: () => { it.icon = ''; keep(); draw(); } }, 'none'),
+      h('button', { class: 'wide', title: 'Any picture: its plain background is removed', onclick: () => own(it, false) }, 'Picture…'),
+      h('button', { class: 'wide', title: 'One picture cut out of a sheet of them', onclick: () => own(it, true) }, 'Sheet…'),
       ...icons.map(p => h('button', { title: p, onclick: () => { it.icon = p; keep(); draw(); } }, h('img', { src: rawURL(FS.root + '/' + p) }))));
     body.querySelector('.it-icons')?.remove();
-    body.prepend(icons.length ? box : h('p', { class: 'note it-icons' }, 'No pictures in icons/ yet: Forge → Icon set makes a set of item pictures in one style.'));
+    body.prepend(box);
   }
   function draw() {
     body.replaceChildren(

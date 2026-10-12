@@ -387,7 +387,6 @@ func _build_ui() -> void:
 \tnote = _label(Color(0.8, 1, 0.8))
 \thand = TextureRect.new()
 \thand.mouse_filter = Control.MOUSE_FILTER_IGNORE
-\thand.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 \thand.visible = false
 \tadd_child(hand)
 \tmusic = AudioStreamPlayer.new()
@@ -413,7 +412,6 @@ func _draw_bar() -> void:
 \t\tslot.custom_minimum_size = Vector2(24, 24)
 \t\tslot.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 \t\tslot.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-\t\tslot.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 \t\tslot.texture = _icon(id)
 \t\tslot.tooltip_text = ""
 \t\tslot.modulate = Color(1, 1, 1, 0.35) if id == held else Color.WHITE

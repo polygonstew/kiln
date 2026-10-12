@@ -11,7 +11,7 @@ const ACTIONS = [['start', 'Start the game'], ['open:options', 'Open options'], 
   ['volume', 'Volume slider'], ['fullscreen', 'Fullscreen on/off'], ['toggle', 'On/off option'], ['controls', 'Show the controls']];
 export const DEFAULTS = () => ({
   title: { id: 'title', on: true, title: 'My Game', items: [{ label: 'Play', action: 'start' }, { label: 'Options', action: 'open:options' }, { label: 'Quit', action: 'quit' }] },
-  options: { id: 'options', on: true, title: 'Options', items: [{ label: 'Master', action: 'volume', bus: 'Master' }, { label: 'Music', action: 'volume', bus: 'Music' }, { label: 'Sound', action: 'volume', bus: 'SFX' },
+  options: { id: 'options', on: true, title: 'Options', dim: .9, items: [{ label: 'Master', action: 'volume', bus: 'Master' }, { label: 'Music', action: 'volume', bus: 'Music' }, { label: 'Sound', action: 'volume', bus: 'SFX' },
     { label: 'Fullscreen', action: 'fullscreen' }, { label: 'Screen shake', action: 'toggle', key: 'screen_shake' }, { label: 'Controls', action: 'controls' }, { label: 'Back', action: 'back' }] },
   pause: { id: 'pause', on: true, title: 'Paused', dim: .7, items: [{ label: 'Resume', action: 'resume' }, { label: 'Options', action: 'open:options' }, { label: 'Quit to title', action: 'title' }] },
 });

@@ -101,18 +101,22 @@ async function refresh(saved) {
   chip.textContent = `Your game ${now.size}/${STEPS.length}`;
   chip.classList.toggle('go', now.size < STEPS.length && now.size > 0);
   if (fresh?.length) nudge(STEPS.find(s => s[0] === fresh[0]));
-  if (first && state.empty) openPath(true);
+  if (first && state.empty) import('./helper.js').then(m => m.helloOnce(FS.root));     // Gloop asks once, no big window
   first = false;
 }
 const next = () => STEPS.find(s => !done.has(s[0]));
+// for Gloop (helper.js): the steps panel, the next step, doing it
+export const openSteps = () => refresh(false).then(() => openPath());
+export const nextStep = () => refresh(false).then(next);
+export const doStep = s => go(s[3]);
 
 // the panel: every step, the done ones ticked, the next one lit with its "Do it"
-function openPath(welcome) {
+function openPath() {
   document.querySelector('.jr-panel')?.remove();
   const n = next();
   const p = h('div', { class: 'jr-panel' },
-    h('div', { class: 'jr-head' }, h('b', {}, welcome ? 'Let\'s make a game' : 'Your game'), h('span', { class: 'grow' }), h('button', { class: 'ibtn', title: 'Close', onclick: () => p.remove() }, '✕')),
-    welcome ? h('p', { class: 'note' }, `${STEPS.length} small steps from an idea to a game other people can play. Each opens the right place; nothing here is locked or in order. File → Kind of game changes the path.`) : '',
+    h('div', { class: 'jr-head' }, h('b', {}, 'Your game'), h('span', { class: 'grow' }), h('button', { class: 'ibtn', title: 'Close', onclick: () => p.remove() }, '✕')),
+    h('p', { class: 'note' }, `${STEPS.length} small steps from an idea to a game other people can play. Each opens the right place; nothing is locked or in order.`),
     h('div', { class: 'jr-steps' }, ...STEPS.map(([id, title, why, area], i) => h('div', { class: 'jr-step' + (done.has(id) ? ' done' : n?.[0] === id ? ' next' : '') },
       h('i', {}, done.has(id) ? '✓' : String(i + 1)), h('div', { class: 'jr-t' }, h('b', {}, title), h('small', {}, why)),
       done.has(id) ? '' : h('button', { class: 'btn sm' + (n?.[0] === id ? ' go' : ' ghost'), title: 'Open ' + area, onclick: () => { p.remove(); go(area); } }, 'Do it')))),
@@ -132,7 +136,7 @@ function nudge(step) {
 }
 
 export function initJourney() {
-  chip = h('button', { id: 'journey', class: 'btn sm ghost', title: 'How far your game has come, and what to make next', onclick: async () => { await refresh(false); openPath(false); } }, 'Your game');
+  chip = h('button', { id: 'journey', class: 'btn sm ghost', title: 'How far your game has come, and what to make next', onclick: async () => { await refresh(false); openPath(); } }, 'Your game');
   document.querySelector('#stylechip')?.before(chip);
   let t = 0; on('saved', () => { clearTimeout(t); t = setTimeout(() => refresh(true), 1500); });
   on('root', () => { first = true; refresh(false); });

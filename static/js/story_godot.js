@@ -110,7 +110,6 @@ func _build() -> void:
 \t_pic.size_flags_vertical = Control.SIZE_EXPAND_FILL
 \t_pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 \t_pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-\t_pic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 \tpage.add_child(_pic)
 \t_who = Label.new()
 \t_who.add_theme_color_override("font_color", Color("#d9bf6a"))

@@ -5,6 +5,7 @@
 import { h, api, pref, field, check, seg, toast, emit } from './core.js';
 import { S as FS } from './files.js';
 import { gameFiles, gamePicks } from './playbuild.js';
+import { GAME, LOOK } from './gametype.js';
 
 const SIZES = [[2, '2×', '960×540'], [3, '3×', '1440×810'], [4, '4×', '1920×1080']];
 const DEFAULT_ON = ['web', 'windows', 'linux'];
@@ -99,7 +100,7 @@ export async function openRelease() {
     busy = true; draw(); logEl.style.display = ''; logEl.textContent = 'Preparing…';
     try {
       const c = choices.find(x => x.src === S.icon);
-      const opts = { name: S.name.trim() || 'My game', version: S.version.trim() || '1.0', w: 480, h: 270, scale: S.scale, fullscreen: S.fullscreen, pixel_perfect: S.pixel, icon: c ? await iconPNG(c) : '' };
+      const opts = { name: S.name.trim() || 'My game', version: S.version.trim() || '1.0', w: LOOK().w, h: LOOK().h, look: GAME.look, scale: GAME.look === 'modern' ? Math.min(S.scale, 1.5) : S.scale, fullscreen: S.fullscreen, pixel_perfect: S.pixel, icon: c ? await iconPNG(c) : '' };
       const files = await gameFiles({ ...pick, name: opts.name }, true);
       const r = await api('/api/release', { root: FS.root, files, opts, targets: want }).catch(e => ({ err: e.message }));
       if (r.err) throw new Error(r.err);

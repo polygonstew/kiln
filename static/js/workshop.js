@@ -89,6 +89,7 @@ export function openWorkshop(host, api) {
       field('Knockback', range(R.knockback, 0, 240, 5, v => set('knockback', v), v => v + ' px/s'), 'How hard a hit pushes it away'),
       field('Health', range(R.health ?? 3, 1, 20, 1, v => set('health', v), v => v + (v == 1 ? ' hit' : ' hits')), 'Hits it takes before dying (the player\'s health drives the HUD)'),
       field('Safe for', range(R.iframes, 0, 2, .05, v => set('iframes', v), v => (+v).toFixed(2) + ' s'), 'Invulnerable (blinking) after a hit'),
+      field('Ragdoll', check('falls apart when it dies', !!a.ragdoll, v => { a.ragdoll = v; api.changed(); }), a.rig ? 'Its Puppet rig becomes pieces on joints that tumble (Help → Physics guide)' : 'Needs a Puppet rig first (Animate → Puppet)'),
       have('hurt') ? null : h('p', { class: 'note' }, 'Tip: add a "hurt" animation (enemy and player roles include one).'));
   }
   /* ---- effects ---- */

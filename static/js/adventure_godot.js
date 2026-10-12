@@ -3,6 +3,7 @@
 // with its shape, where to stand and what it shows) and Front; the items and combinations go to adventure/items.json.
 // The runtime scripts are in adventure_gd.js; adventureRuntime() hands them to a build or a save.
 import { ROOM_GD, HOTSPOT_GD, ADVENTURE_GD } from './adventure_gd.js';
+import { SHARP } from './gametype.js';
 
 export const ADVENTURE = '_kiln/adventure/adventure.gd';
 const ROOM = '_kiln/adventure/room.gd', HOTSPOT = '_kiln/adventure/hotspot.gd';
@@ -42,6 +43,8 @@ export function crossed(pts) {
   return false;
 }
 
+// a room picture's file name, by what the data URL holds (painted pictures stay WebP / JPEG, drawn ones PNG)
+export const picFile = (base, url) => `${base}.${/^data:image\/webp/.test(url) ? 'webp' : /^data:image\/jpe?g/.test(url) ? 'jpg' : 'png'}`;
 const vec = pts => `PackedVector2Array(${pts.map(p => `${p[0]}, ${p[1]}`).join(', ')})`;
 const str = s => JSON.stringify(String(s ?? ''));
 const nodeName = s => String(s || 'thing').replace(/[^A-Za-z0-9_]/g, '_');
@@ -57,7 +60,7 @@ export function roomScene(R, at, res) {
   const D = R.depth || {};
   nodes.push(`[node name="${nodeName(R.name)}" type="Node2D"]\nscript = ${roomRes}\nsize = Vector2(${R.w}, ${R.h})\nfar_y = ${D.farY ?? Math.round(R.h * .55)}.0\nfar_scale = ${D.farS ?? .6}\nnear_y = ${D.nearY ?? R.h}.0\nnear_scale = ${D.nearS ?? 1}\n`
     + (R.music ? `music = ${use('AudioStream', R.music)}\n` : ''));
-  if (R.bg) nodes.push(`[node name="Background" type="Sprite2D" parent="."]\ntexture_filter = 1\ntexture = ExtResource("bg")\ncentered = false\n`);
+  if (R.bg) nodes.push(`[node name="Background" type="Sprite2D" parent="."]\n${SHARP()}texture = ExtResource("bg")\ncentered = false\n`);
   if ((R.walk || []).length >= 3) {
     const tris = triangulate(R.walk);
     subs.push(`[sub_resource type="NavigationPolygon" id="walk"]\nvertices = ${vec(R.walk)}\npolygons = Array[PackedInt32Array]([${tris.map(t => `PackedInt32Array(${t.join(', ')})`).join(', ')}])\n`
@@ -83,11 +86,11 @@ export function roomScene(R, at, res) {
     nodes.push(`[node name="Stand" type="Marker2D" parent="${path}"]\nposition = Vector2(${st[0] - cx}, ${st[1] - cy})\n`);
     const sh = q.shows || {};
     if (sh.kind === 'actor' && sh.name) nodes.push(`[node name="${nodeName(sh.name)}" parent="${path}" instance=${use('PackedScene', `sprites/${sh.name}/${sh.name}.tscn`)}]\nposition = Vector2(0, ${Math.max(...q.poly.map(p => p[1])) - cy})\n${sh.flip ? 'scale = Vector2(-1, 1)\n' : ''}`);
-    if (sh.kind === 'picture' && sh.path) nodes.push(`[node name="Picture" type="Sprite2D" parent="${path}"]\ntexture_filter = 1\ntexture = ${use('Texture2D', sh.path)}\n`);
+    if (sh.kind === 'picture' && sh.path) nodes.push(`[node name="Picture" type="Sprite2D" parent="${path}"]\n${SHARP()}texture = ${use('Texture2D', sh.path)}\n${sh.scale ? `scale = Vector2(${sh.scale}, ${sh.scale})\n` : ''}`);
   }
-  if (R.fg) nodes.push(`[node name="Front" type="Sprite2D" parent="."]\nz_index = 10\ntexture_filter = 1\ntexture = ExtResource("fg")\ncentered = false\n`);
-  if (R.bg) ext.push(`[ext_resource type="Texture2D" path="${res}/background.png" id="bg"]`);
-  if (R.fg) ext.push(`[ext_resource type="Texture2D" path="${res}/front.png" id="fg"]`);
+  if (R.fg) nodes.push(`[node name="Front" type="Sprite2D" parent="."]\nz_index = 10\n${SHARP()}texture = ExtResource("fg")\ncentered = false\n`);
+  if (R.bg) ext.push(`[ext_resource type="Texture2D" path="${res}/${picFile('background', R.bg)}" id="bg"]`);
+  if (R.fg) ext.push(`[ext_resource type="Texture2D" path="${res}/${picFile('front', R.fg)}" id="fg"]`);
   return `[gd_scene load_steps=${ext.length + subs.length + 1} format=3]\n\n${ext.join('\n')}\n\n${subs.map(s => s + '\n').join('')}${nodes.join('\n')}`;
 }
 

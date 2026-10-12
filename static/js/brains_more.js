@@ -61,6 +61,10 @@ func _physics_process(delta: float) -> void:
 \tvar dir := Input.get_vector("move_left", "move_right", "move_up", "move_down")
 \tactor.velocity = actor.velocity.move_toward(dir * speed, accel * delta)   # knockback fades into this
 \tactor.move_and_slide()
+\tfor i in actor.get_slide_collision_count():     # physics things get shoved
+\t\tvar c := actor.get_slide_collision(i)
+\t\tif c.get_collider() is RigidBody2D:
+\t\t\tc.get_collider().apply_central_impulse(-c.get_normal() * 12.0)
 \tif dir != Vector2.ZERO:
 \t\tfacing = dir
 \tvar aim := Input.get_vector("aim_left", "aim_right", "aim_up", "aim_down")

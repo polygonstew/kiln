@@ -12,12 +12,13 @@ import { ensureBrain } from './layout.js';
 import { BRAIN_GD } from './brains.js';
 import { roomCanvas } from './rooms_canvas.js';
 import { inspector } from './rooms_inspect.js';
-import { roomScene, itemsJSON, adventureRuntime, crossed } from './adventure_godot.js';
+import { roomScene, itemsJSON, adventureRuntime, crossed, picFile } from './adventure_godot.js';
 import { listScenes, buildKey } from './playbuild.js';
 import { pickPicture } from './pictures.js';
+import { LOOK } from './gametype.js';
 
 const slug = s => String(s || 'room').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'room';
-const blank = (name = 'room', w = 480, h = 270) => ({ id: uid(), name, w, h, bg: null, fg: null, walk: [], depth: { farY: Math.round(h * .55), farS: .6, nearY: h, nearS: 1 },
+const blank = (name = 'room', w = LOOK().w, h = LOOK().h) => ({ id: uid(), name, w, h, bg: null, fg: null, walk: [], depth: { farY: Math.round(h * .55), farS: .6, nearY: h, nearS: 1 },
   entries: [{ name: 'start', x: Math.round(w / 4), y: Math.round(h * .85) }], hotspots: [], music: '' });
 const getProject = id => fetch('/api/project?id=' + encodeURIComponent(id)).then(r => r.ok ? r.json() : null).catch(() => null);
 const ls = async rel => ((await api('/api/fs?path=' + encodeURIComponent(FS.root + '/' + rel)).catch(() => ({ items: [] }))).items || []);
@@ -226,8 +227,8 @@ async function saveRoom() {
   const at = rel => pre + rel, res = rel => (pre || 'res://') + rel;     // scenes: folder-relative outside Godot (play.py fixes them); JSON: res://
   try {
     const files = [{ name: `${R.name}.tscn`, text: roomScene(R, at, at(dir)) }, { name: 'room.json', text: strip(R) + '\n' }];
-    if (R.bg) files.push({ name: 'background.png', b64: R.bg });
-    if (R.fg) files.push({ name: 'front.png', b64: R.fg });
+    if (R.bg) files.push({ name: picFile('background', R.bg), b64: R.bg });
+    if (R.fg) files.push({ name: picFile('front', R.fg), b64: R.fg });
     await saveFiles(dir, files);
     await saveFiles('adventure', [{ name: 'items.json', text: itemsJSON(I, res) }]);
     const byDir = {};

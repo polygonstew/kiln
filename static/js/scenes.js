@@ -11,6 +11,7 @@ import { loadActor } from './player.js';
 import { openProjects } from './projects.js';
 import { registerWheel, registerKeys } from './wheel.js';
 import { layerPanel } from './layers.js';
+import { SHARP } from './gametype.js';
 // a slider drag is one undo step: the first change records it, letting go ends it
 window.addEventListener('pointerup', () => { V.editing = false; });
 
@@ -753,7 +754,7 @@ function godotScene(sj, res) {
   // Godot CanvasItemMaterial blend modes: 1 add, 3 multiply ("screen" has no built-in: add is the closest)
   const GB = { add: 1, screen: 1, multiply: 3 }, mats = [...new Set(sj.layers.map(l => GB[l.blend]).filter(Boolean))];
   const subs = mats.map(m => `[sub_resource type="CanvasItemMaterial" id="blend${m}"]\nblend_mode = ${m}\n`);
-  const nodes = sj.layers.map((l, i) => l.kind === 'weather' ? wnode(l) : `[node name="${l.name}" type="Parallax2D" parent="."]\nscroll_scale = Vector2(${l.scroll}, 1)\n${l.repeat ? `repeat_size = Vector2(${l.w}, 0)\nrepeat_times = 3\n` : ''}${l.visible === false ? 'visible = false\n' : ''}\n[node name="Sprite2D" type="Sprite2D" parent="${l.name}"]\n${GB[l.blend] ? `material = SubResource("blend${GB[l.blend]}")\n` : ''}${l.opacity < 1 ? `modulate = Color(1, 1, 1, ${l.opacity})\n` : ''}texture = ExtResource("${eid(l)}")\ncentered = false\nposition = Vector2(0, ${l.y})\ntexture_filter = 1\n`);
+  const nodes = sj.layers.map((l, i) => l.kind === 'weather' ? wnode(l) : `[node name="${l.name}" type="Parallax2D" parent="."]\nscroll_scale = Vector2(${l.scroll}, 1)\n${l.repeat ? `repeat_size = Vector2(${l.w}, 0)\nrepeat_times = 3\n` : ''}${l.visible === false ? 'visible = false\n' : ''}\n[node name="Sprite2D" type="Sprite2D" parent="${l.name}"]\n${GB[l.blend] ? `material = SubResource("blend${GB[l.blend]}")\n` : ''}${l.opacity < 1 ? `modulate = Color(1, 1, 1, ${l.opacity})\n` : ''}texture = ExtResource("${eid(l)}")\ncentered = false\nposition = Vector2(0, ${l.y})\n${SHARP()}`);
   // solid layers: a StaticBody2D of traced polygons in world space (one copy per repeat, starting at x=0)
   const bodies = sj.layers.filter(l => l.collision?.length).map(l => {
     const copies = l.repeat ? 3 : 1, out = [`[node name="${l.name}_solid" type="StaticBody2D" parent="."]\nposition = Vector2(0, ${l.y})\n`];

@@ -1,6 +1,5 @@
-// Demo games for the other game paths (gametype.js), each a small complete game in a new folder, made the way you would
-// make it and tied together by a Flow: a point & click ("The Last Light": two rooms, a puzzle with a key, a lamp, oil
-// and a talk), a text adventure (pages with pictures and a check), an interactive movie (title-card videos, a timed
+// Templates for the other game paths (gametype.js; point & click has its kits in templates.js), each a small complete
+// game in a new folder, made the way you would make it and tied together by a Flow: a text adventure (pages with pictures and a check), an interactive movie (title-card videos, a timed
 // choice, a quick-time moment), a top-down shooter (four rooms, chasers, a turret boss), three push puzzles and a
 // stacking tower. Pictures are drawn in code; every area saves its part (saveall.js); then Kiln starts again in it.
 import { h, api, toast, pref, uid, newImg, toDataURL, outline } from './core.js';
@@ -21,98 +20,39 @@ const flow = (nodes, links) => ({ meta: { kind: 'flow', name: 'game' }, flow: { 
 const say = (id, who, text, extra = {}) => ({ id, who, text, voice: '', next: '', choices: [], do: [], ...extra });
 
 export async function makePathDemo(pick) {
-  const make = { adventure: adventureDemo, text: textDemo, fmv: fmvDemo, topdown: topdownDemo, puzzle: pick.puzzle === 'stack' ? stackDemo : pushDemo }[pick.path];
-  if (!make) return toast('No demo for that kind of game yet', 'bad');
-  const name = (prompt(`Name for the new game, from the ${PATHS[pick.path].label.toLowerCase()} template (a new game folder; yours stays as it is)`, `my_${pick.path === 'puzzle' ? pick.puzzle : pick.path}`) || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_');
-  if (!name) return;
+  if (pick.path === 'adventure') return import('./templates.js').then(m => m.openAdventureKits());
+  const make = { text: textDemo, fmv: fmvDemo, topdown: topdownDemo, puzzle: pick.puzzle === 'stack' ? stackDemo : pushDemo }[pick.path];
+  if (!make) return toast('No template for that kind of game yet', 'bad');
+  const g = await newGameFolder(`my_${pick.path === 'puzzle' ? pick.puzzle : pick.path}`, `the ${PATHS[pick.path].label.toLowerCase()} template`, { ...pick, look: 'pixel' });   // these templates are drawn as pixel art
+  if (g) await g.finish(await make(g));
+}
+
+// A new game folder for a template: asks its name, switches to it with the path set, and gives the template
+// { put(id, project), files(dest, list), step(text), finish(stage picks) }; finish saves every area and plays it.
+export async function newGameFolder(suggested, what, pick) {
+  const name = (prompt(`Name for the new game, from ${what} (a new game folder; yours stays as it is)`, suggested) || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_');
+  if (!name) return null;
   const path = FS.settings.games + '/' + name;
   const there = await api('/api/fs?path=' + encodeURIComponent(path + '/kiln')).catch(() => ({ items: [] }));
-  if ((there.items || []).length && !confirm(`${name} already has Kiln projects. Make the template there anyway (same names are replaced)?`)) return;
+  if ((there.items || []).length && !confirm(`${name} already has Kiln projects. Make the template there anyway (same names are replaced)?`)) return null;
   const log = h('div', { class: 'play-log', style: { maxHeight: '300px' } }), step = t => { log.append(h('div', {}, t)); log.scrollTop = 1e9; };
-  const m = h('div', { class: 'modal' }, h('div', { style: { width: 'min(560px, 94vw)' } }, h('header', {}, h('span', { class: 'grow' }, 'Making the template')),
+  const m = h('div', { class: 'modal' }, h('div', { style: { width: 'min(560px, 94vw)' } }, h('header', {}, h('span', { class: 'grow' }, 'Making your game from ' + what)),
     h('div', { class: 'body' }, h('p', { class: 'note', style: { marginTop: 0 } }, 'Every area takes its turn: watch the tabs.'), log)));
   document.body.append(m);
   await api('/api/fs', { op: 'root', path, scaffold: true }); await loadSettings();
-  await setPath(pick.path, pick.puzzle);
-  const put = (id, data) => api('/api/project', { id, data });
-  const files = (dest, list) => api('/api/export', { dest, files: list });
-  const buildPick = await make({ put, files, step });
-  step('Every area saves its part for Godot:');
-  const r = await saveAll(t => step('  ' + t));
-  if (r.failed.length) step('Some parts failed: ' + r.failed.join('; '));
-  pref.set(buildKey(), { start: 'none', ...buildPick });
-  step('Done. Starting it in the Stage…');
-  sessionStorage.setItem('kiln.play', '1');
-  setTimeout(() => restart(`The ${PATHS[pick.path].label.toLowerCase()} template is ready: look inside Flow and each area, then make it yours`, 'stage'), 800);
-}
-
-/* ------------------------------------------------------------ point & click: The Last Light ---- */
-function icon(fn) { return paint(16, 16, (x, r) => fn(r)); }
-const ICONS = {
-  key: icon(r => { r('#7a5a14', 3, 6, 6, 5); r('#e3b04b', 4, 7, 4, 3); r('#e3b04b', 9, 8, 6, 2); r('#e3b04b', 12, 10, 1, 2); r('#e3b04b', 14, 10, 1, 3); }),
-  lamp: icon(r => { r('#5b4a2a', 5, 13, 6, 2); r('#9c8a5a', 6, 6, 4, 7); r('#cfd3dc66', 5, 5, 6, 8); r('#5b4a2a', 7, 2, 2, 3); }),
-  oil: icon(r => { r('#2c5a2e', 5, 5, 6, 10); r('#4c8a3a', 6, 6, 4, 8); r('#7a5230', 7, 2, 2, 3); r('#e8e2c0', 6, 9, 4, 3); }),
-  lit_lamp: icon(r => { r('#ffd66688', 2, 1, 12, 13); r('#5b4a2a', 5, 13, 6, 2); r('#9c8a5a', 6, 6, 4, 7); r('#ffe48a', 7, 7, 2, 4); r('#5b4a2a', 7, 2, 2, 3); }),
-};
-const COTTAGE = () => paint(480, 270, (x, r) => {
-  r('#3b2f45', 0, 0, 480, 180); for (let i = 0; i < 480; i += 24) r('#352a3e', i, 0, 2, 180);
-  r('#5a4632', 0, 180, 480, 90); for (let y = 186; y < 270; y += 12) r('#4d3c2b', 0, y, 480, 1);
-  r('#2a2232', 0, 176, 480, 4);
-  r('#1f2a44', 60, 50, 80, 60); r('#2e4a72', 64, 54, 72, 52); r('#cfe0ff33', 66, 56, 30, 20); r('#6b4a2e', 98, 50, 4, 60); r('#6b4a2e', 60, 78, 80, 4); r('#6b4a2e', 56, 108, 88, 6);
-  r('#6b4a2e', 398, 78, 54, 100); r('#4d3420', 402, 82, 46, 96); r('#e3b04b', 438, 128, 4, 4);
-  r('#6b4a2e', 210, 138, 100, 10); r('#4d3420', 216, 148, 6, 40); r('#4d3420', 298, 148, 6, 40);
-  r('#7a2e2e', 150, 205, 120, 30); r('#9c3b3b', 156, 209, 108, 22); r('#7a2e2e', 170, 214, 80, 2);
-});
-const SHORE = () => paint(480, 270, (x, r) => {
-  for (let y = 0; y < 120; y++) r(`rgb(${12 + y / 6 | 0},${16 + y / 5 | 0},${40 + y / 3 | 0})`, 0, y, 480, 1);
-  for (const [sx, sy] of [[40, 20], [120, 45], [200, 15], [300, 35], [450, 25], [260, 60]]) r('#e6e2d6', sx, sy, 2, 2);
-  r('#16304f', 0, 120, 480, 55); for (let y = 128; y < 175; y += 9) r('#2a4e78', (y * 37) % 60, y, 420, 1);
-  r('#b89a62', 0, 175, 480, 95); r('#a3884f', 0, 175, 480, 4); for (let i = 0; i < 40; i++) r('#9c8150', (i * 53) % 480, 190 + (i * 29) % 75, 3, 1);
-  r('#e6e2d6', 380, 20, 50, 160); r('#b03b3b', 380, 60, 50, 22); r('#b03b3b', 380, 110, 50, 22); r('#2a2232', 395, 138, 22, 42); r('#3a3a44', 374, 12, 62, 10); r('#ffd666', 392, 0, 26, 12);
-  r('#3b2f45', 0, 90, 70, 90); r('#4d3420', 18, 110, 36, 70); r('#e3b04b', 46, 146, 3, 3);
-});
-async function adventureDemo({ put, files, step }) {
-  step('Drawing the keeper and the old miner…');
-  await put('actor-keeper', hero('keeper', { ...HERO, tunic: '#2f5d7c', dark: '#244a63', blade: '#00000000' }, 'hero', ['idle', 'walk']));
-  await put('actor-old_miner', hero('old_miner', MINER, 'npc', ['idle']));
-  step('Items, their pictures, and how two make a third…');
-  await files('icons/demo', Object.entries(ICONS).map(([n, b64]) => ({ name: n + '.png', b64 })));
-  await put('items-adventure', { meta: { kind: 'items', name: 'adventure' }, items: { items: [
-    { id: 'key', name: 'Brass key', look: 'Warm from my pocket. It opens the lighthouse.', icon: 'icons/demo/key.png' },
-    { id: 'lamp', name: 'Empty lamp', look: 'Not a drop of oil in it.', icon: 'icons/demo/lamp.png' },
-    { id: 'oil', name: 'Lamp oil', look: 'The miner\'s last bottle.', icon: 'icons/demo/oil.png' },
-    { id: 'lit_lamp', name: 'Lit lamp', look: 'It burns bright.', icon: 'icons/demo/lit_lamp.png' }],
-    combos: [{ a: 'lamp', b: 'oil', makes: 'lit_lamp', text: 'The lamp burns bright.' }] } });
-  step('Two rooms: the cottage and the shore…');
-  const H = (name, title, poly, extra) => ({ id: uid(), name, title, poly, does: 'say', look: '', text: '', ...extra });
-  await put('room-cottage', { meta: { kind: 'room', name: 'cottage' }, room: { id: uid(), name: 'cottage', w: 480, h: 270, bg: COTTAGE(), fg: null, music: '',
-    walk: [[16, 186], [464, 186], [474, 266], [6, 266]], depth: { farY: 186, farS: .8, nearY: 266, nearS: 1.1 },
-    entries: [{ name: 'start', x: 120, y: 240 }, { name: 'from_shore', x: 420, y: 205 }],
-    hotspots: [
-      H('window', 'Window', rect(60, 50, 140, 110), { look: 'The sea is calm tonight. Too calm.', does: 'none' }),
-      H('rug', 'Rug', rect(150, 205, 270, 235), { look: 'A dusty old rug. Something is under it.', text: 'I lift the rug. A key!', setsFlag: 'rug_moved' }),
-      H('key', 'Brass key', rect(203, 214, 221, 228), { when: 'rug_moved', does: 'pick', item: 'key', text: 'The lighthouse key!', vanish: true, shows: { kind: 'picture', path: 'icons/demo/key.png' } }),
-      H('lamp', 'Lamp', rect(248, 120, 266, 138), { look: 'My old oil lamp.', does: 'pick', item: 'lamp', text: 'Empty. I\'ll need oil.', vanish: true, shows: { kind: 'picture', path: 'icons/demo/lamp.png' }, stand: [258, 200] }),
-      H('door', 'Door', rect(398, 78, 452, 178), { look: 'Out to the shore.', does: 'go', room: 'shore', entry: 'from_cottage', stand: [420, 200] })] } });
-  await put('room-shore', { meta: { kind: 'room', name: 'shore' }, room: { id: uid(), name: 'shore', w: 480, h: 270, bg: SHORE(), fg: null, music: '',
-    walk: [[10, 188], [470, 188], [470, 266], [10, 266]], depth: { farY: 188, farS: .75, nearY: 266, nearS: 1.05 },
-    entries: [{ name: 'from_cottage', x: 60, y: 215 }, { name: 'start', x: 60, y: 215 }],
-    hotspots: [
-      H('sea', 'Sea', rect(0, 120, 360, 175), { look: 'Somewhere out there, ships are waiting for the light.', does: 'none' }),
-      H('cottage', 'Cottage', rect(18, 110, 54, 180), { look: 'Home.', does: 'go', room: 'cottage', entry: 'from_shore', stand: [50, 205] }),
-      H('miner', 'Old miner', rect(222, 168, 246, 214), { look: 'Old Tam. He knows everyone\'s business.', does: 'talk', dialogue: 'dialogue/miner.json', shows: { kind: 'actor', name: 'old_miner', flip: true }, stand: [196, 222] }),
-      H('door_shut', 'Lighthouse door', rect(395, 138, 417, 180), { look: 'The lighthouse. Its door is locked.', unless: 'lighthouse_open', needs: 'key', takes: true, setsFlag: 'lighthouse_open', lockedText: 'Locked. The key is somewhere at home.', text: 'The key turns. The door creaks open.', stand: [406, 200] }),
-      H('lighthouse', 'Lighthouse', rect(395, 138, 417, 180), { look: 'Dark as a well inside.', when: 'lighthouse_open', needs: 'lit_lamp', lockedText: 'It\'s pitch black in there. I need a light.', does: 'leave', text: 'Up the stairs I go.', stand: [406, 200] })] } });
-  step('A conversation with the miner…');
-  await put('dialogue-miner', { meta: { kind: 'dialogue', name: 'miner' }, dialogue: { name: 'miner', cast: [{ name: 'Old Tam', actor: 'old_miner' }], beats: [
-    say('b1', 'Old Tam', 'Evening, keeper. The light\'s gone out again.'),
-    say('b2', 'Old Tam', 'What do you need?', { choices: [{ text: 'Have you any lamp oil?', next: 'b3', if: { k: 'noflag', v: 'got_oil' }, do: [] }, { text: 'Nothing. Goodnight, Tam.', next: 'end', do: [] }] }),
-    say('b3', 'Old Tam', 'My last bottle. Get that light burning, or the boats won\'t make it home.', { next: 'end', do: [{ k: 'give', v: 'oil' }, { k: 'flag', v: 'got_oil' }] })] } });
-  step('Menus and the flow: title → the adventure → the end…');
-  await put('menus-game', menus('THE LAST LIGHT'));
-  await put('flow-game', flow([['t', 'menu', 'Title', 0, { menu: 'title' }], ['a', 'room', 'The cottage', 260, { room: 'cottage', entry: 'start' }], ['e', 'end', 'The light shines', 520, { text: 'The light shines again. Every boat comes home.' }]],
-    [['t', 'done', 'a'], ['a', 'lighthouse', 'e']]));
-  return { level: 'res://rooms/cottage/cottage.tscn', player: 'res://sprites/keeper/keeper.tscn' };
+  await setPath(pick.path, pick.puzzle, pick.look || 'modern');
+  return {
+    step, put: (id, data) => api('/api/project', { id, data }), files: (dest, list) => api('/api/export', { dest, files: list }),
+    async finish(buildPick) {
+      step('Every area saves its part for Godot:');
+      const r = await saveAll(t => step('  ' + t));
+      if (r.failed.length) step('Some parts failed: ' + r.failed.join('; '));
+      pref.set(buildKey(), { start: 'none', ...buildPick });
+      step('Done. Starting it in the Stage…');
+      sessionStorage.setItem('kiln.play', '1');
+      setTimeout(() => restart(`Your game from ${what} is ready: look inside Flow and each area, then make it yours`, 'stage'), 800);
+    },
+  };
 }
 
 /* ------------------------------------------------------------ text adventure: The Cave ---- */

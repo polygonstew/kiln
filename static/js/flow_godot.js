@@ -21,7 +21,7 @@ export const FLOW_GD = `extends Node
 ## Kiln flow: plays the game's path of scenes, made in Kiln's Flow (flow/game.json). Main hands the game to it.
 ## Every scene ends with an outcome and the flow follows the link for that outcome (or "done") to the next one:
 ##   video   plays a video (Ogg Theora, videos/*.ogv); Space, Esc or a click skips it if it may be skipped → done
-##   menu    a Kiln menu screen (the title); its "start" button → done
+##   menu    a Kiln menu screen (the title), over a picture if it has one; its "start" button → done
 ##   level   a Kiln level with the player; a Door zone going to "next in the flow" → the zone's name (or done)
 ##   room    a point & click room (and every room you walk to from it); a "leaves" hotspot → its name (or done)
 ##   talk    a conversation over a picture; a line or choice that sends the message flow:<word> → <word>, else done
@@ -76,6 +76,9 @@ func go(id: String) -> void:
 \t\t"video", "quick":
 \t\t\t_show_video(n, false)
 \t\t"menu":
+\t\t\tif n.get("picture", "") != "":
+\t\t\t\t_talk_picture(n)
+\t\t\t\tlayer.layer = 5                    # behind the menu screens (layer 10 and up)
 \t\t\tmain.open_menu(load(n["scene"]))
 \t\t"level", "room":
 \t\t\tmain.play_scene(load(n["scene"]), n.get("entry", ""))
@@ -145,7 +148,6 @@ func _talk(n: Dictionary) -> void:
 \tif n.get("picture", "") != "":
 \t\tvar pic := TextureRect.new()
 \t\tpic.texture = load(n["picture"])
-\t\tpic.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 \t\tpic.set_anchors_preset(Control.PRESET_FULL_RECT)
 \t\tpic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 \t\tpic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED

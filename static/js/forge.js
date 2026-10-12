@@ -9,6 +9,8 @@ import { saveFiles } from './files.js';
 import { STYLE, stylePrompt, styleAvoid } from './style.js';
 import { registerWheel, registerMenu } from './wheel.js';
 import { components } from './slicer.js';
+import { cutout } from './cutout.js';
+import { GAME } from './gametype.js';
 
 const KINDS = [
   ['character', 'Character', 'full body character, standing, whole figure visible'],
@@ -388,7 +390,12 @@ function run() {
     const s = keyAt ? floodFrom(src, keyAt, st.tol) : src;
     const common = { mask, key: st.key && !keyAt, tol: st.tol, keyGlobal: st.keyGlobal, outline: st.outline === 'none' ? false : st.outline, despeckle: st.despeckle, dither: st.dither, ditherAmt: st.ditherAmt, anchor: 'bottom' };
     let r;
-    if (ID) {
+    if (!pixelOn()) {
+      // Modern look: every colour kept, cut out and smoothly sized (to the actor's figure height when locked to one)
+      const img = cutout(s, { key: st.key && !keyAt, tol: st.tol, keyGlobal: st.keyGlobal, height: ID ? ID.figH || ID.h : st.mh || 0 });
+      r = { img: ID ? padTo(img, ID.w, ID.h) : img, pal: [], scale: 1, native: false };
+      outInfo = null;
+    } else if (ID) {
       // same palette, same frame, same pixels-per-source-pixel as the reference
       const scale = ID.scale * ID.refW / s.width;
       r = pixelize(s, { ...common, w: ID.w, h: ID.h, lock: ID.pal, scale, cellHint: ID.cell || 0, fit: 'contain' });
@@ -402,6 +409,15 @@ function run() {
     out = r.img; outPal = r.pal; out.scale = r.scale; out.srcW = s.width; out.native = r.native; out.cell1024 = r.cell1024;
     paint(); drawPal();
   }, 60);
+}
+// Pixel art or full colour: the game's look decides, unless set here (st.pixelArt)
+const pixelOn = () => st.pixelArt ?? GAME.look === 'pixel';
+// a cut-out placed in a w×h frame, feet on the bottom row, centred
+function padTo(im, w, hh) {
+  const c = document.createElement('canvas'); c.width = w; c.height = hh; const x = c.getContext('2d');
+  const t = document.createElement('canvas'); t.width = im.width; t.height = im.height; t.getContext('2d').putImageData(im, 0, 0);
+  x.drawImage(t, Math.round((w - im.width) / 2), hh - im.height);
+  return x.getImageData(0, 0, w, hh);
 }
 // How alike two sprites' colour use is (0..1): a quick off-model alarm.
 function similarity(a, b) {
@@ -497,15 +513,15 @@ function drawRight() {
     class: 'palrow' + (st.palName === k ? ' on' : ''), onclick: () => { st.palName = k; save(); drawRight(); run(); },
   }, h('span', { class: 'nm' }, p.name), h('div', { class: 'sw' }, ...p.colors.slice(0, 20).map(c => h('i', { style: { background: hex(c) } }))))));
   V.right.replaceChildren(
-    h('div', { class: 'sec' }, h('h3', {}, 'Hardware'), hwBtns, h('p', { class: 'note' }, H.note)),
-    h('div', { class: 'sec' }, h('h3', {}, 'Size'),
+    h('div', { class: 'sec px-only' }, h('h3', {}, 'Hardware'), hwBtns, h('p', { class: 'note' }, H.note)),
+    h('div', { class: 'sec px-only' }, h('h3', {}, 'Size'),
       h('div', { class: 'chips' }, h('button', { class: st.auto ? 'on' : '', title: 'Keep the size the art was drawn at: one art pixel = one sprite pixel', onclick: () => { st.auto = true; save(); drawRight(); run(); } }, 'Auto'),
         ...[16, 24, 32, 48, 64, 96, 128].map(s => h('button', { class: !st.auto && st.w === s && st.h === s ? 'on' : '', title: `Shrink the sprite to fit a ${s}×${s} frame`, onclick: () => { st.auto = false; st.w = st.h = s; save(); drawRight(); run(); } }, s))),
       st.auto ? h('p', { class: 'note' }, 'Auto keeps every pixel the art was drawn with. Pick a size to shrink it to a fixed frame.') : null,
       st.auto ? null : field('Frame', h('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, wIn, '×', hIn)),
       field('Fit', seg([['contain', 'Keep shape'], ['stretch', 'Fill frame']], st.fit, v => { st.fit = v; save(); run(); })),
       field('Stand on', seg([['bottom', 'Floor'], ['center', 'Middle']], st.anchor, v => { st.anchor = v; save(); run(); }), 'Floor keeps feet on the bottom row, so frames line up')),
-    h('div', { class: 'sec' }, h('h3', {}, 'Colour'),
+    h('div', { class: 'sec px-only' }, h('h3', {}, 'Colour'),
       field('Colours', range(Math.min(st.count, H.sprite), 2, H.sprite, 1, v => { st.count = v; save(); run(); })),
       field('Palette', seg([['auto', 'From image'], ...(STYLE.palette ? [['style', 'Style']] : []), ['named', 'Preset'], ...(customPal ? [['custom', customPal.name.slice(0, 10)]] : [])], st.palMode, v => { st.palMode = v; save(); drawRight(); run(); })),
       palRows,
@@ -523,6 +539,14 @@ function drawRight() {
         h('button', { class: 'btn', onclick: () => sendToAnimate('frame') }, 'Add as frame'),
         h('button', { 'data-file': 'save', class: 'btn', onclick: savePNG }, 'Save PNG'),
         h('button', { class: 'btn', onclick: savePalette }, 'Save palette'))));
+  // the look on top: Modern keeps every colour (and has its own size), Pixel shows the hardware, size and colour sections
+  V.right.prepend(h('div', { class: 'sec' }, h('h3', {}, 'Look'),
+    seg([['modern', 'Full colour', 'Keep the art as it is: every colour, smooth edges'], ['pixel', 'Pixel art', 'Turn it into pixel art: a grid, a palette, hardware limits']], pixelOn() ? 'pixel' : 'modern', v => { st.pixelArt = v === 'pixel'; save(); drawRight(); run(); }),
+    h('p', { class: 'note' }, `This game's look is ${GAME.look === 'pixel' ? 'Pixel' : 'Modern'} (File → Kind of game); you can still make either here.`)),
+    ...(pixelOn() ? [] : [h('div', { class: 'sec' }, h('h3', {}, 'Height'),
+      h('div', { class: 'chips' }, ...[[0, 'As drawn'], [64, '64'], [96, '96'], [128, '128'], [192, '192'], [256, '256'], [384, '384']].map(([v, l]) => h('button', { class: (st.mh || 0) === v ? 'on' : '', title: v ? `Scale the figure to ${v} px tall (smoothly)` : 'Keep the size it was drawn at', onclick: () => { st.mh = v; save(); drawRight(); run(); } }, l))),
+      h('p', { class: 'note' }, 'On a 1280×720 screen a hero is usually 96–192 px tall.'))]));
+  if (!pixelOn()) V.right.querySelectorAll('.px-only').forEach(e => e.remove());
   drawPal();
 }
 function drawPal() { if (V.palBox) V.palBox.replaceChildren(...outPal.map(c => h('i', { title: hex(c), style: { background: hex(c) } }))); }

@@ -6,9 +6,8 @@ import { h, api, toast, on, emit, pref, field, range, select, rawURL, download }
 import { S as FS } from './files.js';
 import { BRAINS } from './brains.js';
 import { listScenes, gamePicks, buildGame, buildKey, controlsText } from './playbuild.js';
-import { P as gamePath, roleBrain } from './gametype.js';
+import { P as gamePath, roleBrain, LOOK } from './gametype.js';
 
-const GAME = { w: 480, h: 270 };
 // what the player's body (juice.gd) takes: [key, label, min, max, step, default, unit]
 const BODY = [['max_health', 'Health', 1, 20, 1, 3, 'hits'], ['knockback', 'Knockback', 0, 240, 5, 60, 'px/s'], ['invulnerable_time', 'Safe after a hit', 0, 2, .05, .6, 's']];
 const START = [['none', 'Straight into the level'], ['title', 'A plain title screen'], ['menu', 'Your title menu (Menus)']];
@@ -65,9 +64,9 @@ function load() { if (!SECURE) return drawEmpty(); live = true; V.frame.src = '/
 function unload() { live = false; V.frame.src = 'about:blank'; V.frame.style.display = 'none'; drawEmpty(); }
 function fit() {
   if (!V.frame) return;
-  const W = V.vp.clientWidth - 24, H = V.vp.clientHeight - 24, z = Math.min(W / GAME.w, H / GAME.h);
+  const W = V.vp.clientWidth - 24, H = V.vp.clientHeight - 24, z = Math.min(W / LOOK().w, H / LOOK().h);
   const s = z >= 1 ? Math.max(1, Math.floor(z)) : z;     // whole-number zoom keeps the pixels square
-  V.frame.style.width = Math.round(GAME.w * s) + 'px'; V.frame.style.height = Math.round(GAME.h * s) + 'px';
+  V.frame.style.width = Math.round(LOOK().w * s) + 'px'; V.frame.style.height = Math.round(LOOK().h * s) + 'px';
 }
 function drawEmpty() {
   if (!V.empty) return;

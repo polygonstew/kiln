@@ -41,7 +41,7 @@ function modal(title, ...body) {
 }
 
 export function newGame() {
-  let pick = { path: 'scroller', puzzle: 'push' };
+  let pick = { path: 'scroller', puzzle: 'push', look: 'modern' };
   const name = h('input', { type: 'text', placeholder: 'e.g. Bell Tower', onkeydown: e => e.key === 'Enter' && make() });
   const m = modal('New game',
     h('p', { class: 'note', style: { marginTop: 0 } }, 'A new, empty game folder. The one you have open now stays as it is; File → Open game brings it back.'),
@@ -59,7 +59,7 @@ export function newGame() {
     const path = FS.settings.games + '/' + s;
     if ((await ls(FS.settings.games)).some(i => i.name === s)) return toast(`There is already a game called ${s}: open it with File → Open game`, 'bad');
     m.remove();
-    await switchTo(path, true, () => setPath(pick.path, pick.puzzle), `${s} is ready (${PATHS[pick.path].label.toLowerCase()}): the "Your game" steps show where to begin`, (PATHS[pick.path].tabs || [['gamedoc']])[0][0]);
+    await switchTo(path, true, () => setPath(pick.path, pick.puzzle, pick.look), `${s} is ready (${PATHS[pick.path].label.toLowerCase()}): the "Your game" steps show where to begin`, (PATHS[pick.path].tabs || [['gamedoc']])[0][0]);
   }
 }
 

@@ -36,7 +36,16 @@ export const PUZZLES = {
   stack: ['Stack the tower', 'Tricky Towers: falling bricks with real physics, stack them up to the line'],
 };
 
-export const GAME = { path: 'wild', puzzle: 'push' };
+// the look: Modern (full colour, smooth, a 1280×720 screen, art at any size) or Pixel (retro: 480×270, sharp pixels,
+// Forge pixelizes). Folders from before looks existed are Pixel. LOOKS[look]: the screen and the tile size it likes.
+export const LOOKS = {
+  modern: { label: 'Modern', what: 'Full colour, smooth, any size of art: painted, drawn or photographed', w: 1280, h: 720, tile: 32 },
+  pixel: { label: 'Pixel', what: 'Retro: a small screen of sharp pixels, palettes and hardware limits (NES, SNES, GB…)', w: 480, h: 270, tile: 16 },
+};
+export const GAME = { path: 'wild', puzzle: 'push', look: 'pixel' };
+export const LOOK = () => LOOKS[GAME.look] || LOOKS.pixel;
+// the line a scene writer adds to keep a picture's pixels sharp (Pixel look only; Modern lets Godot smooth it)
+export const SHARP = () => GAME.look === 'pixel' ? 'texture_filter = 1\n' : '';
 export const P = () => PATHS[GAME.path] || PATHS.wild;
 // the brain a role gets on this path ('' = stands still); a stacking puzzle has no player to move
 export const roleBrain = role => GAME.path === 'puzzle' && GAME.puzzle === 'stack' && role === 'hero' ? '' : (P().brains[role] ?? '');
@@ -52,12 +61,12 @@ async function load() {
   const mine = ++seq;
   const d = await fetch('/api/project?id=game-path').then(r => r.ok ? r.json() : null).catch(() => null);
   if (mine !== seq) return;                 // a newer choice was made meanwhile
-  Object.assign(GAME, { path: 'wild', puzzle: 'push' }, d?.game || {});
+  Object.assign(GAME, { path: 'wild', puzzle: 'push', look: 'pixel' }, d?.game || {});
   apply();
 }
-export async function setPath(path, puzzle = GAME.puzzle) {
+export async function setPath(path, puzzle = GAME.puzzle, look = GAME.look) {
   seq++;
-  Object.assign(GAME, { path, puzzle });
+  Object.assign(GAME, { path, puzzle, look });
   apply();
   await api('/api/project', { id: 'game-path', data: { meta: { kind: 'game', name: 'path' }, game: { ...GAME } } }).catch(e => toast('Could not keep the game path: ' + e.message, 'bad'));
 }
@@ -65,14 +74,16 @@ on('root', load);
 
 // the cards: one per path, the chosen one lit, the puzzle kinds under the puzzler. onPick(path, puzzle)
 export function pathCards(cur, onPick) {
-  let pick = { ...cur };
-  const box = h('div', { class: 'gp-cards' });
-  const draw = () => box.replaceChildren(...Object.entries(PATHS).map(([id, p]) => h('button', {
+  let pick = { look: 'modern', ...cur };
+  const box = h('div', { class: 'gp-wrap' });
+  const draw = () => box.replaceChildren(h('div', { class: 'gp-look' }, h('span', { class: 'fl' }, 'Look'), ...Object.entries(LOOKS).map(([k, L]) => h('button', {
+    class: 'btn sm' + (pick.look === k ? ' go' : ' ghost'), title: L.what, onclick: () => { pick.look = k; draw(); onPick({ ...pick }); } }, L.label)),
+    h('small', {}, LOOKS[pick.look].what)), h('div', { class: 'gp-cards' }, ...Object.entries(PATHS).map(([id, p]) => h('button', {
     class: 'gp-card' + (pick.path === id ? ' on' : ''), 'data-path': id, title: p.what, style: p.tint ? { '--gp': p.tint[0] } : {},
     onclick: () => { pick.path = id; draw(); onPick({ ...pick }); },
   }, h('b', {}, p.label), h('small', {}, p.what), h('i', {}, 'Like ' + p.like),
     id === 'puzzle' && pick.path === 'puzzle' ? h('span', { class: 'gp-sub', onclick: e => e.stopPropagation() }, ...Object.entries(PUZZLES).map(([k, [l, like]]) =>
-      h('button', { class: 'btn sm' + (pick.puzzle === k ? ' go' : ' ghost'), title: like, onclick: () => { pick.puzzle = k; draw(); onPick({ ...pick }); } }, l))) : '')));
+      h('button', { class: 'btn sm' + (pick.puzzle === k ? ' go' : ' ghost'), title: like, onclick: () => { pick.puzzle = k; draw(); onPick({ ...pick }); } }, l))) : ''))));
   draw();
   return box;
 }
@@ -86,7 +97,7 @@ export function choosePath() {
       h('p', { class: 'note', style: { marginTop: 0 } }, 'The path sets what the player does, how the camera moves, the "Your game" steps and which areas show. Changing it removes nothing; the Wild card shows everything.'),
       pathCards(GAME, p => { pick = p; }),
       h('div', { style: { display: 'flex', gap: '8px', marginTop: '14px' } },
-        h('button', { class: 'btn go', onclick: async () => { m.remove(); await setPath(pick.path, pick.puzzle); toast(`This game is now a ${PATHS[pick.path].label.toLowerCase()}`, 'ok'); } }, 'Use this path'),
+        h('button', { class: 'btn go', onclick: async () => { m.remove(); await setPath(pick.path, pick.puzzle, pick.look); toast(`This game is now a ${PATHS[pick.path].label.toLowerCase()}`, 'ok'); } }, 'Use this path'),
         h('button', { class: 'btn ghost', onclick: () => m.remove() }, 'Cancel')))));
   document.body.append(m);
 }

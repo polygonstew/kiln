@@ -8,6 +8,7 @@
 import { bbox } from './core.js';
 import { BRAINS, defaultBrain } from './brains.js';
 import { rtRes, brainPath, baseOf } from './layout.js';
+import { SHARP } from './gametype.js';
 
 // Godot 4 drop-in: CharacterBody2D (origin at the feet) + AnimatedSprite2D + body hitbox, with the same
 // "juice" the Animate preview shows: hit_flash(), squash(), shake() from _kiln/actor/juice.gd.
@@ -115,6 +116,7 @@ func shake(strength: float = 4.0, duration: float = 0.3) -> void:
 var health := -1
 var invulnerable := false
 var dead := false
+@export var ragdoll: PackedScene     ## Kiln Puppet: the pieces this actor falls apart into when it dies (ragdoll.tscn)
 signal hurt_started(from_position: Vector2)
 signal died
 
@@ -152,11 +154,25 @@ func hurt(from_position: Vector2 = Vector2.INF, damage: int = 1) -> void:
 \tsprite.modulate.a = 1.0
 \tinvulnerable = false
 
-## Out of health: play "death" (if it has one), then enemies disappear and the player's level restarts.
+## Out of health: fall apart as a ragdoll (if it has one) or play "death", then enemies disappear and the player's
+## level restarts.
 func die() -> void:
 \tdead = true
 \tdied.emit()
 \tsfx("die")
+\tif ragdoll:
+\t\tvar r := ragdoll.instantiate() as Node2D
+\t\tget_parent().add_child(r)
+\t\tr.global_position = global_position
+\t\tr.fling(velocity + Vector2(0, -160))
+\t\tsprite.visible = false
+\t\tcollision_layer = 0
+\t\tawait get_tree().create_timer(1.6).timeout
+\t\tif is_in_group("player"):
+\t\t\tget_tree().reload_current_scene()
+\t\telse:
+\t\t\tqueue_free()
+\t\treturn
 \tvelocity = Vector2.ZERO
 \tif sprite.sprite_frames.has_animation("death"):
 \t\tsprite.sprite_frames.set_animation_loop("death", false)
@@ -327,13 +343,14 @@ export function actorScene(a, res, hb) {
     + Object.keys(a.sounds || {}).map(ev => `[ext_resource type="AudioStream" path="${res}/sfx_${ev}.wav" id="sfx_${ev}"]\n`).join('')
     + (a.vfx?.hit ? `[ext_resource type="PackedScene" path="${res}/vfx_hit.tscn" id="vfx_hit"]\n` : '')
     + (talks(a) ? `[ext_resource type="Script" path="${rtRes(base, 'lipsync')}" id="lip"]\n` : '')
+    + (a.ragdoll && a.rig ? `[ext_resource type="PackedScene" path="${res}/ragdoll.tscn" id="rag"]\n` : '')
     + `[ext_resource type="Script" path="${rtRes(base, 'juice')}" id="2"]\n[ext_resource type="Shader" path="${rtRes(base, 'flash')}" id="3"]\n\n`
     + `[sub_resource type="ShaderMaterial" id="flash"]\nshader = ExtResource("3")\nshader_parameter/flash = 0.0\nshader_parameter/flash_color = Color(1, 1, 1, 1)\n\n`
     + `[sub_resource type="RectangleShape2D" id="body"]\nsize = Vector2(${hb.w}, ${hb.h})\n\n`
     + `[sub_resource type="RectangleShape2D" id="hurt"]\nsize = Vector2(${hb.w}, ${hb.h})\n\n`
-    + `[node name="${a.name}" type="CharacterBody2D"${(a.role || (a.kind === 'creature' ? 'enemy' : 'hero')) === 'hero' ? ' groups=["player"]' : ''}]\nscript = ExtResource("2")\nknockback = ${R.knockback ?? 60}.0\ninvulnerable_time = ${R.iframes ?? 0.6}\nmax_health = ${R.health ?? 3}\n${a.vfx?.hit ? 'hit_effect = ExtResource("vfx_hit")\n' : ''}${pj ? 'projectile = ExtResource("4")\n' : ''}`
+    + `[node name="${a.name}" type="CharacterBody2D"${(a.role || (a.kind === 'creature' ? 'enemy' : 'hero')) === 'hero' ? ' groups=["player"]' : ''}]\nscript = ExtResource("2")\nknockback = ${R.knockback ?? 60}.0\ninvulnerable_time = ${R.iframes ?? 0.6}\nmax_health = ${R.health ?? 3}\n${a.vfx?.hit ? 'hit_effect = ExtResource("vfx_hit")\n' : ''}${pj ? 'projectile = ExtResource("4")\n' : ''}${a.ragdoll && a.rig ? 'ragdoll = ExtResource("rag")\n' : ''}`
     + (Object.keys(boxesOf(a)).length ? `metadata/boxes = ${JSON.stringify(boxesOf(a))}\n` : '') + '\n'
-    + `[node name="Sprite" type="AnimatedSprite2D" parent="."]\nmaterial = SubResource("flash")\ntexture_filter = 1\nposition = Vector2(0, ${-a.h / 2})\nsprite_frames = ExtResource("1")\nanimation = &"${start}"\nautoplay = "${start}"\n\n`
+    + `[node name="Sprite" type="AnimatedSprite2D" parent="."]\nmaterial = SubResource("flash")\n${SHARP()}position = Vector2(0, ${-a.h / 2})\nsprite_frames = ExtResource("1")\nanimation = &"${start}"\nautoplay = "${start}"\n\n`
     + `[node name="Body" type="CollisionShape2D" parent="."]\nposition = Vector2(${hb.x + hb.w / 2 - a.w / 2}, ${hb.y + hb.h / 2 - a.h})\nshape = SubResource("body")\n\n`
     + `[node name="Hurtbox" type="Area2D" parent="."]\n\n[node name="Shape" type="CollisionShape2D" parent="Hurtbox"]\nposition = Vector2(${hb.x + hb.w / 2 - a.w / 2}, ${hb.y + hb.h / 2 - a.h})\nshape = SubResource("hurt")\n\n`
     + `[node name="Hitbox" type="Area2D" parent="."]\n`
@@ -366,6 +383,6 @@ export function projectileScene(a, res, pj) {
     + (pj.impact ? `[ext_resource type="PackedScene" path="${res}/vfx_${pj.name}_impact.tscn" id="3"]\n` : '') + '\n'
     + `[sub_resource type="CircleShape2D" id="c"]\nradius = ${r}.0\n\n`
     + `[node name="${pj.name}" type="Area2D"]\nscript = ExtResource("2")\nspeed = ${pj.speed}.0\ngravity_scale = ${pj.gravity}\nlifetime = ${pj.lifetime}\ndamage = ${pj.damage}\npierce = ${!!pj.pierce}\n${pj.impact ? 'impact_effect = ExtResource("3")\n' : ''}\n`
-    + `[node name="Sprite" type="AnimatedSprite2D" parent="."]\ntexture_filter = 1\nsprite_frames = ExtResource("1")\nanimation = &"${pj.anim}"\nautoplay = "${pj.anim}"\n\n`
+    + `[node name="Sprite" type="AnimatedSprite2D" parent="."]\n${SHARP()}sprite_frames = ExtResource("1")\nanimation = &"${pj.anim}"\nautoplay = "${pj.anim}"\n\n`
     + `[node name="Hit" type="CollisionShape2D" parent="."]\n${off}shape = SubResource("c")\n`;
 }

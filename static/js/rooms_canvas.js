@@ -3,6 +3,7 @@
 // (click adds a point to the walk area, on the nearest edge), hotspot (drag a box), entry (click places one), depth.
 // In every tool: right click a point removes it, double click an edge adds one. rooms.js owns the room and panels.
 import { checker, fitZoom } from './core.js';
+import { GAME } from './gametype.js';
 
 const near = (a, b, r) => Math.hypot(a[0] - b[0], a[1] - b[1]) <= r;
 export function inPoly(p, poly) {
@@ -39,7 +40,7 @@ export function roomCanvas(ctx) {
     if (fit || !ctx.zoom()) z = vp ? fitZoom(vp.clientWidth - 30, vp.clientHeight - 30, R.w, R.h) : 2; else z = ctx.zoom();
     cv.width = R.w * z; cv.height = R.h * z;
     const x = cv.getContext('2d'), { bg, fg } = ctx.images(), sel = ctx.sel(), tool = ctx.tool();
-    x.imageSmoothingEnabled = false;
+    x.imageSmoothingEnabled = GAME.look !== 'pixel';      // Modern art is drawn smooth, Pixel art sharp
     checker(x, cv.width, cv.height, 8 * z, '#1a1a19', '#1f1f1e');
     if (bg) x.drawImage(bg, 0, 0, R.w * z, R.h * z);
     const poly = (pts, fill, stroke, w = 1, dash = []) => { if (pts.length < 2) return; x.beginPath(); pts.forEach((p, i) => i ? x.lineTo(p[0] * z, p[1] * z) : x.moveTo(p[0] * z, p[1] * z)); x.closePath(); x.fillStyle = fill; x.fill(); x.setLineDash(dash); x.lineWidth = w; x.strokeStyle = stroke; x.stroke(); x.setLineDash([]); };

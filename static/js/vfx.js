@@ -4,6 +4,7 @@
 import { h, newImg, toDataURL, toCanvas, toast, api } from './core.js';
 import { writeRuntime, rtRes } from './layout.js';
 import { saveFiles, S as FS } from './files.js';
+import { SHARP } from './gametype.js';
 
 export const COLOURS = {
   fire: [[255, 255, 220], [255, 196, 60], [214, 78, 30]], ice: [[240, 255, 255], [140, 220, 255], [60, 118, 220]],
@@ -91,7 +92,7 @@ export function vfxFiles(name, v, res, base) {
   const subs = fr.map((_, i) => `[sub_resource type="AtlasTexture" id="f${i}"]\natlas = ExtResource("1")\nregion = Rect2(${i * s}, 0, ${s}, ${s})\n\n`).join('');
   const anim = `[{"frames": [${fr.map((_, i) => `{"duration": 1.0, "texture": SubResource("f${i}")}`).join(', ')}], "loop": false, "name": &"default", "speed": 16.0}]`;
   const tscn = `[gd_scene load_steps=${fr.length + 4} format=3]\n\n[ext_resource type="Texture2D" path="${res}/${name}.png" id="1"]\n[ext_resource type="Script" path="${rtRes(base, 'vfx')}" id="2"]\n\n${subs}`
-    + `[sub_resource type="SpriteFrames" id="sf"]\nanimations = ${anim}\n\n[node name="${name}" type="AnimatedSprite2D"]\ntexture_filter = 1\nsprite_frames = SubResource("sf")\nscript = ExtResource("2")\n`;
+    + `[sub_resource type="SpriteFrames" id="sf"]\nanimations = ${anim}\n\n[node name="${name}" type="AnimatedSprite2D"]\n${SHARP()}sprite_frames = SubResource("sf")\nscript = ExtResource("2")\n`;
   return [{ name: name + '.png', b64: toDataURL(strip) }, { name: name + '.tscn', text: tscn }];
 }
 export const VFX_GD = `extends AnimatedSprite2D

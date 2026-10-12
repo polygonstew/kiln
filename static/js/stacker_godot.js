@@ -112,7 +112,6 @@ func _new_brick() -> void:
 \t\tbrick.add_child(c)
 \t\tvar s := Sprite2D.new()
 \t\ts.texture = look
-\t\ts.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 \t\ts.modulate = COLOURS[i]
 \t\ts.position = p * size
 \t\tbrick.add_child(s)
