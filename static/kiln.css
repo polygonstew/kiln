@@ -257,15 +257,6 @@ input[type=color] { width: 28px; height: 22px; padding: 0; border: 1px solid var
 .chips button.on { border-color: var(--ember); color: var(--ink); }
 
 /* -------------------------------------------------------- scenes / hud */
-.layers .ly { display: grid; grid-template-columns: 18px 64px 1fr auto; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid transparent; cursor: pointer; }
-.layers .ly:hover { background: var(--p2); }
-.layers .ly.on { border-color: var(--line2); background: var(--p2); box-shadow: inset 2px 0 var(--ember); }
-.layers .ly canvas { width: 64px; height: 28px; background: var(--p3); object-fit: cover; }
-.layers .ly .nm { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.layers .ly .nm small { display: block; font: 10px var(--mono); color: var(--faint); }
-.layers .ly .eye { color: var(--faint); background: none; border: 0; cursor: pointer; padding: 0; }
-.layers .ly .eye.on { color: var(--ink); }
-.layers .ly .grip { color: var(--faint); cursor: grab; font: 10px var(--mono); }
 .gens { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
 .gens button { background: var(--bg); border: 1px solid var(--line2); padding: 7px 4px 6px; cursor: pointer; border-radius: 2px; display: flex; flex-direction: column; align-items: center; gap: 4px; font: 11.5px var(--cond); color: var(--dim); }
 .gens button:hover { border-color: var(--dim); color: var(--ink); }
@@ -281,10 +272,6 @@ input[type=color] { width: 28px; height: 22px; padding: 0; border: 1px solid var
 .widgets button canvas { height: 22px; max-width: 100%; object-fit: contain; object-position: left; }
 .widgets button { min-width: 0; overflow: hidden; }
 .widgets button:hover { border-color: var(--dim); color: var(--ink); }
-.wlist .w { display: flex; align-items: center; gap: 8px; padding: 5px 8px; cursor: pointer; font-size: 12px; color: var(--dim); border: 1px solid transparent; }
-.wlist .w:hover { background: var(--p2); }
-.wlist .w.on { background: var(--p2); border-color: var(--line2); color: var(--ink); box-shadow: inset 2px 0 var(--ember); }
-.wlist .w small { margin-left: auto; font: 10px var(--mono); color: var(--faint); }
 
 /* ------------------------------------------------------------- dialogs */
 .modal { position: fixed; inset: 0; background: #000b; display: grid; place-items: safe center; overflow: auto; z-index: 80; }
@@ -389,9 +376,6 @@ table.breakdown td.warn { color: var(--bad); } table.breakdown td.ok { color: va
 .tileset .tl { padding: 2px; border: 1px solid var(--line2); border-radius: 2px; cursor: pointer; line-height: 0; background: #151514; }
 .tileset .tl canvas { image-rendering: pixelated; }
 .tileset .tl.on { border-color: var(--ember); outline: 1px solid var(--ember); }
-.layers .ly.dim { opacity: .45; }
-.layers .ly.drag-over { box-shadow: inset 0 2px 0 var(--ember); }
-.layers .eye.solo { color: var(--dx2, #ffc552); }
 .depthwarn { margin: 8px 0 0; padding: 8px; border: 1px solid var(--warn); border-radius: 2px; font-size: 11px; color: var(--warn); display: flex; gap: 8px; align-items: center; }
 .depthwarn span { flex: 1; }
 .ruler { position: relative; height: 36px; margin: 0 0 8px; border-bottom: 1px solid var(--line2); background: linear-gradient(90deg, rgba(138,127,153,.18), transparent); }
@@ -730,4 +714,34 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .gd-theme { background: none; border: 1px solid var(--line2); color: var(--dim); padding: 2px 8px; cursor: pointer; font: 12.5px var(--sans); }
 .gd-theme.on { border-color: var(--ember); color: var(--ink); background: var(--emberbg); }
 .gd-genre small { color: var(--dim); }
+/* Layer panels (layers.js): Scenes, HUD widgets, Levels, Puppet parts, Forge background */
+.lp { outline: none; }
+.lp-top { display: flex; gap: 8px; align-items: center; padding: 2px 0 8px; } .lp-top.off { opacity: .5; }
+.lp-op { display: flex; align-items: center; gap: 6px; flex: 1; font-size: 11px; color: var(--dim); } .lp-op input { flex: 1; min-width: 40px; }
+.lp-op output { font: 11px var(--mono); width: 34px; text-align: right; }
+.lp-list { display: grid; gap: 1px; }
+.lp-row { display: flex; align-items: center; gap: 7px; padding: 4px 6px; border: 1px solid transparent; cursor: pointer; user-select: none; position: relative; }
+.lp-row:hover { background: var(--p2); }
+.lp-row.on { background: var(--p2); border-color: var(--line2); box-shadow: inset 2px 0 var(--ember); }
+.lp-row.hid .lp-thumb, .lp-row.hid .lp-nm { opacity: .4; } .lp-row.dim { opacity: .4; } .lp-row.lifted { opacity: .3; }
+.lp-row.drop-a::before, .lp-row.drop-b::after { content: ''; position: absolute; left: 0; right: 0; height: 2px; background: var(--ember); }
+.lp-row.drop-a::before { top: -2px; } .lp-row.drop-b::after { bottom: -2px; }
+.lp-eye, .lp-lock { background: none; border: 0; color: var(--faint); cursor: pointer; padding: 2px; display: grid; place-items: center; flex: none; }
+.lp-eye:hover, .lp-lock:hover { color: var(--ink); } .lp-row:not(.hid) .lp-eye { color: var(--ink); } .lp-eye.solo { color: var(--warn); }
+.lp-lock { opacity: 0; } .lp-row:hover .lp-lock, .lp-lock.on { opacity: 1; } .lp-lock.on { color: var(--warn); }
+.lp-thumb { width: 56px; height: 28px; flex: none; background: repeating-conic-gradient(#2b2b28 0 25%, #33322f 0 50%) 0 0 / 8px 8px; display: grid; place-items: center; overflow: hidden; border: 1px solid var(--line); }
+.lp-thumb canvas, .lp-thumb img { max-width: 100%; max-height: 100%; image-rendering: pixelated; }
+.lp-nm { flex: 1; min-width: 0; display: grid; }
+.lp-nm b { font-weight: 500; font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lp-nm small { font: 10px var(--mono); color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lp-rename { width: 100%; font-size: 12.5px; padding: 1px 4px; }
+.lp-bar { display: flex; gap: 2px; align-items: center; border-top: 1px solid var(--line); margin-top: 6px; padding-top: 4px; }
+.lp-add { position: fixed; z-index: 90; background: var(--p1); border: 1px solid var(--line2); display: grid; min-width: 170px; max-height: 60vh; overflow: auto; box-shadow: 0 8px 24px #000a; }
+.lp-add button { background: none; border: 0; color: var(--ink); text-align: left; padding: 6px 12px; cursor: pointer; font: 13px var(--sans); } .lp-add button:hover { background: var(--emberbg); }
+.lp-frozen { opacity: .55; }
+.tl-name { display: flex; align-items: center; gap: 3px; }
+.tl-name span { flex: 1; overflow: hidden; text-overflow: ellipsis; } .tl-name.hid span { opacity: .45; }
+.tl-eye, .tl-lock { background: none; border: 0; padding: 0; color: var(--faint); cursor: pointer; display: grid; place-items: center; flex: none; }
+.tl-eye svg, .tl-lock svg { width: 12px; height: 12px; } .tl-eye:hover, .tl-lock:hover { color: var(--ink); }
+.tl-lock { opacity: 0; } .tl-name:hover .tl-lock, .tl-lock.on { opacity: 1; } .tl-lock.on { color: var(--warn); }
 

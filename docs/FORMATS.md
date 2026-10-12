@@ -149,6 +149,11 @@ hud.gd joins group `kiln_hud`; juice.gd joins `kiln_actors`.
 ## Level autotiles
 `terrains: [{ name, first }]`: 16 pieces from tile `first`; piece = first + mask (1 above, 2 right, 4 below, 8 left = same-terrain neighbour). TileSet: `terrain_set_0/mode = 2` (match sides) with peering bits per piece.
 
+## Layer flags (layers.js)
+`locked: true` on a scene layer, HUD widget or Puppet bone (and `hidden: true` on a bone: not drawn, not baked) is
+editor state kept in the Kiln project; levels keep `view: {bg|tiles|ents|zones: {hidden, locked, opacity}}`. None of it
+changes what Godot gets, except hidden Puppet parts are left out of baked frames.
+
 ## Game doc (kiln/gamedoc-game.json)
 `{meta, doc: {v: {...}}}`: one flat map keyed `<section>.<part>` (gamedoc_shape.js). Text parts are strings, list parts
 arrays of `{id, name, text, link?: 'level:<n>'|'scene:<n>', done?}`, `story.themes` an array of strings, `pitch.keyart`

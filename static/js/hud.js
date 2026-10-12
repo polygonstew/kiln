@@ -10,6 +10,7 @@ import { writeRuntime } from './layout.js';
 import { saveFiles, S as FS } from './files.js';
 import { STYLE } from './style.js';
 import { buildGodotHud, HUD_GD } from './hud_godot.js';
+import { layerPanel } from './layers.js';
 
 /* ------------------------------------------------------------ glyphs ---- */
 const SHAPES = {
@@ -407,7 +408,7 @@ function bindCanvas(el) {
     const [x, y] = pos(e);
     const hit = [...HUD.widgets].reverse().find(w => { const s = sizeOf(w); return !w.hidden && x >= w.x && y >= w.y && x < w.x + s.w && y < w.y + s.h; });
     sel = hit?.id || null;
-    if (hit) { drag = { id: hit.id, dx: x - hit.x, dy: y - hit.y }; V.cv.setPointerCapture(e.pointerId); }
+    if (hit && !hit.locked) { drag = { id: hit.id, dx: x - hit.x, dy: y - hit.y }; V.cv.setPointerCapture(e.pointerId); }
     drawRight(); drawCanvas();
   });
   V.cv.addEventListener('pointermove', e => {
@@ -423,20 +424,29 @@ function bindCanvas(el) {
     const ctrl = e.ctrlKey || e.metaKey, k = e.key.toLowerCase();
     if (ctrl && (k === 'z' || k === 'y')) { e.preventDefault(); return undoHud(k === 'y' || e.shiftKey ? 1 : -1); }
     const w = HUD.widgets.find(w => w.id === sel); if (!w) return;
+    if (w.locked && !(k === 'd' && ctrl)) return;
     const d = e.shiftKey ? 8 : 1;
     if (e.key === 'ArrowLeft') w.x -= d; else if (e.key === 'ArrowRight') w.x += d; else if (e.key === 'ArrowUp') w.y -= d; else if (e.key === 'ArrowDown') w.y += d;
-    else if (e.key === 'Delete' || e.key === 'Backspace') { HUD.widgets = HUD.widgets.filter(x => x !== w); sel = null; drawRight(); }
-    else if (e.key.toLowerCase() === 'd' && (e.ctrlKey || e.metaKey)) { const c = { ...JSON.parse(JSON.stringify(w)), id: uid(), name: w.name + '_2', x: w.x + 8, y: w.y + 8 }; HUD.widgets.push(c); sel = c.id; drawRight(); }
+    else if (e.key === 'Delete' || e.key === 'Backspace') return delWidget(w);
+    else if (k === 'd' && ctrl) return dupWidget(w);
     else return;
     e.preventDefault(); save(); drawCanvas();
   });
 }
 
+function addWidget(t) {
+  const w = defaults(t);
+  if (!['inventory', 'dialogue', 'prompt'].includes(t)) { w.x = 20 + Math.floor(Math.random() * 60); w.y = 40 + Math.floor(Math.random() * 60); }
+  HUD.widgets.push(w); sel = w.id; save(); drawRight(); drawCanvas();
+}
+const dupWidget = w => { const c = { ...JSON.parse(JSON.stringify(w)), id: uid(), name: w.name + '_2', x: w.x + 8, y: w.y + 8, locked: false }; HUD.widgets.push(c); sel = c.id; save(); drawRight(); drawCanvas(); };
+const delWidget = w => { if (w.locked) return toast(`${w.name} is locked: unlock it first`, 'bad'); HUD.widgets = HUD.widgets.filter(x => x !== w); sel = null; save(); drawRight(); drawCanvas(); };
+
 /* ----------------------------------------------------------- left side ---- */
 function drawLeft() {
   const nm = h('input', { type: 'text', value: HUD.name, onchange: () => { HUD.name = nm.value.toLowerCase().replace(/[^a-z0-9_-]+/g, '_') || 'hud'; nm.value = HUD.name; save(); } });
   const P = palette();
-  const btn = t => { const w = defaults(t); const im = render(w, .7); const c = toCanvas(im); c.style.height = Math.min(22, im.height * 2) + 'px'; return h('button', { title: 'Add: ' + TIPS[t], onclick: () => { if (!['inventory', 'dialogue', 'prompt'].includes(t)) { w.x = 20 + Math.floor(Math.random() * 60); w.y = 40 + Math.floor(Math.random() * 60); } HUD.widgets.push(w); sel = w.id; save(); drawRight(); drawCanvas(); } }, c, NAMES[t]); };
+  const btn = t => { const w = defaults(t); const im = render(w, .7); const c = toCanvas(im); c.style.height = Math.min(22, im.height * 2) + 'px'; return h('button', { title: 'Add: ' + TIPS[t], onclick: () => addWidget(t) }, c, NAMES[t]); };
   const fontBox = h('div');
   const fst = { font: 'small', color: P.light, outline: '', shadow: P.dark };
   const drawFont = () => {
@@ -472,9 +482,21 @@ function colorPick(val, onChange) {
 
 /* ---------------------------------------------------------- right side ---- */
 function drawRight() {
-  const list = h('div', { class: 'wlist' }, ...HUD.widgets.map(w => h('div', { class: 'w' + (w.id === sel ? ' on' : ''), onclick: () => { sel = w.id; drawRight(); drawCanvas(); } },
-    h('button', { class: 'eye' + (w.hidden ? '' : ' on'), style: { background: 'none', border: 0, color: 'inherit', cursor: 'pointer', padding: 0 }, onclick: e => { e.stopPropagation(); w.hidden = !w.hidden; save(); drawRight(); drawCanvas(); } }, icon(w.hidden ? 'eyeoff' : 'eye')),
-    w.name, h('small', {}, NAMES[w.type]))));
+  const at = i => HUD.widgets[i], redraw = () => { save(); drawRight(); drawCanvas(); };
+  const list = layerPanel({
+    items: HUD.widgets, sel: HUD.widgets.findIndex(w => w.id === sel), front: 'bottom', empty: 'Add one on the left.',
+    name: w => w.name, sub: w => NAMES[w.type] + (w.hidden ? ' · hidden' : ''),
+    thumb: w => { try { return toCanvas(render(w, 1)); } catch { return null; } },
+    visible: w => !w.hidden, locked: w => !!w.locked,
+    on: {
+      select: i => { sel = at(i).id; drawRight(); drawCanvas(); },
+      visible: (i, v) => { at(i).hidden = !v; redraw(); },
+      rename: (i, n) => { at(i).name = n.toLowerCase().replace(/[^a-z0-9_]+/g, '_') || at(i).name; redraw(); },
+      lock: (i, v) => { at(i).locked = v; redraw(); },
+      move: (a, b) => { const [m] = HUD.widgets.splice(a, 1); HUD.widgets.splice(b, 0, m); sel = m.id; redraw(); },
+      dup: i => dupWidget(at(i)), del: i => delWidget(at(i)),
+      add: Object.keys(NAMES).map(t => [NAMES[t], () => addWidget(t)]),
+    } });
   const w = HUD.widgets.find(w => w.id === sel);
   const insp = h('div');
   if (w) {
@@ -522,10 +544,11 @@ function drawRight() {
     if (w.type === 'prompt') { txt('key', 'Key'); txt('text', 'Action'); opt('font', 'Font', fonts); col('fill', 'Key cap'); col('edge', 'Key edge'); col('keyColor', 'Key letter'); col('color', 'Text'); }
     if (['bar', 'gauge', 'pips'].includes(w.type) || (w.type === 'portrait' && w.faces)) F.push(field(w.type === 'portrait' ? 'Health' : 'Value', range(w.value, 0, 1, .01, v => { w.value = v; w._ghost = Math.max(w._ghost || 0, v); r(); }, v => Math.round(v * 100) + '%')));
     insp.append(h('div', { class: 'sec' }, h('h3', {}, NAMES[w.type], h('span', { class: 'grow' }),
-      h('button', { class: 'btn sm ghost danger', onclick: () => { HUD.widgets = HUD.widgets.filter(x => x !== w); sel = null; save(); drawRight(); drawCanvas(); } }, 'Delete')), ...F));
+      h('button', { class: 'btn sm ghost danger', disabled: !!w.locked, onclick: () => delWidget(w) }, 'Delete')), ...F));
+    if (w.locked) { insp.inert = true; insp.classList.add('lp-frozen'); }
   }
   V.right.replaceChildren(
-    h('div', { class: 'sec' }, h('h3', {}, 'Widgets'), HUD.widgets.length ? list : h('p', { class: 'note' }, 'Add one on the left.')),
+    h('div', { class: 'sec' }, h('h3', {}, 'Widgets', h('span', { class: 'grow' }), h('small', {}, 'back to front')), list),
     insp,
     h('div', { class: 'sec' }, h('h3', {}, 'Save to asset folder'),
       h('p', { class: 'note', style: { marginTop: 0 } }, h('b', {}, `hud/${HUD.name}/`), ' gets the full mock-up, each widget as parts (frame, fill, state strips, icons, 9-slice panels) and hud.json with positions and margins.'),

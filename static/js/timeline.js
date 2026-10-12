@@ -4,6 +4,7 @@
 // rows are bones (+ the root move), values are angles (or { dx, dy } for the root, a head id / mouth letter for _head / _mouth).
 //   motion = { name, n, fps, loop, span, labels: { frame: text }, keys: { rowId: { frame: { v, tween, ease } } } }
 import { h } from './core.js';
+import { icon } from './icons.js';
 
 // Flash's classic ease: blend between linear and a quadratic curve
 export function ease(t, e = 0) {
@@ -51,7 +52,9 @@ function shiftKeys(motion, from, d) {
   const L = {}; for (const [k, v] of Object.entries(motion.labels || {})) L[+k >= from ? +k + d : +k] = v; motion.labels = L;
 }
 
-// the timeline element. rows: [{ id, name, depth }]; st: { f, row } (playhead and selected row); on: { seek(f), select(rowId, f), move(rowId, from, to), toggle(rowId, f) }
+// the timeline element. rows: [{ id, name, depth, part?, hidden?, locked? }]; st: { f, row } (playhead and selected row);
+// on: { seek(f), select(rowId, f), move(rowId, from, to), toggle(rowId, f), visible?(rowId, v), lock?(rowId, v) }: a part row
+// gets an eye and a lock like every layer list in Kiln (layers.js)
 export function drawTimeline(el, motion, rows, st, on) {
   const N = motion.n, cell = (row, f) => {
     const r = motion.keys?.[row.id], key = r?.[f], kf = keyFor(motion, row.id, f);
@@ -77,6 +80,9 @@ export function drawTimeline(el, motion, rows, st, on) {
     h('div', { class: 'tl-row tl-top' }, h('div', { class: 'tl-name' }, 'Labels'), labels),
     h('div', { class: 'tl-row tl-top' }, h('div', { class: 'tl-name' }, ''), head),
     ...rows.map(row => h('div', { class: 'tl-row' + (row.id === st.row ? ' sel' : '') },
-      h('div', { class: 'tl-name', style: { paddingLeft: 6 + row.depth * 10 + 'px' }, onclick: () => on.select(row.id, st.f) }, row.name),
+      h('div', { class: 'tl-name' + (row.hidden ? ' hid' : ''), style: { paddingLeft: 6 + row.depth * 10 + 'px' }, onclick: () => on.select(row.id, st.f) },
+        row.part && on.visible ? h('button', { class: 'tl-eye', title: 'Show / hide this part (hidden parts are not baked)', onclick: e => { e.stopPropagation(); on.visible(row.id, !!row.hidden); } }, icon(row.hidden ? 'eyeoff' : 'eye')) : '',
+        h('span', {}, row.name),
+        row.part && on.lock ? h('button', { class: 'tl-lock' + (row.locked ? ' on' : ''), title: row.locked ? 'Locked: click to unlock' : 'Lock it so it can\'t be turned or painted by accident', onclick: e => { e.stopPropagation(); on.lock(row.id, !row.locked); } }, icon(row.locked ? 'lock' : 'unlock')) : ''),
       h('div', { class: 'tl-cells' }, ...Array.from({ length: N }, (_, f) => cell(row, f)))))));
 }

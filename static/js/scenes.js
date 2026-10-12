@@ -10,6 +10,7 @@ import { STYLE, stylePrompt, styleAvoid } from './style.js';
 import { loadActor } from './player.js';
 import { openProjects } from './projects.js';
 import { registerWheel, registerKeys } from './wheel.js';
+import { layerPanel } from './layers.js';
 // a slider drag is one undo step: the first change records it, letting go ends it
 window.addEventListener('pointerup', () => { V.editing = false; });
 
@@ -437,6 +438,8 @@ const todLabel = v => v < -.02 ? 'night ' + Math.round(-v * 100) + '%' : v > .02
 function drawAll() { if (!V.left) return;
   // show this scene's time of day on the slider (setting it directly: opening a scene must not save it)
   const t = V.tod?.querySelector('input'), o = V.tod?.querySelector('output'); if (t) { t.value = SC.tod || 0; if (o) o.textContent = todLabel(SC.tod || 0); } drawLeft(); drawLayers(); drawRight(); drawLooks(); drawPreview(); }
+function addDescribed() { const L = newLayer({ name: 'painted', kind: 'ai', prompt: '', scroll: .3, engine: 'cloud' }); SC.layers.push(L); sel = SC.layers.length - 1; drawAll(); setTimeout(() => $('#layerPrompt')?.focus(), 50); }
+function pickImageLayer() { const i = h('input', { type: 'file', accept: 'image/*' }); i.onchange = () => { const f = i.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => addImageLayer(r.result, f.name.replace(/\.\w+$/, '')); r.readAsDataURL(f); }; i.click(); }
 function drawLooks() {
   V.looks.replaceChildren(...Object.entries(LOOKS).map(([k, l]) => h('button', { class: 'btn sm' + (SC.look === k ? ' go' : ''), title: l.note, onclick: () => { SC.look = k; drawLooks(); drawLeft(); process(); } }, l.name)));
 }
@@ -560,8 +563,8 @@ function drawLeft() {
       h('div', { class: 'chips', style: { margin: '8px 0' } }, h('span', { class: 'lbl', style: { marginRight: '4px' } }, 'Weather'),
         ...Object.entries(WEATHER).map(([k, W]) => h('button', { title: W.note + ' (animated; exported to Godot as particles)', onclick: () => addWeather(k) }, W.name))),
       h('div', { class: 'btns' },
-        h('button', { class: 'btn', onclick: () => { const L = newLayer({ name: 'painted', kind: 'ai', prompt: '', scroll: .3, engine: 'cloud' }); SC.layers.push(L); sel = SC.layers.length - 1; drawAll(); setTimeout(() => $('#layerPrompt')?.focus(), 50); } }, icon('wand'), 'Described layer'),
-        h('button', { class: 'btn', onclick: () => { const i = h('input', { type: 'file', accept: 'image/*' }); i.onchange = () => { const f = i.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => addImageLayer(r.result, f.name.replace(/\.\w+$/, '')); r.readAsDataURL(f); }; i.click(); } }, 'Image…')),
+        h('button', { class: 'btn', onclick: addDescribed }, icon('wand'), 'Described layer'),
+        h('button', { class: 'btn', onclick: pickImageLayer }, 'Image…')),
       h('p', { class: 'note' }, 'Generated layers are instant and tile perfectly. Described layers are drawn by the generator from your words, matched to the layers already here.')));
 }
 async function openMenu() {
@@ -575,22 +578,25 @@ async function openMenu() {
 function drawLayers() {
   if (!V.list) return;
   for (const L of SC.layers) if (!L.id) L.id = uid();
-  V.list.replaceChildren(...SC.layers.map((L, i) => {
-    const c = h('canvas'); if (L.out) toCanvas(L.out, 1, c);
-    const row = h('div', { class: 'ly' + (i === sel ? ' on' : '') + (solo && solo !== L.id ? ' dim' : ''), draggable: true, title: 'Drag to reorder (back at the top, front at the bottom)', onclick: () => { sel = i; drawRight(); drawLayers(); drawPreview(); } },
-      h('button', { class: 'eye' + (L.visible ? ' on' : '') + (solo === L.id ? ' solo' : ''), title: 'Show / hide (H)  ·  Alt+click: show only this layer',
-        onclick: e => { e.stopPropagation(); if (e.altKey) { solo = solo === L.id ? null : L.id; } else { pushUndo(); L.visible = !L.visible; save(); } drawLayers(); drawPreview(); } }, icon(L.visible ? 'eye' : 'eyeoff')),
-      c, h('div', { class: 'nm' }, L.name, h('small', {}, L.busy ? 'drawing…' : `${L.kind === 'weather' ? 'Weather' : L.kind === 'gen' ? GENS[L.gen].name : L.kind === 'ai' ? (L.srcURL ? 'described' : 'not drawn yet') : 'image'} · scroll ${L.scroll}`)),
-      h('span', { style: { display: 'flex', flexDirection: 'column' } },
-        h('button', { class: 'eye', title: 'Move toward the back', onclick: e => { e.stopPropagation(); move(i, -1); } }, icon('up')),
-        h('button', { class: 'eye', title: 'Move toward the front', onclick: e => { e.stopPropagation(); move(i, 1); } }, icon('down'))));
-    row.addEventListener('dragstart', e => { dragFrom = i; e.dataTransfer.effectAllowed = 'move'; });
-    row.addEventListener('dragover', e => { e.preventDefault(); row.classList.add('drag-over'); });
-    row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
-    row.addEventListener('drop', e => { e.preventDefault(); row.classList.remove('drag-over'); if (dragFrom == null || dragFrom === i) return; pushUndo(); const [m] = SC.layers.splice(dragFrom, 1); SC.layers.splice(i, 0, m); sel = i; dragFrom = null; drawAll(); save(); });
-    return row;
-  }));
-  if (!SC.layers.length) V.list.append(h('p', { class: 'note' }, 'No layers. Start from a preset or add one on the left.'));
+  const kindOf = L => L.kind === 'weather' ? 'Weather' : L.kind === 'gen' ? GENS[L.gen].name : L.kind === 'ai' ? (L.srcURL ? 'described' : 'not drawn yet') : 'image';
+  const redraw = () => { drawLayers(); drawPreview(); };
+  V.list.replaceChildren(layerPanel({
+    items: SC.layers, sel, solo, front: 'bottom', empty: 'No layers. Start from a preset or add one on the left.',
+    name: L => L.name, sub: L => L.busy ? 'drawing…' : `${kindOf(L)} · scroll ${L.scroll}`,
+    thumb: L => { const c = h('canvas'); if (L.out) toCanvas(L.out, 1, c); return c; },
+    visible: L => L.visible, locked: L => !!L.locked,
+    on: {
+      select: i => { sel = i; drawRight(); drawLayers(); drawPreview(); },
+      visible: (i, v) => { pushUndo(); SC.layers[i].visible = v; save(); redraw(); },
+      solo: id => { solo = id; redraw(); },
+      rename: (i, n) => { pushUndo(); SC.layers[i].name = slug(n) || SC.layers[i].name; save(); drawRight(); drawLayers(); },
+      lock: (i, v) => { SC.layers[i].locked = v; save(); drawRight(); drawLayers(); },
+      move: (a, b) => { pushUndo(); const [m] = SC.layers.splice(a, 1); SC.layers.splice(b, 0, m); sel = b; drawAll(); save(); },
+      dup: i => { sel = i; dupLayer(); }, del: i => { sel = i; delLayer(); },
+      add: [...Object.entries(GENS).map(([k, G]) => [G.name, () => { addGen(k); drawAll(); process(); }]), ['Described layer', addDescribed], ['Image…', pickImageLayer]],
+      opacity: { get: L => L.opacity ?? 1, set: (i, v) => { edit(); SC.layers[i].opacity = v; drawPreview(); save(); } },
+      blend: { options: [['normal', 'Normal'], ['add', 'Glow'], ['screen', 'Light'], ['multiply', 'Shade']], get: L => L.blend || 'normal', set: (i, v) => { pushUndo(); SC.layers[i].blend = v; drawPreview(); save(); drawRight(); } },
+    } }));
   // depth ruler: where each layer sits between "fixed to the screen" (0) and "moves with the camera" (1)
   if (SC.layers.length > 1) {
     const max = Math.max(1.2, ...SC.layers.map(L => L.scroll));
@@ -603,8 +609,7 @@ function drawLayers() {
   if (bad > 0) V.list.append(h('div', { class: 'depthwarn' }, h('span', {}, `"${SC.layers[bad].name}" scrolls slower than "${SC.layers[bad - 1].name}" behind it: it will look like it's further away.`),
     h('button', { class: 'btn sm', title: 'Order the layers by scroll speed: slow (far) at the back, fast (near) at the front', onclick: () => { pushUndo(); const cur = SC.layers[sel]; SC.layers.sort((a, b) => a.scroll - b.scroll); sel = SC.layers.indexOf(cur); drawAll(); save(); } }, 'Sort by depth')));
 }
-let dragFrom = null;
-function move(i, d) { const j = i + d; if (j < 0 || j >= SC.layers.length) return; pushUndo(); [SC.layers[i], SC.layers[j]] = [SC.layers[j], SC.layers[i]]; sel = j; drawLayers(); drawPreview(); save(); }
+function move(i, d) { const j = i + d; if (j < 0 || j >= SC.layers.length || SC.layers[i].locked) return; pushUndo(); [SC.layers[i], SC.layers[j]] = [SC.layers[j], SC.layers[i]]; sel = j; drawLayers(); drawPreview(); save(); }
 function dupLayer() {
   const L = SC.layers[sel]; if (!L) return;
   pushUndo();
@@ -613,6 +618,7 @@ function dupLayer() {
 }
 function delLayer() {
   const L = SC.layers[sel]; if (!L) return;
+  if (L.locked) return toast(`"${L.name}" is locked: unlock it in the layer list first`, 'bad');
   pushUndo(); SC.layers.splice(sel, 1); sel = Math.max(0, sel - 1); drawAll(); save();
   toast(`Deleted "${L.name}". Ctrl+Z brings it back`);
 }
@@ -638,8 +644,6 @@ function drawRight() {
         h('button', { class: 'btn sm ghost', title: 'Same with 8 px tiles', onclick: () => cutTiles(L, 8) }, '8 px')) : null),
       h('div', { class: 'sec' }, h('h3', {}, 'Look of this layer', h('span', { class: 'grow' }),
           h('button', { class: 'btn sm ghost', title: 'Back to plain: full opacity, normal blend, no tint, scene haze', onclick: () => { pushUndo(); Object.assign(L, { opacity: 1, blend: 'normal', tint: null, tintAmt: 0, hazeOver: null }); drawRight(); process(L); } }, 'Reset')),
-        field('Opacity', range(L.opacity ?? 1, 0, 1, .05, v => { edit(); L.opacity = v; drawPreview(); save(); }, v => Math.round(v * 100) + '%'), 'See-through layers: mist, light shafts, glass'),
-        field('Blend', seg([['normal', 'Normal'], ['add', 'Glow'], ['screen', 'Light'], ['multiply', 'Shade']], L.blend || 'normal', v => { pushUndo(); L.blend = v; drawPreview(); save(); }), 'Glow adds light (fire, windows, magic); Shade darkens what is behind'),
         field('Tint', h('span', { style: { display: 'flex', gap: '8px', alignItems: 'center' } },
           h('input', { type: 'color', value: L.tint || '#ff5b2e', title: 'Tint colour', oninput: e => { edit(); L.tint = e.target.value; if (!L.tintAmt) L.tintAmt = .3; process(L); } }),
           range(L.tintAmt || 0, 0, 1, .05, v => { edit(); L.tintAmt = v; if (!L.tint) L.tint = '#ff5b2e'; process(L); }, v => Math.round(v * 100) + '%')), 'Pushes the layer toward a colour, then back into the palette'),
@@ -682,8 +686,10 @@ function drawRight() {
         SC.look === 'paint' ? field('Colours', range(L.colors || 15, 2, 15, 1, v => { L.colors = v; process(L); })) : null));
     }
   }
+  if (L?.locked) { insp.inert = true; insp.classList.add('lp-frozen'); }      // a locked layer: look, don't touch
   V.right.replaceChildren(
-    h('div', { class: 'sec' }, h('h3', {}, 'Layers', h('span', { class: 'grow' }), h('small', {}, 'back to front')), V.list),
+    h('div', { class: 'sec' }, h('h3', {}, 'Layers', h('span', { class: 'grow' }), h('small', {}, 'back to front')), V.list,
+      L?.locked ? h('p', { class: 'note' }, `"${L.name}" is locked: click its lock to change it.`) : ''),
     insp,
     h('div', { class: 'sec' }, h('h3', {}, 'Save to asset folder'),
       h('p', { class: 'note', style: { marginTop: 0 } }, h('b', {}, `backgrounds/${SC.name}/`), ' gets a PNG per layer, scene.json (scroll speeds, offsets) and a Godot Parallax2D scene.'),

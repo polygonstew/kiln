@@ -327,4 +327,9 @@ override everything; each gets a Help section and a Godot export):**
   suggested themes… a decent document you can pitch"): gamedoc*.js + writer.py (✦ ideas, free engines only: Gemini free →
   Gemini lite → OpenRouter free). Facts from the game (cast with sprites, enemies, controls, levels, graphs, style), Stuck?
   panel per section, pitch one-pager + whole doc + docs/GAME.md. Journey step 1 "An idea". Lore bible item covered.
+- 2026-10-12: Modern layer controls (user: "anything with layers… modern layer controls"): layers.js (eye, Alt+click solo,
+  lock, rename by double-click / F2, drag with a drop line, Alt+arrows, blend + opacity on top, add menu / dup / delete,
+  right-click) in Scenes, HUD widgets and Levels (Background / Tiles / Things / Zones: hide, lock, fade; picking one is the
+  paint mode). Puppet part rows get eye + lock (hidden parts not baked); Forge Background maker gets eyes + solo. Found by
+  testing: dblclick never fired (selecting redraws the row), drop position read from the thumbnail not the row.
 

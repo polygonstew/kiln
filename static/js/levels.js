@@ -12,6 +12,7 @@ import { ZONE_KINDS, zoneAt, drawZones, zonePanel, zoneNodes, zoneShapes, ZONE_G
 import { TOOLS, brushCells, rectCells, lineCells, floodCells, copyCells, selRect, history } from './leveltools.js';
 import { STYLES, buildPieces, appendPieces, fixAround, terrainOf, terrainHeader, terrainLines } from './autotile.js';
 import { KINDS, kindColour, drawKind, tileLines, TILESET_LAYERS, LEVEL_TILES_GD } from './tilekinds.js';
+import { layerPanel } from './layers.js';
 
 // Entities: things placed on the map (actors exported from Animate, the player start). x,y = feet, in level pixels.
 let mode = 'tiles', zonePick = 'checkpoint', zoneSel = null, levelNames = [], entPick = 'start', actorList = [], sprites = {};   // sprites: actor name -> first idle frame (canvas)
@@ -137,6 +138,32 @@ function changed() {
   }, 1500);
 }
 
+/* -------------------------------------------------------------- layers ---- */
+// the map's layers, back to front; each can be hidden, locked or faded (L.view, kept with the level, not exported)
+const LAYERS = [['bg', 'Background', 'the scene behind the map'], ['tiles', 'Tiles', 'walls, floors, ladders, spikes'], ['ents', 'Things', 'actors and the player start'], ['zones', 'Zones', 'areas that trigger things']];
+const lay = id => ((L.view ||= {})[id] ||= {});
+const shown = id => !lay(id).hidden, alpha = id => lay(id).opacity ?? 1;
+function layersPanel() {
+  const at = i => LAYERS[i][0], pick = i => { const id = at(i); if (id !== 'bg') { mode = id; } drawLeft(); draw(); };
+  return layerPanel({
+    items: LAYERS, sel: LAYERS.findIndex(l => l[0] === mode), key: l => l[0], name: l => l[1],
+    sub: l => l[0] === 'tiles' ? `${L.cells.filter(t => t >= 0).length} placed` : l[0] === 'ents' ? `${(L.ents || []).length} placed` : l[0] === 'zones' ? `${(L.zones || []).length} zones` : (L.bg || 'none'),
+    visible: l => shown(l[0]), locked: l => !!lay(l[0]).locked,
+    on: {
+      select: pick,
+      visible: (i, v) => { lay(at(i)).hidden = !v; changed(); drawLeft(); draw(); },
+      lock: (i, v) => { lay(at(i)).locked = v; changed(); drawLeft(); },
+      opacity: { get: l => alpha(l[0]), set: (i, v) => { lay(at(i)).opacity = v; changed(); draw(); } },
+    } });
+}
+// painting on a hidden or locked layer does nothing: say why
+function blocked() {
+  const l = lay(mode), name = LAYERS.find(x => x[0] === mode)[1];
+  if (l.locked) { toast(`${name} is locked: click its lock in Layers to change it`, 'bad'); return true; }
+  if (l.hidden) { toast(`${name} is hidden: show it in Layers first`, 'bad'); return true; }
+  return false;
+}
+
 /* ------------------------------------------------------------- drawing ---- */
 function draw() {
   if (!V.cv || !L || !tsImg) return;
@@ -146,34 +173,39 @@ function draw() {
   V.cv.width = W * z; V.cv.height = H * z;
   const x = V.cv.getContext('2d'); x.imageSmoothingEnabled = false;
   checker(x, W * z, H * z, 8 * z, '#1a1a19', '#1f1f1e');
-  if (bgLayers) {
+  if (bgLayers && shown('bg')) {
     // the scene is one screen tall; it sits at the bottom of the map and repeats across, each layer at its parallax rate
     const vh = V.bgView?.h || H, oy = H - vh;
     for (const b of bgLayers) {
-      x.globalAlpha = b.opacity;
+      x.globalAlpha = b.opacity * alpha('bg');
       const bw = b.cv.width;
       for (let bx = 0; bx < W; bx += bw) x.drawImage(b.cv, bx * z, (oy + b.y) * z, bw * z, b.cv.height * z);
       x.globalAlpha = 1;
     }
   }
   const src = toCanvas(tsImg);
-  for (let r = 0; r < L.rows; r++) for (let c = 0; c < L.cols; c++) {
+  x.globalAlpha = alpha('tiles');
+  if (shown('tiles')) for (let r = 0; r < L.rows; r++) for (let c = 0; c < L.cols; c++) {
     const t = L.cells[r * L.cols + c]; if (t < 0) continue;
     x.drawImage(src, (t % L.tsCols) * T, Math.floor(t / L.tsCols) * T, T, T, c * T * z, r * T * z, T * z, T * z);
   }
+  x.globalAlpha = 1;
   if (L.grid) {
     x.strokeStyle = 'rgba(255,255,255,.06)'; x.beginPath();
     for (let c = 1; c < L.cols; c++) { x.moveTo(c * T * z + .5, 0); x.lineTo(c * T * z + .5, H * z); }
     for (let r = 1; r < L.rows; r++) { x.moveTo(0, r * T * z + .5); x.lineTo(W * z, r * T * z + .5); }
     x.stroke();
   }
-  for (const e of L.ents || []) {
+  x.globalAlpha = alpha('ents');
+  for (const e of shown('ents') ? L.ents || [] : []) {
     const sp = e.type === 'actor' ? sprites[e.name] : null;
     if (sp) x.drawImage(sp, (e.x - sp.width / 2) * z, (e.y - sp.height) * z, sp.width * z, sp.height * z);
     else { x.fillStyle = e.type === 'start' ? '#9cc76b' : '#e3b04b'; x.fillRect((e.x - 1) * z, (e.y - 14) * z, 2 * z, 14 * z); x.fillRect((e.x + 1) * z, (e.y - 14) * z, 7 * z, 5 * z); }
     if (mode === 'ents') { x.strokeStyle = 'rgba(255,255,255,.5)'; x.strokeRect((e.x - 3) * z + .5, (e.y - 1) * z + .5, 6 * z, 2 * z); }
   }
-  if ((L.zones || []).length) drawZones(x, L.zones, z, zoneSel, mode === 'zones');
+  x.globalAlpha = alpha('zones');
+  if ((L.zones || []).length && shown('zones')) drawZones(x, L.zones, z, zoneSel, mode === 'zones');
+  x.globalAlpha = 1;
   if (drag?.t === 'zone' && drag.r) drawZones(x, [{ ...drag.r, kind: zonePick, id: 'new' }], z, 'new', true);
   if (V.showSolid) for (let i = 0; i < L.cells.length; i++) if (L.cells[i] >= 0) drawKind(x, kindOf(L.cells[i]), (i % L.cols) * T * z, Math.floor(i / L.cols) * T * z, T * z);
   // previews: the brush under the cursor, a rectangle or line being dragged, the selection, copied cells being stamped
@@ -242,6 +274,7 @@ function keys(e) {
 function bind() {
   V.cv.addEventListener('contextmenu', e => e.preventDefault());
   V.cv.addEventListener('pointerdown', e => {
+    if (blocked()) return;
     V.cv.setPointerCapture(e.pointerId);
     if (mode !== 'tiles') { H.push(); drawBar(); }
     if (mode === 'zones') {
@@ -332,7 +365,7 @@ function drawLeft() {
         h('button', { class: 'btn sm ghost danger', title: 'Remove every tile, thing and zone (Ctrl+Z brings them back)', onclick: () => { if (!confirm('Clear the whole level? Ctrl+Z undoes it.')) return; H.push(); L.cells = L.cells.map(() => -1); L.ents = []; L.zones = []; changed(); drawLeft(); draw(); drawBar(); } }, 'Clear')), 'In tiles. 480×270 px is 30×17 tiles of 16'),
       field('Background', V.bgSel = select([['', 'None']], L.bg || '', v => { L.bg = v || null; changed(); loadBg(); }), 'A scene from Scenes, shown behind the map and placed behind it in Godot'),
       field('Tile', seg([[8, '8'], [16, '16'], [32, '32']], L.tile, v => { L.tile = +v; L.ts = null; L.terrains = []; loadTiles().then(() => { changed(); drawLeft(); draw(); }); }), 'Pixels per tile')),
-    h('div', { class: 'sec' }, h('h3', {}, 'Paint'), seg([['tiles', 'Tiles'], ['ents', 'Things'], ['zones', 'Zones']], mode, v => { mode = v; drawLeft(); draw(); }),
+    h('div', { class: 'sec' }, h('h3', {}, 'Layers', h('span', { class: 'grow' }), h('small', {}, 'pick one to paint on it')), layersPanel(),
       mode === 'zones' ? zonesUI() : null,
       mode === 'ents' ? [h('div', { class: 'entlist' },
           h('button', { class: entPick === 'start' ? 'on' : '', title: 'Where the player appears (exported as a Marker2D named PlayerStart)', onclick: () => { entPick = 'start'; drawLeft(); } }, '⚑ Player start'),

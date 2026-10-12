@@ -154,9 +154,11 @@ export async function openPuppet(host, api) {
     }
     if (mode === 'rig' && tool === 'paint') {
       if (e.button === 2) { const i = partAt(p, T); if (i >= 0) { sel = i; drawAll(); } return; }
+      if (R.bones[sel]?.locked) return toast(`${R.bones[sel].name} is locked: unlock it in the timeline`, 'bad');
       push(); drag = { t: 'paint' }; paintAt(p); return;
     }
     const hd = handleAt(p, T);
+    if (hd && R.bones[hd.i].locked) { sel = hd.i; drawAll(); return toast(`${R.bones[hd.i].name} is locked: unlock it in the timeline`); }
     if (hd) { sel = hd.i; push(); drag = { t: mode === 'rig' ? 'joint' : (R.bones[hd.i].parent == null && hd.end === 'pivot' ? 'root' : 'turn'), ...hd, p0: p, T }; drawAll(); return; }
     const i = partAt(p, T); if (i >= 0) { sel = i; drawAll(); }
   });
@@ -270,7 +272,8 @@ export async function openPuppet(host, api) {
 
   /* -------------------------------------------------------- timeline ---- */
   const rows = () => [{ id: '_root', name: '⊕ body move', depth: 0 }, ...(R.heads?.length ? [{ id: '_head', name: '◐ head view', depth: 0 }] : []),
-    ...(R.mouths ? [{ id: '_mouth', name: '◡ mouth', depth: 0 }] : []), ...treeOrder().map(b => ({ id: String(b.id), name: b.name, depth: depthOf(b) + 1 }))];
+    ...(R.mouths ? [{ id: '_mouth', name: '◡ mouth', depth: 0 }] : []), ...treeOrder().map(b => ({ id: String(b.id), name: b.name, depth: depthOf(b) + 1, part: true, hidden: !!b.hidden, locked: !!b.locked }))];
+  const boneOf = id => R.bones.find(b => String(b.id) === id);
   const rest = row => row === '_root' ? { dx: 0, dy: 0 } : row === '_head' ? 'drawn' : row === '_mouth' ? 'X' : 0;
   const selRow = () => R.bones[sel] ? String(R.bones[sel].id) : '_root';
   function drawTl() {
@@ -280,7 +283,9 @@ export async function openPuppet(host, api) {
       seek: t => { f = t; mode = 'pose'; drawCanvas(); drawTl(); },
       select: (id, t) => { const i = R.bones.findIndex(b => String(b.id) === id); if (i >= 0) sel = i; f = t; mode = 'pose'; drawAll(); },
       move: (id, from, to) => { if (m.keys[id]?.[to]) return toast('There is a keyframe there already'); push(); m.keys[id][to] = m.keys[id][from]; delete m.keys[id][from]; f = to; save(); drawAll(); },
-      toggle: (id, t) => { push(); if (m.keys[id]?.[t]) clearKey(m, id, t); else setKey(m, id, t, valueAt(m, id, t) ?? rest(id)); save(); drawAll(); },
+      toggle: (id, t) => { if (boneOf(id)?.locked) return toast('That part is locked'); push(); if (m.keys[id]?.[t]) clearKey(m, id, t); else setKey(m, id, t, valueAt(m, id, t) ?? rest(id)); save(); drawAll(); },
+      visible: (id, v) => { boneOf(id).hidden = !v; save(); drawAll(); },
+      lock: (id, v) => { boneOf(id).locked = v; save(); drawAll(); },
     });
     const num = (v, mn, mx, fn, w = 46) => h('input', { type: 'number', value: v, min: mn, max: mx, style: { width: w + 'px' }, onchange: e => fn(Math.max(mn, Math.min(mx, +e.target.value || mn))) });
     tlBar.replaceChildren(
@@ -307,9 +312,11 @@ export async function openPuppet(host, api) {
   }
   let easeV;
   function keyOp(k) {
-    const m = M(), row = selRow(); push();
+    const m = M(), row = selRow();
+    if (k !== 'pose' && boneOf(row)?.locked) return toast('That part is locked');
+    push();
     if (k === 'key') setKey(m, row, f, valueAt(m, row, f) ?? rest(row));
-    if (k === 'pose') for (const r of rows()) setKey(m, r.id, f, valueAt(m, r.id, f) ?? rest(r.id));
+    if (k === 'pose') for (const r of rows().filter(r => !r.locked)) setKey(m, r.id, f, valueAt(m, r.id, f) ?? rest(r.id));
     if (k === 'blank') setKey(m, row, f, rest(row));
     if (k === 'clear') clearKey(m, row, f);
     save(); drawAll();

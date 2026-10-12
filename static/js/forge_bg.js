@@ -5,6 +5,7 @@
 // writes the Godot parallax scene.
 import { h, api, toast, emit, pref, imgData, toCanvas, toDataURL, keyBackground, uid, checker } from './core.js';
 import { engineSeg, genOne, trimFrame } from './forge_kit.js';
+import { icon } from './icons.js';
 
 const KEY = 'isolated on a plain flat magenta (#ff00ff) background, nothing else on the magenta';
 // [id, label, scroll speed, prompt with {place} / {time}]
@@ -29,7 +30,7 @@ export function openBackgroundMaker(host) {
   const S = Object.assign({ place: '', time: 'dusk', engine: 'cloud', on: { sky: true, far: true, mid: true, near: true, ground: true, front: false }, prompts: {} }, pref.get('forge.bg', {}));
   const tries = {};          // layer id → [{ url, im (keyed) }], newest first; picked: layer id → index
   const picked = {};
-  let pan = 0, busy = 0;
+  let pan = 0, busy = 0, solo = null;      // solo: the one layer shown in the preview (Alt+click an eye)
   const keep = () => pref.set('forge.bg', S);
   const ov = h('div', { class: 'workshop fm' }), cv = h('canvas', { class: 'pp-cv', title: 'The layers stacked and panning, as the game shows them' });
   const left = h('div', { class: 'pp-side' }), right = h('div', { class: 'pp-side' });
@@ -61,7 +62,9 @@ export function openBackgroundMaker(host) {
         const [id, label] = L, t = tries[id] || [];
         const ta = h('textarea', { rows: 2, class: 'fm-prompt', title: 'This layer\'s prompt (Kiln wrote it from the place; change it freely)', oninput: e => { S.prompts[id] = e.target.value; keep(); } }, promptFor(L));
         return h('div', { class: 'fm-layer' + (S.on[id] ? '' : ' off') },
-          h('div', { class: 'pp-row', style: { marginTop: 0 } }, h('label', { class: 'chk', title: 'Use this layer' }, h('input', { type: 'checkbox', checked: S.on[id], onchange: e => { S.on[id] = e.target.checked; keep(); drawLayers(); paint(); } }), ' ' + label),
+          h('div', { class: 'pp-row', style: { marginTop: 0 } },
+            h('button', { class: 'lp-eye' + (solo === id ? ' solo' : ''), style: { color: S.on[id] ? 'var(--ink)' : '' }, title: 'Use this layer (show / hide) · Alt+click: preview only this one',
+              onclick: e => { if (e.altKey) solo = solo === id ? null : id; else { S.on[id] = !S.on[id]; keep(); } drawLayers(); paint(); } }, icon(solo === id ? 'solo' : S.on[id] ? 'eye' : 'eyeoff')), h('b', {}, label),
             h('span', { class: 'grow' }),
             S.prompts[id] != null ? h('button', { class: 'ibtn', title: 'Back to Kiln\'s prompt for this layer', onclick: () => { delete S.prompts[id]; keep(); drawLayers(); } }, '↺') : '',
             h('button', { class: 'btn sm ghost', title: 'Generate this layer (again)', onclick: () => make(L) }, t.length ? 'Reroll' : 'Make')),
@@ -90,7 +93,7 @@ export function openBackgroundMaker(host) {
     checker(x, W, H, 8, '#202020', '#262625');
     let any = false;
     for (const [id, , scroll] of LAYERS) {
-      const t = tries[id]?.[picked[id] ?? 0]; if (!S.on[id] || !t) continue;
+      const t = tries[id]?.[picked[id] ?? 0]; if (!S.on[id] || !t || (solo && solo !== id)) continue;
       any = true;
       const c = toCanvas(t.im), lw = W * 2, ox = -((pan * scroll) % lw);      // two screens wide, like Scenes
       for (let dx = ox - lw; dx < W; dx += lw) x.drawImage(c, Math.round(dx), 0, lw, H);

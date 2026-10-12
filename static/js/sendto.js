@@ -26,12 +26,12 @@ export function sendItems(url, name = 'image') {
     } },
   ];
 }
-const PLACES = ['.ccard', '#v-forge .results .r', '#v-files .it', '#v-animate .frame:not(.add)', '#v-scenes .ly', '.bcard', '#v-forge .viewport'];
+const PLACES = ['.ccard', '#v-forge .results .r', '#v-files .it', '#v-animate .frame:not(.add)', '#v-scenes .lp-row', '.bcard', '#v-forge .viewport'];
 registerMenu(PLACES.join(', '), el => {
   const img = el.querySelector('img'), cv = el.querySelector('canvas');
   if (img && !/\.(png|jpe?g|gif|webp)|cloudimg|data:image/i.test(img.src)) return [];
   if (!img && !cv) return [];
   const url = img ? img.getAttribute('src') : cv.toDataURL('image/png');
-  const name = el.dataset.name || img?.title || el.querySelector('.nm, input[type=text]')?.textContent || img?.alt || 'image';
+  const name = el.dataset.name || img?.title || el.querySelector('.nm, .lp-nm b, input[type=text]')?.textContent || img?.alt || 'image';
   return sendItems(url, name);
 }, 'Send to');

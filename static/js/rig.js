@@ -145,6 +145,7 @@ export function render(P, rig, pose, W = P.w, H = P.h, face = null) {
   const out = new ImageData(W, H), o32 = new Uint32Array(out.data.buffer), T = transforms(rig, pose), ox = Math.floor((W - P.w) / 2), oy = H - P.h;
   const order = rig.bones.map((b, i) => [b, i]).sort((a, c) => a[0].z - c[0].z);
   for (const [b, i] of order) {
+    if (b.hidden) continue;                               // hidden in the Puppet's layer rows: not drawn, not baked
     const M = T[b.id], I = inv(M), id = i + 1, isHead = face && b.name === 'head';
     const swap = isHead && pose._head && pose._head !== 'drawn' ? face.heads[pose._head] : null;
     if (swap) drawOver(o32, W, H, ox, oy, swap.Q, mul(M, shift(b.x - swap.ax, b.y - swap.ay)));

@@ -233,6 +233,16 @@ svg text { font-family: 'IBM Plex Sans Condensed'; }
 <p><b>Stuck?</b> The right panel follows the section you are reading: questions to think about ("Think about it" adds one with room for your answer), and per section a spark: <b>Roll an idea</b> (a one-sentence game idea to use as your logline), <b>Themes</b> to pick, <b>Names</b> that sound like one place (Gothic, Northern, Desert, Fae, Machine: click to add a place or character), <b>What games like this have</b> (for your genre; + adds it to Mechanics) and <b>Made so far</b> against your scope. <b>✦</b> next to any part gives three ideas that fit what you have written (free; when it is busy, try again in a minute).</p>
 <p><b>Pitch page</b> opens the one-pager to send people: key art, the title in pixel type, logline, hook, pillars, characters with their sprites, how it plays, the world and the story. Print it from there (Save as PDF). <b>Whole document</b> is every section on one page. <b>Save doc</b> writes <code>docs/GAME.md</code>, <code>docs/pitch.html</code> and <code>docs/game_doc.html</code> into the asset folder; ↓ downloads them.</p></section>
 
+<section id="layers"><h2>Layers: the same controls everywhere</h2>
+<p>Everything made of layers has one layer list: Scenes (parallax layers), HUD (widgets), Levels (Background, Tiles, Things, Zones), Puppet (each part, in the timeline) and Forge's Background maker. In each:</p>
+<ul><li><b>Eye</b>: show or hide. <b>Alt+click</b> an eye shows only that layer (click again for all).</li>
+<li><b>Lock</b> (appears on hover; stays lit when on): a locked layer can't be changed, moved, painted or deleted by accident. Its settings grey out.</li>
+<li><b>Rename</b>: double-click the name (or F2), Enter to keep, Esc to cancel.</li>
+<li><b>Reorder</b>: drag a row (an orange line shows where it lands), the arrows below the list, or Alt+↑ / Alt+↓.</li>
+<li><b>Blend and opacity</b> of the selected layer sit above the list (where the area has them). In Levels, picking a layer is what you paint on, and opacity fades it so you can see what's behind.</li>
+<li>Below the list: <b>+</b> adds one (a menu of kinds where there are several), duplicate (Ctrl+D), delete (Delete). <b>Right-click</b> a row for all of it in words.</li></ul>
+<p>Lists run back to front: the top row is furthest back.</p></section>
+
 <section id="games"><h2>Your games: New, Open, Save</h2>
 <p>A game is an asset folder: what you make in every area, plus Kiln's projects in <code>kiln/</code>. <b>File → New game…</b> makes an empty one (the one open now stays as it is) and the <b>Your game</b> steps show where to begin; "start from the demo game" makes a complete small one to change instead. <b>File → Open game…</b> lists your games (with their hero), the newest first; click one to switch. Switching is safe at any time: every area keeps its work in the folder it came from. For a folder elsewhere (inside a Godot project, say) use "Choose any folder".</p>
 <p>Below those, <b>New</b>, <b>Open</b> and <b>Save</b> are named after what the area you are in holds (New level, Open graph…, Save room) and press that area's own button; they are greyed out where an area has nothing to open (Stage, Files). <b>Ctrl+S</b> is the same Save everywhere.</p></section>
