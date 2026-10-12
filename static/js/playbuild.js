@@ -34,6 +34,7 @@ const MAIN_GD = `extends Node2D
 @export var title := "Kiln demo"
 @export var controls := "Arrows / stick move · Space / A jumps · X attacks · C / B shoots"   ## under the title
 @export var show_title := true
+@export var start_at := Vector2.INF      ## Kiln's "Play from here": the player starts at this spot of the first level
 @export var playtest := true            ## in Kiln's Stage: take live tuning and screenshot requests from the page
 var playing := false
 var menus: Array[Node] = []               # open menu screens, top last
@@ -281,6 +282,9 @@ func _enter(scene: PackedScene, entry: String) -> void:
 \t\t\tm = lv.get_node_or_null("Entries/start")
 \t\tif m:
 \t\t\tstart = (m as Node2D).position
+\t\tif start_at != Vector2.INF:
+\t\t\tstart = start_at
+\t\t\tstart_at = Vector2.INF
 \telse:
 \t\t# no level yet: the background scene (if any) over a long flat floor
 \t\tif background_scene:
@@ -427,9 +431,12 @@ export async function findPlayer(actors) {
 // shipped = true for Export game (no Stage bridge: the game ignores the page around it)
 export async function gameFiles(pick, shipped = false) {
   const ext = [], props = [];
+  // Levels' "Play from here": this one level alone, the player starting at that spot (used once)
+  const here = shipped ? null : pref.get('play.from', null);
+  if (here) { pref.set('play.from', null); pick = { ...pick, level: here.level, start: 'none' }; props.push(`start_at = Vector2(${here.x}, ${here.y})`); }
   const add = (key, path) => { if (!path) return; ext.push(`[ext_resource type="PackedScene" path="${path}" id="${key}"]`); props.push(`${key}_scene = ExtResource("${key}")`); };
   // a Flow (the game's path of scenes) runs the game when it has scenes; then rooms anywhere in it bring the point & click runtime
-  const F = (await fetch('/api/project?id=flow-game').then(r => r.ok ? r.json() : null).catch(() => null))?.flow, flowOn = !!F?.nodes?.length;
+  const F = (await fetch('/api/project?id=flow-game').then(r => r.ok ? r.json() : null).catch(() => null))?.flow, flowOn = !here && !!F?.nodes?.length;
   const room = flowOn ? F.nodes.some(n => n.kind === 'room') : /(^|\/)rooms\//.test(pick.level || ''), stack = GAME.path === 'puzzle' && GAME.puzzle === 'stack';
   add('level', pick.level); add('background', pick.level ? '' : pick.bg); add('player', stack ? '' : pick.player); add('hud', pick.hud);
   // saved Kiln menus (Menus area): the title menu if asked for, options from it, pause on Esc

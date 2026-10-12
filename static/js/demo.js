@@ -15,6 +15,7 @@ import { PRESETS as SOUNDS, synth, wav } from './sfx.js';
 import { saveAll } from './saveall.js';
 import { buildKey } from './playbuild.js';
 import { setPath } from './gametype.js';
+import { restart } from './games.js';
 
 /* ------------------------------------------------------------- drawing ---- */
 const hex = s => [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), parseInt(s.slice(5, 7), 16)];
@@ -151,5 +152,6 @@ export async function makeDemo(pick = { path: 'scroller' }) {
   if (r.failed.length) step('Some parts failed: ' + r.failed.join('; '));
   pref.set(buildKey(), { level: 'res://levels/demo/demo.tscn', player: 'res://sprites/hero/hero.tscn', hud: 'res://hud/hud/hud.tscn', start: 'menu' });
   step('Done. Building it in the Stage…');
-  setTimeout(() => { m.remove(); emit('play'); toast('Your game from the template is ready: open any area to see how its part was made', 'ok'); }, 900);
+  sessionStorage.setItem('kiln.play', '1');
+  setTimeout(() => restart('Your game from the template is ready: open any area to see how its part was made', 'stage'), 900);
 }

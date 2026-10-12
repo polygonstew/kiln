@@ -49,6 +49,11 @@ async function boot() {
   }
   initTop(mods, show);    // the game chip, the path's tabs, More
   try { await loadSettings(); } catch (e) { toast('Server not answering: ' + e.message, 'bad'); }
+  // what the areas remember (the actor, level, scene… open) belongs to one game folder: opened in another, it is dropped
+  // before any area loads, so nothing of one game shows up in the next (however the folder was changed)
+  const root = (await import('./files.js')).S.root;
+  if (root && pref.get('held.root', root) !== root) { const { HELD } = await import('./games.js'); for (const k of HELD) localStorage.removeItem('kiln.' + k); }
+  pref.set('held.root', root);
   on('tab', id => show(id));
   $('#stylechip').onclick = editStyle;
   initJourney();         // the "Your game" chip: how far the game has come, and what to make next

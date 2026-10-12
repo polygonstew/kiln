@@ -45,6 +45,41 @@ Verified in headless Godot: the adventure demo played through to its ending; flo
 check → end; story pages with a typed answer; top-down shooting + room camera; push crate + exit → next level.
 Also verified: the stacker (bricks fall, land, next spawns). FMV/text templates were tested through hand-made flows, not their template builds.
 
+## START HERE (session 6, written 2026-10-12 late; the user's usage ran out mid-session)
+
+Backup made before the UI work: `~/.jcodes/kiln-backup-2026-10-12-before-ui/` (kiln.bundle = full git history,
+library.tar.zst = all the user's games, plus a copy of the code). Everything below is committed and pushed (main).
+
+**Done this session (UI rework the user asked for: "docks + workspaces", Blender/Godot/Construct-style):**
+- `dock.js`: every area's side sections are panels: drag by title to left / right / bottom dock, click title to fold,
+  ✕ to put away, pin a dock to the edge (slides out on hover), drag a dock edge to resize. Layout kept per area;
+  top bar **Layout ▾**: panels on/off, Add a panel (Assets, Preview), save / use / reset layouts, **Simple mode**
+  (hides `ADVANCED` panels). Areas are untouched: their asides are hidden "sources" and a MutationObserver moves
+  sections into docks (replaceChildren on a source = rebuild). Game doc is skipped (it queries its own column).
+- `assets.js` asset shelf (drag onto Flow → a scene; Levels → place a character; Rooms → hotspot showing it);
+  Flow, Levels, Rooms start with it docked at the bottom. `preview.js` play-in-place panel.
+- `home.js` **Home** tab (first on every path): game name/kind/look, next step, flow map, lately, counts, Play/Export/Rule book.
+- Levels (Mario Maker ideas): zoom ¼×–8× at the cursor (Ctrl+wheel, + −), recent strip of tiles/things in the toolbar,
+  drag placed things to move them, **▶ Play from here** (pref `play.from` → main.gd `start_at`, no Flow, no title).
+- Held state fix (user: "animate/levels still hold the old game"): app.js drops `HELD` prefs (games.js) whenever Kiln
+  opens in a different folder than they were saved in (`pref held.root`); Files → Change folder and the side-scroller
+  template now restart Kiln like New/Open game.
+- Earlier today (5b, below): looks, kits, physics, ragdolls, match-3, cards, VN, runner, rule book, Gloop, templates.
+
+**Not done yet (in order):**
+1. **Camera section** (user picked it): a Camera area modelled on Cinemachine (dead zone / soft zone drawn over the
+   level, look-ahead, damping, zoom, shake, confiner) + Godot Camera2D drag margins; `camera/camera.json` read by
+   main.gd `_camera()`. Keep Kiln's look ("keep our edge"; user: "stay away from corny looking stuff").
+2. Half-built work found in the audit: **one items database** (HUD items.json and adventure items are separate lists);
+   Godot skeleton export lacks head views + LipSync (rig_godot.js); 2D lighting; cutscenes.
+3. A "sleek pass": the user finds some things corny; review Gloop's look, emoji in UI, make defaults calm.
+4. Ideas from research to offer: Blender-style named workspaces across areas, Construct's pin-to-edge (done), Bitsy-like
+   constraints for first games.
+
+Testing: `tools/iso.sh <tmpdir>` test copy on :8521 (it is the user's question: 8510 = their real Kiln, 8521 = my
+throwaway copy). Playwright scripts used this session lived in the job tmp dir; the pattern: make a game through the
+UI, wait for `/api/play/status`, screenshot `/play/` in Chromium with `--use-gl=swiftshader`, or probe in headless Godot.
+
 ## Session 5b (2026-10-12, later): looks, kits, physics, new kinds of game
 
 Done: per-game **Look** (Modern default / Pixel), Forge full-colour mode (cutout.js); **templates** (the UI word for demos)

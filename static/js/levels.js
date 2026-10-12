@@ -1,6 +1,6 @@
 // Levels: paint a room from tiles (in the spirit of LDtk), mark which tiles are solid, export a Godot
 // TileSet + TileMapLayer scene with collision. Left click paints, right click erases, wheel rolls tiles.
-import { h, api, toast, on, pref, clamp, field, range, select, seg, check, imgData, toCanvas, toDataURL, newImg, rawURL, checker, uid, fitZoom } from './core.js';
+import { h, api, toast, on, emit, pref, clamp, field, range, select, seg, check, imgData, toCanvas, toDataURL, newImg, rawURL, checker, uid, fitZoom } from './core.js';
 import { saveFiles, S as FS } from './files.js';
 import { loadActor } from './player.js';
 import { openProjects } from './projects.js';
@@ -37,6 +37,20 @@ let tool = pref.get('level.tool', 'brush'), bsize = 1, sel = null, clipC = null,
 const H = history(() => ({ id: L.id, cols: L.cols, rows: L.rows, cells: L.cells, ents: L.ents || [], zones: L.zones || [] }),
   d => { if (d.id !== L.id) return toast('That undo belongs to another level'); delete d.id; Object.assign(L, d); changed(); drawLeft(); draw(); drawBar(); });
 let L = null, V = {}, mounted = false, tsImg = null, zoom = 0, hover = null, drag = null, saveT;
+// zoom steps (big Modern levels need to zoom out below 1×); the next one in or out from where it is now
+const ZOOMS = [.25, .33, .5, .67, 1, 1.5, 2, 3, 4, 6, 8];
+const nextZoom = (z, dir) => dir > 0 ? (ZOOMS.find(s => s > z + .01) || 8) : ([...ZOOMS].reverse().find(s => s < z - .01) || .25);
+// zoom keeping the spot under the cursor (or the middle of the view) where it is
+function zoomAt(dir, e) {
+  const r1 = V.cv.getBoundingClientRect(), cx = e ? e.clientX : r1.left + V.vp.clientWidth / 2, cy = e ? e.clientY : r1.top + V.vp.clientHeight / 2;
+  const px = (cx - r1.left) / V.z, py = (cy - r1.top) / V.z;
+  zoom = nextZoom(V.z, dir); draw();
+  const r2 = V.cv.getBoundingClientRect();
+  V.vp.scrollLeft += r2.left + px * V.z - cx; V.vp.scrollTop += r2.top + py * V.z - cy;
+}
+// the last tiles and things used, as a strip over the map (Mario Maker's quick bar): 't<tile>' or 'e<thing>'
+let recent = pref.get('level.recent', []);
+const used = k => { recent = [k, ...recent.filter(x => x !== k)].slice(0, 10); pref.set('level.recent', recent); drawBar(); };
 // what a tile does in the game (tilekinds.js); old levels only had `solid: [tile…]`
 const kindOf = i => (L.kinds ||= Object.fromEntries((L.solid || []).map(k => [k, 'solid'])))[i] || '';
 function setKind(i, k) { kindOf(i); if (k) L.kinds[i] = k; else delete L.kinds[i]; L.solid = Object.keys(L.kinds).filter(t => L.kinds[t] === 'solid').map(Number); changed(); }
@@ -111,7 +125,8 @@ export const levels = {
     V.vp = h('div', { class: 'viewport', style: { background: '#0e0e0d' } }, V.cv);
     V.info = h('span', { class: 'mono dim', style: { fontSize: '11px' } });
     el.append(V.left, h('section', { class: 'stage' },
-      h('div', { class: 'bar' }, h('span', { class: 'lbl' }, 'Zoom'), Object.assign(select([[0, 'Fit'], [1, '1×'], [2, '2×'], [3, '3×'], [4, '4×']], zoom, v => { zoom = +v; draw(); }), { title: 'Map zoom (also Ctrl+wheel, + and −)' }),
+      h('div', { class: 'bar' }, h('span', { class: 'lbl' }, 'Zoom'), Object.assign(select([[0, 'Fit'], [.25, '¼×'], [.5, '½×'], [1, '1×'], [2, '2×'], [3, '3×'], [4, '4×']], zoom, v => { zoom = +v; draw(); }), { title: 'Map zoom (also Ctrl+wheel at the cursor, + and −)' }),
+        h('button', { class: 'btn sm go', title: 'Save this level and play it with the player starting in the middle of what you see', onclick: playHere }, '▶ Play from here'),
         h('button', { class: 'ibtn' + (L.grid ? ' on' : ''), title: 'Tile grid', onclick: e => { L.grid = !L.grid; e.currentTarget.classList.toggle('on', L.grid); draw(); } }, '#'),
         V.bar = h('span', { class: 'lv-tools' }),
         h('span', { class: 'grow' }), V.info),
@@ -267,7 +282,26 @@ function drawBar() {
       h('button', { class: 'btn sm ghost', title: 'Copy (Ctrl+C), then click to stamp it', onclick: () => copySel(false) }, 'Copy'),
       h('button', { class: 'btn sm ghost', title: 'Cut (Ctrl+X)', onclick: () => copySel(true) }, 'Cut'),
       h('button', { class: 'btn sm ghost danger', title: 'Clear the selection (Delete)', onclick: clearSel }, 'Clear')) : '',
-    stamping ? h('span', { class: 'lv-sel' }, h('i', { class: 'sep' }), 'Stamping · click to place, Esc stops') : '');
+    stamping ? h('span', { class: 'lv-sel' }, h('i', { class: 'sep' }), 'Stamping · click to place, Esc stops') : '',
+    recent.length ? h('span', { class: 'lv-recent', title: 'Used lately: click to pick it again' }, h('i', { class: 'sep' }), ...recent.map(quick)) : '');
+}
+// one of the recent strip: a tile (its picture) or a thing (its name)
+function quick(k) {
+  const pickIt = () => { if (k[0] === 't') { mode = 'tiles'; L.pick = +k.slice(1); L.pickTer = null; } else { mode = 'ents'; entPick = k.slice(1); } drawLeft(); drawBar(); draw(); };
+  if (k[0] === 't' && tsImg) {
+    const t = +k.slice(1), T = L.tile, c = h('canvas', { width: T, height: T }); c.getContext('2d').drawImage(toCanvas(tsImg), (t % L.tsCols) * T, Math.floor(t / L.tsCols) * T, T, T, 0, 0, T, T);
+    return h('button', { class: 'lv-q' + (mode === 'tiles' && L.pick === t ? ' on' : ''), title: `Tile ${t + 1}`, onclick: pickIt }, c);
+  }
+  const n = k.slice(1).replace('body:', '');
+  return h('button', { class: 'lv-q txt' + (mode === 'ents' && entPick === k.slice(1) ? ' on' : ''), title: n, onclick: pickIt }, n === 'start' ? '⚑' : n.slice(0, 6));
+}
+// ▶ Play from here: save, then play this level alone with the player in the middle of the view (no title, no Flow)
+async function playHere() {
+  await exportLevel();
+  const r = V.cv.getBoundingClientRect(), vr = V.vp.getBoundingClientRect();
+  const x = Math.round((Math.max(r.left, vr.left) + Math.min(r.right, vr.right)) / 2 - r.left) / V.z, y = Math.round((Math.max(r.top, vr.top) + Math.min(r.bottom, vr.bottom)) / 2 - r.top) / V.z;
+  pref.set('play.from', { level: `res://levels/${L.name}/${L.name}.tscn`, x: Math.round(x), y: Math.round(y) });
+  emit('play');
 }
 function copySel(cut) { if (!sel) return; clipC = copyCells(L, sel); if (cut) { H.push(); putAll(selCells(), -1); changed(); } stamping = true; toast(`${cut ? 'Cut' : 'Copied'} ${sel.w}×${sel.h}: click to stamp it, Esc to stop`); sel = null; drawBar(); draw(); }
 function clearSel() { if (!sel) return; H.push(); putAll(selCells(), -1); changed(); drawBar(); }
@@ -283,7 +317,7 @@ function keys(e) {
   if ((k === 'delete' || k === 'backspace') && sel) { e.preventDefault(); clearSel(); return; }
   if (k === ' ') { e.preventDefault(); spaceDown = true; V.cv.style.cursor = 'grab'; return; }
   if (k === '[' || k === ']') { bsize = Math.max(1, Math.min(3, bsize + (k === ']' ? 1 : -1))); drawBar(); draw(); return; }
-  if (k === '+' || k === '=' || k === '-') { zoom = clamp((zoom || Math.max(1, Math.round(V.z))) + (k === '-' ? -1 : 1), 1, 8); draw(); return; }
+  if (k === '+' || k === '=' || k === '-') { zoomAt(k === '-' ? -1 : 1); return; }
   const t = mode === 'tiles' && TOOLS.find(t => t[2].toLowerCase() === k);
   if (t) setTool(t[0]);
 }
@@ -319,8 +353,12 @@ function bind() {
         if (bi >= 0 && bd < L.tile * 1.5) { L.ents.splice(bi, 1); changed(); draw(); drawLeft(); }
         return;
       }
+      // on a thing already placed: drag it somewhere else
+      const near = [...L.ents].reverse().find(en => Math.abs(en.x - px) < L.tile * .7 && py < en.y + 2 && py > en.y - L.tile * 1.6);
+      if (near) { drag = { t: 'ent', en: near }; return; }
       // feet snap to the top of the tile under the cursor, centred in the column
       const cx = Math.floor(px / L.tile), cy = Math.floor(py / L.tile);
+      used('e' + entPick);
       const foot = { x: cx * L.tile + L.tile / 2, y: (cy + 1) * L.tile };
       const en = entPick === 'crate' ? { id: uid(), type: 'crate', name: 'Crate', tile: L.pick, ...foot }
         : entPick.startsWith('body:') ? { id: uid(), type: 'body', name: entPick.slice(5), shape: entPick.slice(5), ...foot }
@@ -336,6 +374,7 @@ function bind() {
     if (stamping && e.button === 2) { stamping = false; drawBar(); draw(); return; }
     if (tool === 'select') { drag = { t: 'sel', p0: p }; sel = selRect(p, p); drawBar(); draw(); return; }
     const v = e.button === 2 ? -1 : L.pick;
+    if (v >= 0) used('t' + v);
     H.push(); drawBar();
     if (tool === 'fill') { putAll(floodCells(L, p), v); changed(); return; }
     if (tool === 'rect' || tool === 'line') { drag = { t: tool, v, p0: p, p1: p }; draw(); return; }
@@ -347,6 +386,7 @@ function bind() {
       drag.r = { x: Math.min(c0, p[0]) * T, y: Math.min(r0, p[1]) * T, w: (Math.abs(p[0] - c0) + 1) * T, h: (Math.abs(p[1] - r0) + 1) * T }; draw(); return;
     }
     if (drag?.t === 'pan') { V.vp.scrollLeft = drag.sl - (e.clientX - drag.x); V.vp.scrollTop = drag.st - (e.clientY - drag.y); return; }
+    if (drag?.t === 'ent') { const p = cellAt(e); if (p) { drag.en.x = p[0] * L.tile + L.tile / 2; drag.en.y = (p[1] + 1) * L.tile; drag.moved = true; draw(); } return; }
     hover = mode === 'tiles' ? cellAt(e) : null;
     if (drag?.t === 'brush' && hover) putAll(brushCells(L, hover, bsize), drag.v);
     else if ((drag?.t === 'rect' || drag?.t === 'line') && hover) { drag.p1 = hover; draw(); }
@@ -362,13 +402,14 @@ function bind() {
     if (drag?.t === 'rect' || drag?.t === 'line') putAll((drag.t === 'rect' ? rectCells : lineCells)(L, drag.p0, drag.p1), drag.v);
     if (drag?.t === 'pan') V.cv.style.cursor = spaceDown ? 'grab' : 'crosshair';
     if (drag?.t === 'pan' || drag?.t === 'sel') { drag = null; return; }
+    if (drag?.t === 'ent') { const m = drag.moved; drag = null; if (m) { changed(); drawLeft(); } return; }
     if (drag) { drag = null; changed(); }
   };
   V.cv.addEventListener('pointerup', up); V.cv.addEventListener('pointercancel', up);
   V.cv.addEventListener('pointerleave', () => { hover = null; draw(); });
   V.vp.addEventListener('wheel', e => {
     e.preventDefault();
-    if (e.ctrlKey || e.altKey) { zoom = clamp((zoom || V.z) + (e.deltaY < 0 ? 1 : -1), 1, 8); draw(); return; }
+    if (e.ctrlKey || e.altKey) { zoomAt(e.deltaY < 0 ? 1 : -1, e); return; }
     const n = tileCount(); if (!n) return;
     L.pick = ((L.pick + (e.deltaY > 0 ? 1 : -1)) % n + n) % n; L.pickTer = null; drawLeft(); draw();
   }, { passive: false });

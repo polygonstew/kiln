@@ -320,9 +320,7 @@ async function branch(path, depth, isRoot) {
 async function setRoot(path) {
   const scaffold = confirm(`Use ${short(path)} as the asset folder?\n\nOK also adds any missing standard folders (sprites/, backgrounds/, hud/, fonts/, palettes/, tiles/, kiln/). Cancel keeps the folder as it is.`);
   await api('/api/fs', { op: 'root', path, scaffold });
-  await loadSettings();
-  toast('Asset folder: ' + short(path), 'ok');
-  go(path);
+  (await import('./games.js')).restart('Asset folder: ' + short(path), 'files');     // start clean in it (nothing of the last game held)
 }
 async function pickRoot() {
   const choices = [S.home + '/.jcodes/kiln/library/games/untitled'];

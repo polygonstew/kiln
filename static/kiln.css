@@ -925,3 +925,5 @@ body.simple .dk-panel[data-adv] { display: none !important; }
 .hm-counts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .hm-counts button { display: flex; align-items: baseline; gap: 8px; padding: 10px 12px; background: var(--p1); border: 1px solid var(--line); border-radius: 3px; color: var(--dim); cursor: pointer; font: inherit; }
 .hm-counts b { font: 600 24px var(--cond); color: var(--ink); } .hm-counts button:hover { border-color: var(--ember); color: var(--ink); }
 @media (max-width: 900px) { .hm-cols { grid-template-columns: 1fr; } .hm-head { flex-direction: column; align-items: flex-start; } }
+.lv-recent { display: inline-flex; align-items: center; gap: 2px; } .lv-q { width: 26px; height: 26px; padding: 2px; background: var(--p2); border: 1px solid var(--line); border-radius: 3px; cursor: pointer; color: var(--dim); }
+.lv-q canvas { width: 100%; height: 100%; image-rendering: pixelated; } .lv-q.txt { width: auto; font-size: 10px; padding: 0 5px; } .lv-q.on, .lv-q:hover { border-color: var(--ember); color: var(--ink); }

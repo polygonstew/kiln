@@ -14,7 +14,7 @@ const remember = path => pref.set('games.recent', [path, ...pref.get('games.rece
 
 // what the areas hold of the game open now (the actor, scene, level… being edited, Forge's description, Stage tuning):
 // forgotten when another game opens, so nothing of one game shows up in the next
-const HELD = ['anim.cur', 'scene.cur', 'level.cur', 'hud.cur', 'hud.states', 'logic.cur', 'logic.graph', 'dialogue.cur', 'forge.results', 'forge.tiles', 'forge.icons', 'forge.bg', 'stage.tune', 'concepts.session'];
+export const HELD = ['anim.cur', 'scene.cur', 'level.cur', 'hud.cur', 'hud.states', 'logic.cur', 'logic.graph', 'dialogue.cur', 'forge.results', 'forge.tiles', 'forge.icons', 'forge.bg', 'stage.tune', 'concepts.session'];
 // switch, then (before) anything to do in the new folder first, then start Kiln again clean in it, saying hello
 async function switchTo(path, scaffold = false, before = null, hello = '', tab = '') {
   await api('/api/fs', { op: 'root', path, scaffold });
