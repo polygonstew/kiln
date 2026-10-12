@@ -1,11 +1,14 @@
 // Brains: ready-made behaviours for actors (player platformer, patrol, flyer). Each is one short, commented
 // GDScript that sits on a "Brain" node under a Kiln actor and drives it (its parent). Kiln picks the defaults;
 // the numbers are sliders in the Workshop and @export vars in Godot, and the script itself is plain text you can
-// open and change in Logic. Shared copies are written to sprites/_kiln/brains/<id>.gd.
+// open and change in Logic. Shared copies are written to _kiln/brains/<id>.gd. The brains of the other game paths
+// (top-down, point & click) are in brains_more.js and join these; which one a role gets depends on the path.
+import { MORE, MORE_GD } from './brains_more.js';
+import { roleBrain } from './gametype.js';
 
 // params: [name, label, min, max, step, default, hint]
 export const BRAINS = {
-  player: { label: 'Player (platformer)', desc: 'Run, jump (higher while held), coyote time, ladders, swimming, attack (X) and shoot (C).',
+  player: { label: 'Player (platformer)', desc: 'Run, jump (higher while held), coyote time, ladders, swimming, pushing crates, attack (X) and shoot (C).',
     params: [['speed', 'Run speed', 30, 240, 5, 90, 'px/s'], ['jump_height', 'Jump height', 8, 120, 2, 40, 'px'], ['jump_time', 'Time to top', .15, .8, .01, .35, 's'],
       ['coyote_time', 'Coyote time', 0, .2, .01, .08, 's to still jump after leaving a ledge']] },
   patrol: { label: 'Patrol (walker)', desc: 'Walks back and forth, turns at walls and ledges, hurts the player on touch.',
@@ -68,6 +71,11 @@ func _physics_process(delta: float) -> void:
 \t\t\tactor.velocity.y *= 0.5   # let go early for a short hop
 \t\tactor.velocity.x = move_toward(actor.velocity.x, dir * speed, speed * 10.0 * delta)
 \tactor.move_and_slide()
+\tfor i in actor.get_slide_collision_count():     # walking into a crate pushes it (Levels → Things → Crate)
+\t\tvar c := actor.get_slide_collision(i)
+\t\tvar crate := c.get_collider() as Node
+\t\tif crate and crate.is_in_group("pushable") and absf(c.get_normal().x) > 0.7:
+\t\t\tcrate.push(-c.get_normal().x)
 \tif dir != 0.0:
 \t\tsprite.flip_h = dir < 0.0
 \tif Input.is_action_just_pressed("attack"):
@@ -169,5 +177,8 @@ func _physics_process(delta: float) -> void:
 `,
 };
 
-// role → the brain Kiln picks unless you choose another
-export const defaultBrain = role => ({ hero: 'player', enemy: 'patrol', flyer: 'flyer', boss: 'patrol' })[role] || '';
+Object.assign(BRAINS, MORE);
+Object.assign(BRAIN_GD, MORE_GD);
+
+// role → the brain Kiln picks unless you choose another: it follows the game's path (gametype.js)
+export const defaultBrain = role => roleBrain(role);

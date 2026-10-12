@@ -9,6 +9,7 @@ from pathlib import Path
 import play
 import release
 import tidy
+import video
 import writer
 from store import settings, save_settings
 from cloud import CF_ENV, CF_FREE, CLOUD_CAP, cf_used, cloud_image, cloud_spent, free_today, keys, openrouter_left, post_json
@@ -490,6 +491,7 @@ LAYOUT = {
     'backgrounds': 'Parallax scenes: one folder per scene, a PNG per layer + scene.json (+ Godot .tscn)',
     'tiles': 'Tilesets: tileset PNG + tileset.json',
     'levels': 'Levels: one folder per level: tileset PNG, Godot TileSet .tres (solid tiles collide), .tscn with a TileMapLayer, level.json',
+    'rooms': 'Point & click rooms: one folder per room: background (+ front) PNG and a .tscn with the walk area, hotspots and entries',
     'hud': 'Bars, gauges, panels, icons: PNG parts + hud.json (9-slice margins, fill rects)',
     'fonts': 'Bitmap fonts: atlas PNG + BMFont .fnt (Godot, Unity, LÖVE read it)',
     'palettes': 'Palettes as .hex (one colour per line) + swatch PNG',
@@ -631,7 +633,7 @@ def list_projects():
                 d = json.loads(f.read_text())
                 meta = dict(d.get('meta', {}))
                 # which scene/level/actor this file belongs to, so the editor never saves a different one over it
-                body = next((d[k] for k in ('scene', 'level', 'actor', 'hud') if isinstance(d.get(k), dict)), {})
+                body = d.get(meta.get('kind')) if isinstance(d.get(meta.get('kind')), dict) else next((d[k] for k in ('scene', 'level', 'actor', 'hud') if isinstance(d.get(k), dict)), {})
                 meta.setdefault('sid', body.get('id'))
             except Exception:
                 meta = {}
@@ -696,6 +698,8 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/release/file':
                 data = release.file(q.get('f', ''))
                 return self.send(200, data, 'application/zip') if data else self.send(404, {'err': 'no such release'})
+            if u.path == '/api/video/status':
+                return self.send(200, video.STATE)
             if u.path == '/api/play/status':
                 return self.send(200, {**play.STATE, 'built': play.built(), 'secure': play.secure_url(PORT)})
             if u.path == '/play' or u.path.startswith('/play/'):
@@ -800,6 +804,12 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/export':
                 d, files = write_files(b['dest'], b['files'])
                 return self.send(200, {'dir': d, 'files': files})
+            if u.path == '/api/video/card':     # {text, seconds, name, colour?} → a title card, videos/<name>.ogv
+                nm = re.sub(r'[^a-z0-9_]+', '_', b['name'].lower()).strip('_') or 'card'
+                return self.send(200, {'file': video.card(b['text'], b.get('seconds', 3), nm, settings()['root'], re.sub(r'[^0-9a-fA-F]', '', b.get('colour', '10223a'))[:6] or '10223a')})
+            if u.path == '/api/video':          # {path: a video file (an upload lands in videos/.src/ first), name} → videos/<name>.ogv
+                video.convert(in_home(b['path']), re.sub(r'[^a-z0-9_]+', '_', b['name'].lower()).strip('_') or 'video', settings()['root'])
+                return self.send(200, {'ok': True})
             self.send(404, {'err': 'not found'})
         except Exception as ex:
             self.send(500, {'err': str(ex)})

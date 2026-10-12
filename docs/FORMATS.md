@@ -160,3 +160,15 @@ arrays of `{id, name, text, link?: 'level:<n>'|'scene:<n>', done?}`, `story.them
 `{kind: 'scene'|'actor', name}`, `cast.notes` `{<actor>: {want, flaw, voice, notes}}`, `levels.notes` `{<level>: text}`,
 `<section>.thoughts` the questions answered from the Stuck? panel (`{name: question, text: answer}`).
 
+
+## Game paths, Flow, Rooms (2026-10-12)
+
+- `kiln/game-path.json`: `{ game: { path, puzzle } }`: scroller, topdown, puzzle (push / stack), adventure, text, fmv, wild (none saved = wild).
+- `kiln/flow-game.json` (Flow): `{ flow: { nodes: [{ id, kind, name, x, y, video, menu, level, room, entry, dialogue, picture, text, options, seconds, fallback, from, to, action, flag, item }], links: [{ from, out, to }], start } }`
+  → `flow/game.json` (res:// paths) played by `_kiln/game/flow.gd`; story pages by `_kiln/ui/story.gd` (extends the dialogue runner).
+- `kiln/room-<name>.json` (Rooms) → `rooms/<name>/<name>.tscn` (room.gd: Background, Walk = NavigationRegion2D from the outline cut into triangles, Entries, Hotspots with hotspot.gd + CollisionPolygon2D + Stand, Front), `background.png`, `front.png`, `room.json`.
+- `kiln/items-adventure.json` → `adventure/items.json` `{ items: [{ id, name, look, icon }], combos: [{ a, b, makes, text }] }`; runtime `_kiln/adventure/{adventure,room,hotspot}.gd`, brain `_kiln/brains/walker.gd`.
+- `videos/<name>.ogv` (Theora/Vorbis via ffmpeg; originals in `videos/.src/`), `pictures/*.png` (Flow and story pictures), dialogue lines may carry `pic`.
+- Levels: crate entities `{ type: 'crate', tile, x, y }` → CharacterBody2D with `_kiln/level/crate.gd`; Door zones with target `flow` → `flow:<zone name>`.
+- Puzzle stack: `_kiln/puzzle/stacker.gd` (runs like a Logic script; a zone named `goal` is the line). Top-down brains: topdown, chaser, turret (brains_more.js); KilnInput gains aim_* actions and `twin_stick()`.
+- Save game (point & click): `user://adventure_save.json` `{ room, x, y, carried, flags, gone }`.

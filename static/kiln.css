@@ -499,7 +499,6 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .tour-offer small { color: var(--faint); }
 .lv-tools { display: inline-flex; align-items: center; gap: 2px; } .lv-tools .ibtn:disabled { opacity: .35; } .lv-sel { display: inline-flex; align-items: center; gap: 4px; font: 11px var(--mono); color: #e3b04b; }
 .play-log { background: #0e0e0d; border: 1px solid var(--line); padding: 8px; font: 11px/1.5 var(--mono); color: var(--dim); max-height: 220px; overflow: auto; white-space: pre-wrap; margin: 0; }
-#playbtn { margin-left: 10px; align-self: center; }
 /* Menus (menus.js): preview mirrors kiln_menu.gd */
 .mn-pv { position: relative; } .mn-screen { position: absolute; left: 0; top: 0; width: 480px; height: 270px; transform-origin: 0 0; overflow: hidden; image-rendering: pixelated; font-family: var(--sans); }
 .mn-dim { position: absolute; inset: 0; background: #000; } .mn-box { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: calc(var(--s) / 3); }
@@ -745,3 +744,71 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .tl-eye svg, .tl-lock svg { width: 12px; height: 12px; } .tl-eye:hover, .tl-lock:hover { color: var(--ink); }
 .tl-lock { opacity: 0; } .tl-name:hover .tl-lock, .tl-lock.on { opacity: 1; } .tl-lock.on { color: var(--warn); }
 
+
+/* Game paths (gametype.js): the kind-of-game cards in New game / Kind of game; each card wears its path's tint */
+.gp-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.gp-card { --gp: var(--ember); display: flex; flex-direction: column; gap: 4px; text-align: left; padding: 10px 12px 10px 14px; background: var(--p2); border: 1px solid var(--line); border-left: 3px solid var(--gp); border-radius: 2px; color: var(--ink); font: inherit; cursor: pointer; }
+.gp-card:hover { background: var(--p3); } .gp-card.on { border-color: var(--gp); box-shadow: inset 0 0 0 1px var(--gp); background: color-mix(in srgb, var(--gp) 10%, var(--p2)); }
+.gp-card b { font: 600 12px var(--cond); letter-spacing: .1em; text-transform: uppercase; color: var(--gp); }
+.gp-card small { color: var(--ink); opacity: .85; line-height: 1.35; } .gp-card i { color: var(--dim); font-size: 11px; }
+.gp-card[data-path=wild] { --gp: var(--ink); border-left: 0; padding-left: 17px; background: linear-gradient(#f29a3a, #ff4f6d, #b48cff, #36c3ae) left / 3px 100% no-repeat, var(--p2); }
+.gp-sub { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.gm-row .gm-kind { flex: none; font: 600 10px var(--cond); letter-spacing: .1em; text-transform: uppercase; }
+
+/* Rooms (point & click): left list, picture fields, picker, items, puzzle flow, script */
+.rm-list { display: flex; flex-direction: column; gap: 2px; }
+.rm-list button { text-align: left; background: none; border: 0; border-left: 2px solid transparent; color: var(--ink); font: inherit; padding: 3px 8px; cursor: pointer; border-radius: 2px; }
+.rm-list button:hover { background: var(--p2); } .rm-list button.on { border-left-color: var(--ember); background: var(--p2); } .rm-list small { color: var(--dim); }
+.rm-pic { display: flex; align-items: center; gap: 6px; } .rm-pic img { height: 28px; max-width: 60px; object-fit: cover; image-rendering: pixelated; border: 1px solid var(--line); }
+.rm-acts { display: flex; gap: 6px; flex-wrap: wrap; } .rm-how { padding-left: 18px; margin: 6px 0 0; } .rm-how li { margin: 2px 0; }
+.rm-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; max-height: 60vh; overflow: auto; }
+.rm-pick { display: flex; flex-direction: column; gap: 4px; padding: 6px; background: var(--p2); border: 1px solid var(--line); border-radius: 2px; color: var(--ink); cursor: pointer; font: inherit; }
+.rm-pick:hover { border-color: var(--ember); } .rm-pick img { width: 100%; height: 84px; object-fit: contain; image-rendering: pixelated; background: #0e0e0d; } .rm-pick b { font-size: 11px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.it-rows { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; } .it-row { display: flex; align-items: center; gap: 6px; } .it-row .grow { flex: 1; }
+.it-pic { width: 34px; height: 34px; flex: none; background: var(--p2); border: 1px solid var(--line); color: var(--dim); cursor: pointer; padding: 0; } .it-pic img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.it-icons { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px; margin-bottom: 10px; background: var(--p1); border: 1px solid var(--line); }
+.it-icons button { width: 36px; height: 36px; padding: 2px; background: var(--p2); border: 1px solid var(--line); color: var(--dim); cursor: pointer; font-size: 10px; } .it-icons img { width: 100%; height: 100%; object-fit: contain; image-rendering: pixelated; }
+.fl-scroll { overflow: auto; max-height: 56vh; padding: 10px; background: var(--p1); border: 1px solid var(--line); }
+.fl-board { position: relative; }
+.fl-card { position: absolute; display: flex; flex-direction: column; gap: 1px; padding: 5px 8px; background: var(--p2); border: 1px solid var(--line); border-left: 3px solid #e3b04b; border-radius: 2px; overflow: hidden; font-size: 11px; }
+.fl-card small { color: var(--dim); font-size: 10px; } .fl-card b { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .fl-card span { color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fl-card i { font-style: normal; color: #cfb6ff; margin-left: 6px; }
+.fl-card.k-pick { border-left-color: #9cc76b; } .fl-card.k-go { border-left-color: #6fb3d9; } .fl-card.k-talk { border-left-color: #c06bd6; } .fl-card.k-start, .fl-card.k-combo { border-left-color: var(--ember); }
+.fl-p { margin: 3px 0; } .fl-p.bad { color: var(--bad); }
+.sc-page { max-height: 74vh; overflow: auto; } .sc-page section { margin-bottom: 16px; }
+.sc-line { margin: 8px 0 8px 12px; } .sc-line b { font: 600 11px var(--cond); letter-spacing: .12em; } .sc-line small { color: var(--dim); margin-left: 8px; } .sc-line p { margin: 2px 0 0; font-family: var(--mono); font-size: 12px; }
+.sc-choice { margin: 2px 0 2px 28px; color: #cfb6ff; font-size: 12px; }
+
+/* the top bar (topbar.js): game chip, the path's tabs, More, popups; Play sits on the right */
+#rootchip { display: none; }           /* the game chip shows the folder; files.js still keeps the Godot status here */
+#gamechip { display: flex; align-items: center; gap: 8px; padding: 0 14px; background: none; border: 0; border-right: 1px solid var(--line); color: var(--ink); cursor: pointer; white-space: nowrap; max-width: 300px; }
+#gamechip:hover { background: var(--p2); } #gamechip i { width: 8px; height: 8px; flex: none; }
+#gamechip b { font: 600 13px var(--cond); overflow: hidden; text-overflow: ellipsis; } #gamechip small { font: 600 9px var(--cond); letter-spacing: .12em; text-transform: uppercase; color: var(--ember2); }
+#gamechip .caret { color: var(--faint); font-size: 11px; }
+#top { box-shadow: inset 0 -2px 0 -1px color-mix(in srgb, var(--ember) 35%, transparent); }
+#tabs button { padding: 0 11px; font-size: 11px; }
+#tabs .tb-more { color: var(--faint); }
+#stylechip { margin-left: 8px; }
+#journey { align-self: center; margin-left: auto; }   /* Play lives inside Stage, Flow and Rooms, not up here */
+.tb-pop { position: fixed; z-index: 60; min-width: 200px; background: var(--p1); border: 1px solid var(--line2); box-shadow: 0 12px 40px #000a; padding: 4px; display: flex; flex-direction: column; }
+.tb-pop button { display: flex; flex-direction: column; align-items: flex-start; text-align: left; background: none; border: 0; color: var(--ink); font: 13px var(--sans); padding: 6px 10px; cursor: pointer; border-radius: 2px; }
+.tb-pop button:hover { background: var(--p2); } .tb-pop small { color: var(--dim); font-size: 11px; }
+.tb-head { padding: 6px 10px 8px; border-bottom: 1px solid var(--line); margin-bottom: 4px; display: flex; flex-direction: column; gap: 2px; } .tb-head small { color: var(--dim); font: 11px var(--mono); }
+
+/* Flow (flow.js / flow_view.js): the game's scenes on a board */
+.fw-board { flex: 1; min-height: 0; position: relative; overflow: hidden; background: #0e0e0d radial-gradient(circle, #ffffff10 1px, transparent 1px) 0 0 / 24px 24px; cursor: grab; outline: none; }
+.fw-surf { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+.fw-links { position: absolute; left: 0; top: 0; width: 1px; height: 1px; overflow: visible; }
+.fw-link { fill: none; stroke: #a29e92; stroke-width: 2; cursor: pointer; pointer-events: stroke; } .fw-link:hover, .fw-link.on { stroke: var(--ember); stroke-width: 3; } .fw-link.temp { stroke: var(--ember); stroke-dasharray: 6 4; pointer-events: none; }
+.fw-node { --k: #777; position: absolute; width: 190px; background: var(--p1); border: 1px solid var(--line2); border-top: 3px solid var(--k); border-radius: 3px; cursor: move; box-shadow: 0 6px 18px #0008; user-select: none; }
+.fw-node.on { border-color: var(--k); box-shadow: 0 0 0 1px var(--k), 0 6px 18px #0008; }
+.fw-node header { display: flex; align-items: center; justify-content: space-between; padding: 5px 9px 0; } .fw-node header small { font: 600 9px var(--cond); letter-spacing: .14em; text-transform: uppercase; color: var(--k); }
+.fw-start { font: 700 9px var(--cond); letter-spacing: .14em; color: #000; background: var(--ember); padding: 1px 5px; border-radius: 2px; }
+.fw-name { padding: 1px 9px; font-weight: 600; font-size: 13px; } .fw-sum { padding: 0 9px 6px; color: var(--dim); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fw-in { position: absolute; left: -6px; top: 14px; width: 10px; height: 10px; border-radius: 50%; background: var(--p3); border: 2px solid var(--k); }
+.fw-out { display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding: 3px 0 3px 9px; border-top: 1px solid var(--line); font-size: 11px; color: var(--ink); position: relative; }
+.fw-dot { width: 11px; height: 11px; border-radius: 50%; background: var(--k); margin-right: -6px; cursor: crosshair; border: 2px solid var(--p1); } .fw-dot:hover { transform: scale(1.3); }
+.fw-palette { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; } .fw-palette button { --k: #777; text-align: left; background: var(--p2); border: 1px solid var(--line); border-left: 3px solid var(--k); color: var(--ink); font: 12px var(--sans); padding: 5px 8px; cursor: pointer; border-radius: 2px; } .fw-palette button:hover { background: var(--p3); }
+.fw-shape { display: flex; flex-direction: column; align-items: flex-start; width: 100%; margin-bottom: 4px; text-align: left; } .fw-shape small { color: var(--dim); font-weight: 400; white-space: normal; }
+.fw-opts { display: flex; flex-direction: column; gap: 4px; } .fw-opts span { display: flex; gap: 4px; }
+.fw-menu { max-height: 70vh; overflow: auto; }

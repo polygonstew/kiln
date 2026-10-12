@@ -34,7 +34,7 @@ level background). Everything it writes is plain Godot (`.tscn`, `.tres`, `.gd`)
 
 Everywhere: **▶ Play** builds the game into the Stage (keys or a **gamepad**); the **Your game** chip shows the next step;
 **File → New game / Open game** (each game is an asset folder), **New / Open / Save** for the area you are in,
-**Export game** (Web for itch.io, Windows, Linux, macOS, the Godot project), **Make a demo game**, **Save all for Godot**, **Tidy game files**,
+**Export game** (Web for itch.io, Windows, Linux, macOS, the Godot project), **New game from a template**, **Save all for Godot**, **Tidy game files**,
 **Open…** (rename / copy / remove / restore anything you made), History, Doctor. **Ctrl+K** finds anything, **Shift+A**
 command wheel, right-click **Send to…** on every image, **?** shortcuts, tooltips on every control. Extra pages:
 **`/desk`** (home apps as windows), **Kiln Studio** (`kiln-studio`, a desktop window with meta.ai beside Kiln).
@@ -42,6 +42,14 @@ command wheel, right-click **Send to…** on every image, **?** shortcuts, toolt
 What a game folder holds: your content (`sprites/`, `backgrounds/`, `levels/`, `hud/`, `menus/`, `dialogue/`, `logic/`,
 `icons/`, `sfx/`…) and Kiln's small commented runtime in **`_kiln/`** (actor, brains, level, ui, game/input.gd), plus
 Kiln's editable projects in `kiln/`. Everything is plain Godot; a game never depends on Kiln.
+
+## Game paths (2026-10-12)
+
+New game asks what kind of game: 2D side-scroller, 2D top-down shooter, one-screen puzzler (push or stack), point & click
+adventure, text adventure, interactive movie (FMV) or the Wild card. The path tints Kiln, gives the top bar its own tabs
+and brains, and has a demo. **Flow** is the game scene by scene (video → title → level → talk → room → choice →
+quick-time → end), each scene opening in its own area; **Rooms** is point & click (walk areas, hotspots, items, puzzle
+chart, script, music, save/load).
 
 ## Docs
 

@@ -8,7 +8,7 @@ Written 2026-10-11 at the end of session 4; updated 2026-10-12 (Export game, Fil
 
 A 2D pixel-art game *authoring shell over Godot*. Eleven areas (Files, Forge, Animate, Scenes, HUD, Stage, Levels,
 Concepts, Logic, Dialogue, Menus) feed each other and save plain Godot files; ▶ Play builds the asset folder into a real
-Godot web game that runs inside the Stage, with keys or a gamepad. A newcomer can press **File → Make a demo game** and
+Godot web game that runs inside the Stage, with keys or a gamepad. A newcomer can press **File → New game from a template** and
 get a complete small game made by every area, or follow the **Your game** chip (11 steps, each with "Do it"). **File →
 Export game** makes it for players (Web zip for itch.io, Windows, Linux, macOS, Godot project); **File → New game / Open
 game** switch between games (each game is an asset folder).
@@ -23,12 +23,28 @@ Session 4 (2026-10-11) added, all committed and pushed on `main`:
 | Usability | one Open dialog (open/rename/copy/remove/restore) everywhere, HUD undo, tooltips on every control, Logic script delete/restore |
 | Readable output | Kiln's runtime in `_kiln/` (layout.js); File → Tidy game files moves an older layout (tidy.py) |
 | Controller | KilnInput (`_kiln/game/input.gd`): every action on keys + gamepad; pause works without a pause menu |
-| Whole game | File → Make a demo game (demo.js), File → Save all for Godot (saveall.js), Your game journey (journey.js) |
+| Whole game | File → New game from a template (demo.js, demo_paths.js), File → Save all for Godot (saveall.js), Your game journey (journey.js) |
 | Forge makers | What are you making? → Sprite (+ UI pieces), **Background** in depth layers → Scenes, **Tileset** → Levels, **Icon set** → icons/ |
 | Export game (10-12) | release.py (on play.prepare) + release.js: five targets as zips in build/releases/; shipped games set `playtest = false` |
 | File menu (10-12) | games.js New game / Open game; New / Open / Save press buttons marked `data-file` (see DEVELOPING Conventions) |
 | Game doc (10-12) | first tab: the design doc (gamedoc*.js), Stuck? sparks, ✦ free ideas (writer.py), pitch page, docs/GAME.md |
 | Layers (10-12) | layers.js: one modern layer list in Scenes, HUD, Levels; eye/lock in Puppet rows and the Forge Background maker |
+
+## Session 5 (2026-10-12): game paths, Flow, Rooms
+
+| | |
+|---|---|
+| Paths | gametype.js: scroller / topdown / puzzle (push, stack) / adventure / text / fmv / wild; tint, per-path tabs (topbar.js), brains per role, level size, journey steps |
+| Top bar | topbar.js: game chip (switch game, kind of game), the path's tabs, More ▾; New/Open game restart Kiln clean (games.js restart) |
+| Flow | flow.js + flow_view.js (board) + flow_godot.js (flow.gd) + story_godot.js (story.gd); video.py (ffmpeg → .ogv, title cards) |
+| Rooms | rooms.js, rooms_canvas.js, rooms_inspect.js, rooms_items.js, rooms_flow.js (puzzle chart), rooms_script.js; adventure_gd.js (room/hotspot/adventure.gd), adventure_godot.js (scene writer, ear clipping) |
+| Other runtimes | brains_more.js (topdown, chaser, turret, walker), crates.js, stacker_godot.js; main.gd: camera follow/rooms/fixed, go_to_level, flow hooks |
+| Templates | demo_paths.js (shown as "templates"): one per path (adventure, text, fmv, topdown, push, stack) |
+
+Verified in headless Godot: the adventure demo played through to its ending; flow video → timed choice → quick-time →
+check → end; story pages with a typed answer; top-down shooting + room camera; push crate + exit → next level.
+Not yet run in Godot: the stacker (stack demo) and the FMV/text demos end to end (their runtimes were tested on hand-made flows).
+Next: run the stack demo, a gamepad cursor for point & click, Flow node for cutscenes made in Puppet, more Rooms polish.
 
 ## Running
 

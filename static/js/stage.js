@@ -5,7 +5,8 @@
 import { h, api, toast, on, emit, pref, field, range, select, rawURL, download } from './core.js';
 import { S as FS } from './files.js';
 import { BRAINS } from './brains.js';
-import { listScenes, gamePicks, buildGame } from './playbuild.js';
+import { listScenes, gamePicks, buildGame, buildKey, controlsText } from './playbuild.js';
+import { P as gamePath, roleBrain } from './gametype.js';
 
 const GAME = { w: 480, h: 270 };
 // what the player's body (juice.gd) takes: [key, label, min, max, step, default, unit]
@@ -17,8 +18,9 @@ let mounted = false, wantBuild = false, busy = false, built = false, live = fals
 // Kiln's https address (tailscale serve in front of Kiln; play.py secure_url) instead of showing Godot's error
 const SECURE = window.isSecureContext;
 let lists = { levels: [], scenes: [], actors: [], huds: [] }, file = { brain: {}, body: {} };
-const picks = () => pref.get('stage.build', { start: 'none' });
-const setPick = (k, v) => { pref.set('stage.build', { ...picks(), [k]: v }); markStale(true); };
+const picks = () => pref.get(buildKey(), { start: 'none' });
+const setPick = (k, v) => { pref.set(buildKey(), { ...picks(), [k]: v }); markStale(true); };
+const heroBrain = () => BRAINS[roleBrain('hero')] || BRAINS.player;      // the player's numbers follow the game's path
 const nameOf = res => (res || '').split('/').pop().replace(/\.tscn$/, '');
 
 on('play', () => { wantBuild = true; if (mounted) build(); });
@@ -155,7 +157,8 @@ function done(ok) {
 
 /* ------------------------------------------------------------ left panel ---- */
 async function drawLeft() {
-  const [levels, scenes, actors, huds] = await Promise.all(['levels', 'backgrounds', 'sprites', 'hud'].map(listScenes));
+  const [lvls, rooms, scenes, actors, huds] = await Promise.all(['levels', 'rooms', 'backgrounds', 'sprites', 'hud'].map(listScenes));
+  const levels = [...lvls, ...rooms.map(([n, p]) => ['Room: ' + n, p])], adv = !(gamePath().tabs || [['levels']]).some(t => t[0] === 'levels');
   lists = { levels, scenes, actors, huds };
   const P = await gamePicks();      // first visit: the player actor, the first level / background / HUD
   const jump = (title, fn, on) => h('button', { class: 'ibtn', title, disabled: !on, onclick: fn }, '↗');
@@ -164,9 +167,9 @@ async function drawLeft() {
   const menus = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/menus')).catch(() => ({ items: [] }));
   V.left.replaceChildren(
     h('div', { class: 'sec' }, h('h3', {}, 'In the game'),
-      row('Level', levels, 'level', 'No level (a flat floor)', 'Open this level in Levels', n => emit('open-level', n), levels.length ? '' : 'Save a level in Levels and it appears here'),
+      row(adv ? 'First room' : 'Level', levels, 'level', adv ? 'No room yet' : 'No level (a flat floor)', 'Open it in Levels or Rooms', n => /(^|\/)rooms\//.test(P.level) ? emit('open-room', n) : emit('open-level', n), levels.length ? '' : adv ? 'Save a room in Rooms and it appears here' : 'Save a level in Levels and it appears here'),
       P.level ? '' : row('Background', scenes, 'bg', 'None', 'Open this scene in Scenes', n => emit('open-scene', `${FS.root}/backgrounds/${n}`)),
-      row('Player', actors, 'player', 'Nobody', 'Open this actor in Animate', n => emit('open-actor', `${FS.root}/sprites/${n}`), actors.length ? 'Arrows, Space jumps, X attacks, C shoots' : 'Save an actor in Animate and it appears here'),
+      row('Player', actors, 'player', 'Nobody', 'Open this actor in Animate', n => emit('open-actor', `${FS.root}/sprites/${n}`), actors.length ? controlsText(P.level) : 'Save an actor in Animate and it appears here'),
       row('HUD', huds, 'hud', 'None', 'Open the HUD area', () => emit('tab', 'hud')),
       field('Starts with', select(START.filter(s => s[0] !== 'menu' || (menus.items || []).some(i => i.name === 'title.tscn')), P.start || 'none', v => setPick('start', v))),
       h('p', { class: 'note' }, 'Changes here, or saving in other areas, need a Rebuild. Esc pauses when you have a pause menu.')),
@@ -189,7 +192,7 @@ async function readFile(name) {
 const tunes = () => pref.get('stage.tune', {});
 function values(name) {       // saved numbers with the playtest changes on top
   const over = tunes()[name] || {}, out = { brain: {}, body: {} };
-  for (const [k, , , , , d] of BRAINS.player.params) out.brain[k] = over.brain?.[k] ?? file.brain[k] ?? d;
+  for (const [k, , , , , d] of heroBrain().params) out.brain[k] = over.brain?.[k] ?? file.brain[k] ?? d;
   for (const [k, , , , , d] of BODY) out.body[k] = over.body?.[k] ?? file.body[k] ?? d;
   return out;
 }
@@ -221,5 +224,5 @@ async function tuneSection(name) {
   drawKeep();
   return h('div', { class: 'sec' }, h('h3', {}, 'Tune the player', h('span', { class: 'grow' }), h('small', {}, name + (changed ? ' · changed' : ''))),
     h('p', { class: 'note', style: { marginTop: 0, marginBottom: '8px' } }, 'These change the game while you play. Nothing is saved until Keep.'),
-    ...BRAINS.player.params.map(p => slider('brain', p)), ...BODY.map(p => slider('body', p)), keepBox);
+    ...heroBrain().params.map(p => slider('brain', p)), ...BODY.map(p => slider('body', p)), keepBox);
 }

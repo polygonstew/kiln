@@ -96,8 +96,8 @@ export const NODES = {
     run: c => c.f.actor ? [`_spawn(${JSON.stringify(c.res(c.f.actor))}, _zone_spot(${JSON.stringify(c.f.zone)}))`] : ['pass  # pick an actor'], use: ['_player', '_spawn', '_zone_spot'] },
   sound: { cat: 'act', label: 'Play a sound', fields: [['file', 'Sound', 'sound', '']],
     run: c => c.f.file ? [`_sound(${JSON.stringify(c.res(c.f.file))})`] : ['pass  # pick a sound'], use: ['_sound'] },
-  give: { cat: 'act', label: 'Give an item', hint: 'Into the HUD inventory', ins: [['id', 'text', 'item', 'key']], run: c => [`if _hud(): _hud().add_item(${c.in('id')})`], use: ['_hud'] },
-  take: { cat: 'act', label: 'Take an item', ins: [['id', 'text', 'item', 'key']], run: c => [`if _hud(): _hud().remove_item(${c.in('id')})`], use: ['_hud'] },
+  give: { cat: 'act', label: 'Give an item', hint: 'Into the HUD inventory', ins: [['id', 'text', 'item', 'key']], run: c => [`if _items(): _items().add_item(${c.in('id')})`], use: ['_items'] },
+  take: { cat: 'act', label: 'Take an item', ins: [['id', 'text', 'item', 'key']], run: c => [`if _items(): _items().remove_item(${c.in('id')})`], use: ['_items'] },
   send: { cat: 'act', label: 'Send a message', hint: 'Every graph\'s "When a message arrives" with this name runs', fields: [['name', 'Message', 'text', 'open_gate']],
     run: c => [`get_tree().call_group("kiln_logic", "_kiln_message", ${JSON.stringify(c.f.name)})`] },
   speed: { cat: 'act', label: 'Game speed', hint: '1 = normal, 0.3 = slow motion', ins: [['v', 'num', 'speed', 1]], run: c => [`Engine.time_scale = ${c.in('v')}`] },
@@ -121,7 +121,7 @@ export const NODES = {
     out: { v: c => `(${c.in('a')} ${c.f.op} ${c.in('b')})` } },
   not: { cat: 'val', label: 'Not', ins: [['a', 'bool', '', true]], outs: [['v', 'bool']], out: { v: c => `(not ${c.in('a')})` } },
   held: { cat: 'val', label: 'Key held', fields: [['key', '', 'key', 'move_right']], outs: [['v', 'bool']], out: { v: c => keyHeld(c.f.key) } },
-  has: { cat: 'val', label: 'Has an item', ins: [['id', 'text', 'item', 'key']], outs: [['v', 'bool']], out: { v: c => `(_hud() != null and _hud().has_item(${c.in('id')}))` }, use: ['_hud'] },
+  has: { cat: 'val', label: 'Has an item', ins: [['id', 'text', 'item', 'key']], outs: [['v', 'bool']], out: { v: c => `(_items() != null and _items().has_item(${c.in('id')}))` }, use: ['_items'] },
   join: { cat: 'val', label: 'Join text', ins: [['a', 'text', '', 'Score: '], ['b', 'text', '', '']], outs: [['v', 'text']], out: { v: c => `(${c.in('a')} + ${c.in('b')})` } },
   flag: { cat: 'val', label: 'Dialogue flag is set', hint: 'A flag a dialogue line or choice set', fields: [['name', 'Flag', 'text', 'met_miner']], outs: [['v', 'bool']], out: { v: c => `_flag(${JSON.stringify(c.f.name)})` }, use: ['_flag'] },
   level: { cat: 'val', label: 'Level is', fields: [['name', 'Level', 'text', '']], outs: [['v', 'bool']], out: { v: c => `_level_is(${JSON.stringify(c.f.name)})` }, use: ['_level_is'] },
@@ -162,6 +162,9 @@ export const HELPERS = {
   _flag: `func _flag(flag: String) -> bool:   # set by a dialogue line or choice
 \tvar r := get_tree().get_first_node_in_group("kiln_dialogue")
 \treturn r != null and r.flags.has(flag)`,
+  _items: `func _items() -> Node:   # who carries the items: the point & click inventory, else the Kiln HUD
+\tvar i := get_tree().get_first_node_in_group("kiln_items")
+\treturn i if i else get_tree().get_first_node_in_group("kiln_hud")`,
   _hud: `func _hud() -> Node:   # the Kiln HUD, or null
 \treturn get_tree().get_first_node_in_group("kiln_hud")`,
   _say: `func _say(who: String, line: String) -> void:   # the HUD dialogue box, or the output if there is no HUD

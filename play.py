@@ -8,7 +8,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 BUILD = ROOT / 'build'
 GAME, WEB = BUILD / 'game', BUILD / 'web'
-ASSET_DIRS = ['sprites', 'backgrounds', 'levels', 'hud', 'fonts', 'sfx', 'vfx', 'scripts', 'tiles', 'menus', 'logic', 'dialogue', '_kiln']
+ASSET_DIRS = ['sprites', 'backgrounds', 'levels', 'rooms', 'adventure', 'videos', 'pictures', 'hud', 'fonts', 'sfx', 'music', 'vfx', 'icons', 'scripts', 'tiles', 'menus', 'logic', 'dialogue', '_kiln']
 STATE = {'running': False, 'log': [], 'ok': None, 'at': 0}
 
 PROJECT = '''config_version=5

@@ -3,6 +3,7 @@
 // slime enemy, an old miner to talk to, a parallax night wood, a two-screen level (platforms, a ladder, spikes, zones),
 // a HUD with a dialogue box, menus, a conversation with a choice, a Logic graph tying it together, and a coin sound.
 // Everything is written as Kiln projects, saved for Godot by each area (saveall.js), then played in the Stage.
+// The other game paths have their own demos (demo_paths.js), made from the same pieces exported here.
 import { h, api, toast, emit, pref, uid, newImg, toDataURL, outline } from './core.js';
 import { S as FS, loadSettings } from './files.js';
 import { autoRig, prepare, render, motion, PRESETS as MOTIONS } from './rig.js';
@@ -12,13 +13,15 @@ import { DEFAULTS as MENU_DEFAULTS } from './menus.js';
 import { starterHud } from './hud.js';
 import { PRESETS as SOUNDS, synth, wav } from './sfx.js';
 import { saveAll } from './saveall.js';
+import { buildKey } from './playbuild.js';
+import { setPath } from './gametype.js';
 
 /* ------------------------------------------------------------- drawing ---- */
 const hex = s => [parseInt(s.slice(1, 3), 16), parseInt(s.slice(3, 5), 16), parseInt(s.slice(5, 7), 16)];
-const HERO = { skin: '#e8b796', hair: '#6b3d1f', tunic: '#3f6fb5', dark: '#2c4f86', belt: '#7a5230', legs: '#4a4a58', boots: '#2e2620', blade: '#cfd3dc', line: '#1b1420' };
-const MINER = { ...HERO, hair: '#a8a8a8', tunic: '#7a5a3a', dark: '#5a412a', legs: '#3e3a36', blade: '#00000000' };
+export const HERO = { skin: '#e8b796', hair: '#6b3d1f', tunic: '#3f6fb5', dark: '#2c4f86', belt: '#7a5230', legs: '#4a4a58', boots: '#2e2620', blade: '#cfd3dc', line: '#1b1420' };
+export const MINER = { ...HERO, hair: '#a8a8a8', tunic: '#7a5a3a', dark: '#5a412a', legs: '#3e3a36', blade: '#00000000' };
 // a side-view figure, 32×32, facing right, feet on the bottom row: rect by rect, then an outline
-function figure(c) {
+export function figure(c) {
   const im = newImg(32, 32), px = (x, y, w, hh, col) => { if (col.length > 7) return; const v = hex(col); for (let j = y; j < y + hh; j++) for (let i = x; i < x + w; i++) im.data.set([...v, 255], (j * 32 + i) * 4); };
   px(12, 4, 8, 8, c.skin); px(11, 3, 9, 3, c.hair); px(11, 6, 3, 4, c.hair); px(18, 8, 1, 1, c.line);     // head, hair, eye
   px(10, 12, 3, 9, c.dark);                                                                            // back arm
@@ -29,7 +32,7 @@ function figure(c) {
   return outline(im, hex(c.line));
 }
 // a slime: a squashable blob with eyes; k = how squashed (0..1)
-function slime(k = 0, white = false) {
+export function slime(k = 0, white = false) {
   const im = newImg(20, 16), w = 16 + k * 4, hh = 12 - k * 4, cx = 10, base = 15, body = white ? [255, 255, 255] : [86, 186, 92], shade = white ? [230, 230, 230] : [52, 128, 60];
   for (let y = 0; y < 16; y++) for (let x = 0; x < 20; x++) {
     const dx = (x + .5 - cx) / (w / 2), dy = (y + .5 - (base - hh / 2)) / (hh / 2);
@@ -41,11 +44,11 @@ function slime(k = 0, white = false) {
 
 /* ------------------------------------------------------------- actors ---- */
 // frames as Kiln saves them in a project (data URLs, hit boxes beside them)
-const anim = (name, frames, fps, loop, span = 1) => ({ name, fps, loop, span, frames });
-const project = a => ({ meta: { kind: 'actor', name: a.name, thumb: toDataURL(a.anims[0].frames[0]) },
+export const anim = (name, frames, fps, loop, span = 1) => ({ name, fps, loop, span, frames });
+export const project = a => ({ meta: { kind: 'actor', name: a.name, thumb: toDataURL(a.anims[0].frames[0]) },
   actor: { ...a, anims: a.anims.map(n => ({ ...n, frames: n.frames.map(f => toDataURL(f)), boxes: n.frames.map(f => f.boxes || null) })) } });
 // the hero: drawn once, rigged with Puppet's bones, every motion made from the rig
-function hero(name, colours, role, withMotions) {
+export function hero(name, colours, role, withMotions) {
   const base = figure(colours), rig = autoRig(base), P = prepare(base, rig, rig.parts, true);
   const anims = [];
   for (const k of withMotions) {
@@ -58,7 +61,7 @@ function hero(name, colours, role, withMotions) {
   if (role === 'hero') a.sounds = { jump: SOUNDS.jump(), attack: SOUNDS.shoot(), hurt: SOUNDS.hurt(), die: SOUNDS.die() };
   return project(a);
 }
-function slimeActor() {
+export function slimeActor() {
   const a = { id: uid(), name: 'slime', w: 20, h: 16, desc: 'A green slime that patrols', role: 'enemy', brain: 'patrol', brainParams: { speed: 22, turn_at_ledges: 1 }, pal: [],
     react: { knockback: 120, iframes: .3, health: 2 }, sounds: { hurt: SOUNDS.hit(), die: SOUNDS.explosion() },
     anims: [anim('idle', [slime(0), slime(.25)], 4, true), anim('walk', [slime(0), slime(.3), slime(.6), slime(.3)], 8, true),
@@ -67,7 +70,7 @@ function slimeActor() {
 }
 
 /* --------------------------------------------------------- the world ---- */
-function scene(name) {
+export function scene(name) {
   const layers = SCENES.wood.layers.map(([g, params]) => {
     const G = GENS[g], p = { ...Object.fromEntries(G.params.map(q => [q[0], q[2]])), ...params };
     if (p.seed !== undefined && params.seed === undefined) p.seed = 7;
@@ -113,17 +116,20 @@ function graph() {
 }
 
 /* ------------------------------------------------------------ making it ---- */
-export async function makeDemo() {
-  const name = (prompt('Name for the demo game folder (a new asset folder; yours stays as it is)', 'demo_game') || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_');
+// pick: the game path (gametype.js) the demo shows; the other paths have their own demos (demo_paths.js)
+export async function makeDemo(pick = { path: 'scroller' }) {
+  if (!['scroller', 'wild'].includes(pick.path)) return import('./demo_paths.js').then(m => m.makePathDemo(pick));
+  const name = (prompt('Name for the new game, from the side-scroller template (a new game folder; yours stays as it is)', 'my_platformer') || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_');
   if (!name) return;
   const path = FS.settings.games + '/' + name;
   const there = await api('/api/fs?path=' + encodeURIComponent(path + '/kiln')).catch(() => ({ items: [] }));
-  if ((there.items || []).length && !confirm(`${name} already has Kiln projects. Make the demo there anyway (same names are replaced)?`)) return;
+  if ((there.items || []).length && !confirm(`${name} already has Kiln projects. Make the template there anyway (same names are replaced)?`)) return;
   const log = h('div', { class: 'play-log', style: { maxHeight: '300px' } }), step = t => { log.append(h('div', {}, t)); log.scrollTop = 1e9; };
-  const m = h('div', { class: 'modal' }, h('div', { style: { width: 'min(560px, 94vw)' } }, h('header', {}, h('span', { class: 'grow' }, 'Making the demo game')),
+  const m = h('div', { class: 'modal' }, h('div', { style: { width: 'min(560px, 94vw)' } }, h('header', {}, h('span', { class: 'grow' }, 'Making the game from the template')),
     h('div', { class: 'body' }, h('p', { class: 'note', style: { marginTop: 0 } }, 'Every area takes its turn: watch the tabs. It takes about a minute.'), log)));
   document.body.append(m);
   await api('/api/fs', { op: 'root', path, scaffold: true }); await loadSettings();
+  await setPath(pick.path === 'wild' ? 'wild' : 'scroller');
   const put = (id, data) => api('/api/project', { id, data });
   step('Drawing and rigging the hero (Puppet: idle, walk, run, jump, attack, hurt, death)…');
   await put('actor-hero', hero('hero', HERO, 'hero', ['idle', 'walk', 'run', 'jump', 'attack', 'hurt', 'death']));
@@ -143,7 +149,7 @@ export async function makeDemo() {
   step('Every area saves its part for Godot:');
   const r = await saveAll(t => step('  ' + t));
   if (r.failed.length) step('Some parts failed: ' + r.failed.join('; '));
-  pref.set('stage.build', { level: 'res://levels/demo/demo.tscn', player: 'res://sprites/hero/hero.tscn', hud: 'res://hud/hud/hud.tscn', start: 'menu' });
+  pref.set(buildKey(), { level: 'res://levels/demo/demo.tscn', player: 'res://sprites/hero/hero.tscn', hud: 'res://hud/hud/hud.tscn', start: 'menu' });
   step('Done. Building it in the Stage…');
-  setTimeout(() => { m.remove(); emit('play'); toast('The demo game is ready: open any area to see how its part was made', 'ok'); }, 900);
+  setTimeout(() => { m.remove(); emit('play'); toast('Your game from the template is ready: open any area to see how its part was made', 'ok'); }, 900);
 }

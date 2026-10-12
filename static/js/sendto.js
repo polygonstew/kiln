@@ -20,6 +20,7 @@ export function sendItems(url, name = 'image') {
     { label: 'New actor + animations', run: () => { const v = prompt('Name for the actor', n); if (v) emit('make-actor', { url, name: slug(v), set: 'hero' }); } },
     { label: 'Scenes: new layer', run: () => emit('scene-layer', url) },
     { label: 'Levels: tileset (16 px)', run: () => emit('level-tileset', { url, tile: 16, name: n }) },
+    { label: 'Rooms: background', run: () => { emit('tab', 'rooms'); setTimeout(() => emit('room-bg', url), 300); } },
     { label: 'Concept board', run: async () => {
       const s = pref.get('concepts.session', 'ideas'), stamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 14);
       await saveFiles(`concepts/${s}`, [{ name: `${stamp}-${n}.png`, b64: await asDataURL(url) }]).then(() => toast(`Added to concept board "${s}"`, 'ok')).catch(e => toast(e.message, 'bad'));

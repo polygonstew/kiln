@@ -66,6 +66,13 @@ export const GENRES = [
     ['Teach, test, twist', 'each idea in three steps'], ['Optional hard rooms', 'for players who want more']]],
   ['Action / beat \'em up', [['Combos', 'moves that chain'], ['Crowds', 'several enemies at once'], ['Grabs and throws', 'use enemies as weapons'],
     ['Weapons on the ground', 'pick up, use, drop'], ['Score', 'style and speed rewarded']]],
+  ['Point & click adventure', [['A puzzle flowchart', 'every puzzle, what it needs and what it opens (Rooms → Flow)'], ['Fair clues', 'the answer is said or shown before it is needed'],
+    ['Inventory puzzles', 'use things on things, combine two items'], ['Talking as play', 'dialogue choices that open the way'], ['Look at everything', 'a funny or telling line for every hotspot'],
+    ['Few rooms, dense', 'every room earns its place'], ['No dead ends', 'the player can never be stuck for good']]],
+  ['Twin-stick shooter', [['Rooms that lock', 'clear the room, the doors open'], ['Item synergies', 'pickups that change your shot'], ['Readable bullets', 'enemy shots in one clear colour'],
+    ['A boss per floor', 'patterns to learn'], ['Short runs', 'die, learn, go again']]],
+  ['One-screen puzzle', [['One screen, one idea', 'the whole puzzle visible at once'], ['Undo / restart', 'instant, never punishing'], ['Physics you can read', 'bricks that stack and topple as expected'],
+    ['A par', 'moves or time to beat'], ['Teach, test, twist', 'each new piece in three levels']]],
   ['Shoot \'em up', [['Bullet patterns', 'readable, beautiful, dangerous'], ['Power-ups', 'spread, laser, options'], ['Bombs', 'clear the screen in a pinch'],
     ['Score chaining', 'reward risky play'], ['Bosses with phases', 'patterns change as they break']]],
 ];

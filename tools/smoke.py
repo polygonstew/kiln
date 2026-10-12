@@ -10,7 +10,7 @@ import sys
 from playwright.sync_api import sync_playwright
 
 URL = (sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8510').rstrip('/')
-AREAS = ['gamedoc', 'files', 'forge', 'animate', 'scenes', 'levels', 'hud', 'stage', 'concepts', 'logic', 'dialogue', 'menus']
+AREAS = ['gamedoc', 'files', 'forge', 'animate', 'scenes', 'levels', 'hud', 'stage', 'concepts', 'logic', 'dialogue', 'menus', 'rooms', 'flow']
 problems = []
 
 with sync_playwright() as p:
@@ -21,10 +21,10 @@ with sync_playwright() as p:
     pg.on('response', lambda r: r.status >= 500 and problems.append(f'HTTP {r.status}: {r.url[:160]}'))
     pg.on('dialog', lambda d: d.dismiss())
     pg.goto(URL + '/'); pg.wait_for_timeout(2500)
-    tabs = pg.evaluate("[...document.querySelectorAll('#tabs button')].map(b => b.dataset.id)")
-    missing = [a for a in AREAS if a not in tabs]
-    if missing: problems.append(f'areas missing from the tab bar: {missing} (a module failed to load?)')
-    for a in tabs:
+    # the tab bar shows the game path's own tabs (the rest sit under More), so every area is opened by name
+    tabs = pg.evaluate("[...document.querySelectorAll('#tabs button[data-id]')].map(b => b.dataset.id)")
+    if not tabs: problems.append('the tab bar is empty (topbar.js failed?)')
+    for a in AREAS:
         pg.evaluate(f"import('/js/core.js').then(c => c.emit('tab', '{a}'))"); pg.wait_for_timeout(2200)
         if not pg.locator(f'#v-{a}').count(): problems.append(f'{a}: view did not mount')
         print(f'  {a:9s} ok')

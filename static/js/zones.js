@@ -34,7 +34,7 @@ export function zonePanel(q, levels, changed, remove) {
     field('Does', select(ZONE_KINDS.map(([id, l]) => [id, l]), q.kind, v => { q.kind = v; changed(true); }), (ZONE_KINDS.find(r => r[0] === q.kind) || [])[3]),
     field('Name', name, q.kind === 'event' ? 'The event name your code receives' : 'Node name in Godot'),
     q.kind === 'message' ? field('Text', text) : null,
-    q.kind === 'door' ? field('Goes to', select([['', 'Pick a level…'], ...levels.map(n => [n, n])], q.target || '', v => { q.target = v; changed(true); }), 'Save that level too') : null,
+    q.kind === 'door' ? field('Goes to', select([['', 'Pick a level…'], ['flow', 'Next in the game Flow'], ...levels.map(n => [n, n])], q.target || '', v => { q.target = v; changed(true); }), q.target === 'flow' ? 'The Flow follows this door\'s name (or "done")' : 'Save that level too') : null,
     field('Once', check('only the first time', !!q.once, v => { q.once = v; changed(); })),
     h('button', { class: 'btn sm ghost danger', onclick: remove }, 'Delete zone'));
 }
@@ -43,7 +43,7 @@ export function zonePanel(q, levels, changed, remove) {
 export function zoneNodes(zones, base, extId) {
   return zones.map((q, i) => {
     const n = (q.name || `${q.kind}_${i + 1}`).replace(/[^A-Za-z0-9_]/g, '_');
-    const target = q.kind === 'door' && q.target ? `${base}levels/${q.target}/${q.target}.tscn` : '';
+    const target = q.kind !== 'door' || !q.target ? '' : q.target === 'flow' ? `flow:${q.name || 'done'}` : `${base}levels/${q.target}/${q.target}.tscn`;
     return `[node name="${n}" type="Area2D" parent="Zones"]\nposition = Vector2(${q.x + q.w / 2}, ${q.y + q.h / 2})\nscript = ExtResource("${extId}")\n`
       + `kind = "${q.kind}"\nevent_name = "${q.name || ''}"\ntarget = "${target}"\ntext = ${JSON.stringify(q.text || '')}\nonce = ${!!q.once}\n\n`
       + `[node name="Shape" type="CollisionShape2D" parent="Zones/${n}"]\nshape = SubResource("zone${i}")\n\n`;
@@ -54,7 +54,8 @@ export const zoneShapes = zones => zones.map((q, i) => `[sub_resource type="Rect
 export const ZONE_GD = `extends Area2D
 ## Kiln zone: a rectangle in a level that does something when the player (group "player") walks in.
 ##   checkpoint  remembers this spot: a "deadly" zone puts the player back here
-##   door        changes to another level (target); the player appears at that level's PlayerStart
+##   door        changes to another level (target); the player appears at that level's PlayerStart (a puzzle's exit);
+##               a target "flow:<name>" ends this scene of Kiln's Flow with the outcome <name>
 ##   message     shows text in a Kiln HUD's dialogue box (group "kiln_hud"), or prints it
 ##   deadly      pits, void: hurts the player and puts it back at the last checkpoint; other Kiln actors are removed
 ##   event       only emits triggered(): connect it to your own code
@@ -82,7 +83,12 @@ func _on_body(body: Node) -> void:
 \t\t"checkpoint":
 \t\t\tbody.set_meta("checkpoint", global_position + Vector2(0, _size().y / 2))
 \t\t"door":
-\t\t\tif target != "":
+\t\t\tvar main := get_tree().get_first_node_in_group("kiln_main")
+\t\t\tif target.begins_with("flow:") and main:
+\t\t\t\tmain.flow_done(target.substr(5))   # Kiln's Flow goes on to the next scene
+\t\t\telif target != "" and main:
+\t\t\t\tmain.go_to_level(target)          # Kiln's main.gd: the HUD, menus and Logic carry on
+\t\t\telif target != "":
 \t\t\t\tget_tree().call_deferred("change_scene_to_file", target)
 \t\t"message":
 \t\t\tvar hud := get_tree().get_first_node_in_group("kiln_hud")

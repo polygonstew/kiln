@@ -3,14 +3,16 @@
 // makes the runner when it is first needed.
 
 // the Kiln project (dialogue.js) → what the game reads
+// "ends the Flow scene as X" is the message flow:X (flow.gd listens for it)
+const effect = x => x.k === 'flow' ? { message: 'flow:' + (x.v || 'done') } : { [x.k]: x.v || '' };
 export function gameJSON(d, resPrefix = 'res://') {
   const cast = Object.fromEntries((d.cast || []).map(c => [c.name, c.actor || '']));
   const order = d.beats.map(b => b.id), beats = {};
   d.beats.forEach((b, i) => {
     const next = b.next === 'end' ? 'end' : b.next || order[i + 1] || 'end';
-    beats[b.id] = { who: b.who || '', actor: cast[b.who] || '', text: b.text || '', voice: b.voice ? resPrefix + b.voice : '', next,
-      choices: (b.choices || []).map(c => ({ text: c.text || '…', next: c.next === 'end' ? 'end' : c.next || order[i + 1] || 'end', if: c.if?.k ? { [c.if.k]: c.if.v || '' } : {}, do: (c.do || []).filter(x => x.k).map(x => ({ [x.k]: x.v || '' })) })),
-      do: (b.do || []).filter(x => x.k).map(x => ({ [x.k]: x.v || '' })) };
+    beats[b.id] = { who: b.who || '', actor: cast[b.who] || '', text: b.text || '', voice: b.voice ? resPrefix + b.voice : '', pic: b.pic ? resPrefix + b.pic : '', next,
+      choices: (b.choices || []).map(c => ({ text: c.text || '…', next: c.next === 'end' ? 'end' : c.next || order[i + 1] || 'end', if: c.if?.k ? { [c.if.k]: c.if.v || '' } : {}, do: (c.do || []).filter(x => x.k).map(effect) })),
+      do: (b.do || []).filter(x => x.k).map(effect) };
   });
   return { name: d.name, start: order[0] || 'end', beats };
 }
@@ -121,8 +123,13 @@ func _chose(c: Dictionary) -> void:
 \t_apply(c.get("do", []))
 \t_line(str(c.get("next", "end")))
 
+# who carries the items: the point & click inventory (group kiln_items) if there is one, else the Kiln HUD
+func _items() -> Node:
+\tvar i := get_tree().get_first_node_in_group("kiln_items")
+\treturn i if i else get_tree().get_first_node_in_group("kiln_hud")
+
 func _allowed(cond: Dictionary) -> bool:
-\tvar hud := get_tree().get_first_node_in_group("kiln_hud")
+\tvar hud := _items()
 \tif cond.has("item"):
 \t\treturn hud != null and hud.has_item(cond["item"])
 \tif cond.has("noitem"):
@@ -134,7 +141,7 @@ func _allowed(cond: Dictionary) -> bool:
 \treturn true
 
 func _apply(effects: Array) -> void:
-\tvar hud := get_tree().get_first_node_in_group("kiln_hud")
+\tvar hud := _items()
 \tfor e in effects:
 \t\tif e.has("give") and hud:
 \t\t\thud.add_item(e["give"])

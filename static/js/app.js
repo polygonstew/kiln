@@ -10,9 +10,11 @@ import './sendto.js';
 import { initMenus } from './menubar.js';
 import { offerTour, endTour } from './tour.js';
 import { initJourney } from './journey.js';
+import './gametype.js';        // the game's path (kind of game): tint, tabs, brains per role
+import { initTop, markTab } from './topbar.js';
 
 const mods = [files];
-const optional = ['gamedoc', 'forge', 'animate', 'scenes', 'levels', 'hud', 'stage', 'concepts', 'logic', 'dialogue', 'menus'];
+const optional = ['gamedoc', 'flow', 'forge', 'animate', 'scenes', 'levels', 'rooms', 'hud', 'stage', 'concepts', 'logic', 'dialogue', 'menus'];
 const views = {};
 let cur = null;
 
@@ -32,7 +34,7 @@ function show(id) {
     views[m.id] = el;
   }
   for (const [k, el] of Object.entries(views)) el.classList.toggle('on', k === m.id);
-  for (const b of $('#tabs').children) b.classList.toggle('on', b.dataset.id === m.id);
+  markTab(m.id);
   if (cur !== m.id) { endTour(); mods.find(x => x.id === cur)?.hide?.(); cur = m.id; m.show?.(); pref.set('tab', m.id); location.hash = m.id; setTimeout(() => cur === m.id && offerTour(m.id), 1200); }
   views[m.id].focus({ preventScroll: true });
 }
@@ -43,14 +45,13 @@ async function boot() {
   for (const n of optional) {
     try { const mod = await import(`./${n}.js`); mods.push(mod[n]); } catch (e) { if (!/Failed to fetch|Importing a module/.test(e.message)) console.error(n, e); }
   }
-  $('#tabs').replaceChildren(...mods.map(m => h('button', { 'data-id': m.id, title: m.key ? `${m.title} (key ${m.key})` : m.title, onclick: () => show(m.id) }, m.title, m.key ? h('kbd', {}, m.key) : '')));
+  initTop(mods, show);    // the game chip, the path's tabs, More
   try { await loadSettings(); } catch (e) { toast('Server not answering: ' + e.message, 'bad'); }
   on('tab', id => show(id));
   $('#stylechip').onclick = editStyle;
-  $('#tabs').after(h('button', { id: 'playbtn', class: 'btn sm go', title: 'Build a playable game from your asset folder and play it in the Stage', onclick: () => emit('play') }, '▶ Play'));
   initJourney();         // the "Your game" chip: how far the game has come, and what to make next
   // cross-tab requests switch to the tab that handles them
-  const route = { 'open-actor': 'animate', 'slice-sheet': 'animate', 'forge-image': 'forge', 'open-scene': 'scenes', 'scene-layer': 'scenes', 'use-palette': 'forge', 'to-animate': 'animate', 'forge-for': 'forge', 'level-tileset': 'levels', 'forge-guide': 'forge', 'make-actor': 'forge', 'open-level': 'levels', 'tune-actor': 'animate', 'play': 'stage' };
+  const route = { 'open-actor': 'animate', 'slice-sheet': 'animate', 'forge-image': 'forge', 'open-scene': 'scenes', 'scene-layer': 'scenes', 'use-palette': 'forge', 'to-animate': 'animate', 'forge-for': 'forge', 'level-tileset': 'levels', 'forge-guide': 'forge', 'make-actor': 'forge', 'open-level': 'levels', 'open-room': 'rooms', 'open-dialogue': 'dialogue', 'tune-actor': 'animate', 'play': 'stage' };
   for (const [ev, tab] of Object.entries(route)) on(ev, () => { if (mods.some(m => m.id === tab)) show(tab); });
   document.addEventListener('keydown', e => {
     if (e.target.matches('input,textarea,select') || e.ctrlKey || e.metaKey || e.altKey) return;
@@ -65,5 +66,8 @@ async function boot() {
       .map(b => ({ label: b.textContent.trim().slice(0, 24), hint: b.title, run: () => b.click() })),
   }));
   show(location.hash.slice(1) || pref.get('tab', 'files'));
+  const hello = sessionStorage.getItem('kiln.hello'); sessionStorage.removeItem('kiln.hello');      // after New game / Open game
+  if (hello) toast(hello, 'ok');
+  if (sessionStorage.getItem('kiln.play')) { sessionStorage.removeItem('kiln.play'); setTimeout(() => emit('play'), 800); }     // a demo just made: play it
 }
 boot();

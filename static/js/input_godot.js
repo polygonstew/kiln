@@ -9,6 +9,8 @@ export const ACTIONS = [
   ['move_up', 'Up (climb, menus)', '↑ / W', 'left stick, D-pad'], ['move_down', 'Down (crouch, climb)', '↓ / S', 'left stick, D-pad'],
   ['jump', 'Jump', 'Space / Z', 'A'], ['attack', 'Attack', 'X / J', 'X'], ['shoot', 'Shoot', 'C / K', 'B'],
   ['interact', 'Interact (talk, open)', 'E', 'Y'], ['pause', 'Pause', 'Esc / P', 'Start'], ['inventory', 'Inventory', 'I / Tab', 'Back'],
+  ['aim_left', 'Aim / shoot left (top-down)', '←', 'right stick'], ['aim_right', 'Aim / shoot right (top-down)', '→', 'right stick'],
+  ['aim_up', 'Aim / shoot up (top-down)', '↑', 'right stick'], ['aim_down', 'Aim / shoot down (top-down)', '↓', 'right stick'],
 ];
 
 export const INPUT_GD = `class_name KilnInput
@@ -19,6 +21,7 @@ extends RefCounted
 ##   move_left / move_right / move_up / move_down   arrows or WASD · left stick or D-pad
 ##   jump       Space, Z    · A          attack    X, J   · X          shoot   C, K · B
 ##   interact   E           · Y          pause     Esc, P · Start      inventory   I, Tab · Back
+##   aim_left / aim_right / aim_up / aim_down       arrows · right stick (top-down shooting; see twin_stick())
 
 static func ensure() -> void:
 \tvar actions := {
@@ -32,6 +35,10 @@ static func ensure() -> void:
 \t\t"interact": [key(KEY_E), pad(JOY_BUTTON_Y)],
 \t\t"pause": [key(KEY_ESCAPE), key(KEY_P), pad(JOY_BUTTON_START)],
 \t\t"inventory": [key(KEY_I), key(KEY_TAB), pad(JOY_BUTTON_BACK)],
+\t\t"aim_left": [key(KEY_LEFT), stick(JOY_AXIS_RIGHT_X, -1.0)],
+\t\t"aim_right": [key(KEY_RIGHT), stick(JOY_AXIS_RIGHT_X, 1.0)],
+\t\t"aim_up": [key(KEY_UP), stick(JOY_AXIS_RIGHT_Y, -1.0)],
+\t\t"aim_down": [key(KEY_DOWN), stick(JOY_AXIS_RIGHT_Y, 1.0)],
 \t}
 \tfor action in actions:
 \t\tif InputMap.has_action(action):
@@ -39,6 +46,13 @@ static func ensure() -> void:
 \t\tInputMap.add_action(action, 0.35)          # 0.35: how far a stick must tilt to count
 \t\tfor event in actions[action]:
 \t\t\tInputMap.action_add_event(action, event)
+
+## Twin-stick (the top-down player): the arrow keys only aim, so WASD moves while the arrows shoot.
+static func twin_stick() -> void:
+\tfor dir in ["left", "right", "up", "down"]:
+\t\tfor e in InputMap.action_get_events("move_" + dir):
+\t\t\tif e is InputEventKey and e.physical_keycode in [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN]:
+\t\t\t\tInputMap.action_erase_event("move_" + dir, e)
 
 static func key(code: Key) -> InputEvent:
 \tvar e := InputEventKey.new()

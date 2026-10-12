@@ -13,6 +13,8 @@ import { TOOLS, brushCells, rectCells, lineCells, floodCells, copyCells, selRect
 import { STYLES, buildPieces, appendPieces, fixAround, terrainOf, terrainHeader, terrainLines } from './autotile.js';
 import { KINDS, kindColour, drawKind, tileLines, TILESET_LAYERS, LEVEL_TILES_GD } from './tilekinds.js';
 import { layerPanel } from './layers.js';
+import { CRATE_GD, drawCrates, crateParts } from './crates.js';
+import { P as gamePath } from './gametype.js';
 
 // Entities: things placed on the map (actors exported from Animate, the player start). x,y = feet, in level pixels.
 let mode = 'tiles', zonePick = 'checkpoint', zoneSel = null, levelNames = [], entPick = 'start', actorList = [], sprites = {};   // sprites: actor name -> first idle frame (canvas)
@@ -38,8 +40,10 @@ const kindOf = i => (L.kinds ||= Object.fromEntries((L.solid || []).map(k => [k,
 function setKind(i, k) { kindOf(i); if (k) L.kinds[i] = k; else delete L.kinds[i]; L.solid = Object.keys(L.kinds).filter(t => L.kinds[t] === 'solid').map(Number); changed(); }
 const slug = s => (s || 'level').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'level';
 
+// a new level is the size the game's path likes (gametype.js): wide for a side-scroller, 2×2 rooms top-down, one screen
 function blank(name = 'room') {
-  return { id: uid(), name, tile: 16, cols: 40, rows: 23, ts: null, tsCols: 8, solid: [0, 1, 2, 3, 5], kinds: { 0: 'solid', 1: 'solid', 2: 'solid', 3: 'solid', 5: 'solid' }, cells: Array(40 * 23).fill(-1), pick: 0, grid: true };
+  const [cols, rows] = gamePath().level;
+  return { id: uid(), name, tile: 16, cols, rows, ts: null, tsCols: 8, solid: [0, 1, 2, 3, 5], kinds: { 0: 'solid', 1: 'solid', 2: 'solid', 3: 'solid', 5: 'solid' }, cells: Array(cols * rows).fill(-1), pick: 0, grid: true };
 }
 
 /* ------------------------------------------------- starter tileset ---- */
@@ -196,7 +200,15 @@ function draw() {
     for (let r = 1; r < L.rows; r++) { x.moveTo(0, r * T * z + .5); x.lineTo(W * z, r * T * z + .5); }
     x.stroke();
   }
+  if (gamePath().camera !== 'follow') {     // top-down rooms and one-screen puzzles: where each screen ends
+    const RW = Math.ceil(480 / T) * T, RH = Math.ceil(270 / T) * T;
+    x.save(); x.strokeStyle = 'rgba(255,255,255,.35)'; x.setLineDash([6, 4]); x.beginPath();
+    for (let c = RW; c < W; c += RW) { x.moveTo(c * z + .5, 0); x.lineTo(c * z + .5, H * z); }
+    for (let r = RH; r < H; r += RH) { x.moveTo(0, r * z + .5); x.lineTo(W * z, r * z + .5); }
+    x.stroke(); x.restore();
+  }
   x.globalAlpha = alpha('ents');
+  if (shown('ents')) drawCrates(x, L.ents || [], src, T, L.tsCols, z);
   for (const e of shown('ents') ? L.ents || [] : []) {
     const sp = e.type === 'actor' ? sprites[e.name] : null;
     if (sp) x.drawImage(sp, (e.x - sp.width / 2) * z, (e.y - sp.height) * z, sp.width * z, sp.height * z);
@@ -294,7 +306,8 @@ function bind() {
       }
       // feet snap to the top of the tile under the cursor, centred in the column
       const cx = Math.floor(px / L.tile), cy = Math.floor(py / L.tile);
-      const en = { id: uid(), type: entPick === 'start' ? 'start' : 'actor', name: entPick === 'start' ? 'PlayerStart' : entPick, x: cx * L.tile + L.tile / 2, y: (cy + 1) * L.tile };
+      const en = entPick === 'crate' ? { id: uid(), type: 'crate', name: 'Crate', tile: L.pick, x: cx * L.tile + L.tile / 2, y: (cy + 1) * L.tile }
+        : { id: uid(), type: entPick === 'start' ? 'start' : 'actor', name: entPick === 'start' ? 'PlayerStart' : entPick, x: cx * L.tile + L.tile / 2, y: (cy + 1) * L.tile };
       if (en.type === 'start') L.ents = L.ents.filter(q => q.type !== 'start');   // only one start
       L.ents.push(en); changed(); draw(); drawLeft(); return;
     }
@@ -369,6 +382,7 @@ function drawLeft() {
       mode === 'zones' ? zonesUI() : null,
       mode === 'ents' ? [h('div', { class: 'entlist' },
           h('button', { class: entPick === 'start' ? 'on' : '', title: 'Where the player appears (exported as a Marker2D named PlayerStart)', onclick: () => { entPick = 'start'; drawLeft(); } }, '⚑ Player start'),
+          h('button', { class: entPick === 'crate' ? 'on' : '', title: 'A box the player pushes by walking into it; it falls and lands on whole tiles. It looks like the tile picked under Tiles.', onclick: () => { entPick = 'crate'; drawLeft(); } }, '▣ Crate'),
           ...actorList.map(a => h('button', { class: entPick === a ? 'on' : '', title: `Place ${a} (its Godot scene, with hitbox and juice)`, onclick: () => { entPick = a; drawLeft(); } }, sprites[a] ? (() => { const c = h('canvas', { width: sprites[a].width, height: sprites[a].height }); c.getContext('2d').drawImage(sprites[a], 0, 0); return c; })() : null, a))),
         h('p', { class: 'note' }, actorList.length ? 'Left click places on the tile under the cursor (feet on its top). Right click removes.' : 'Save an actor in Animate to place it here. The player start works now.'),
         h('p', { class: 'note' }, `${(L.ents || []).length} placed`)] : null),
@@ -486,20 +500,21 @@ async function exportLevel() {
   const ents = L.ents || [], types = [...new Set(ents.filter(e => e.type === 'actor').map(e => e.name))];
   const aid = n => 4 + types.indexOf(n), count = {};
   const entExt = types.map(n => `[ext_resource type="PackedScene" path="${(base ? base + '/' : '')}sprites/${n}/${n}.tscn" id="${aid(n)}"]\n`).join('');
-  const entNodes = ents.map(e => e.type === 'start' ? `[node name="PlayerStart" type="Marker2D" parent="."]\nposition = Vector2(${e.x}, ${e.y})\n\n`
+  const crates = crateParts(ents, T, L.tsCols, `${res}/tileset.png`, rtRes(baseOf(res), 'crate'));
+  const entNodes = ents.filter(e => e.type !== 'crate').map(e => e.type === 'start' ? `[node name="PlayerStart" type="Marker2D" parent="."]\nposition = Vector2(${e.x}, ${e.y})\n\n`
     : `[node name="${e.name}_${count[e.name] = (count[e.name] || 0) + 1}" parent="." instance=ExtResource("${aid(e.name)}")]\nposition = Vector2(${e.x}, ${e.y})\n\n`).join('');
   const zones = L.zones || [];
   const tscn = `[gd_scene load_steps=${(bgRes ? 4 : 3) + types.length + (zones.length ? 1 + zones.length : 0)} format=3]\n\n[ext_resource type="TileSet" path="${res}/${L.name}.tres" id="1"]\n[ext_resource type="Script" path="${tilesGd}" id="3"]\n`
     + (zones.length ? `[ext_resource type="Script" path="${zoneGd}" id="zone"]\n` : '')
-    + (bgRes ? `[ext_resource type="PackedScene" path="${bgRes}" id="2"]\n` : '') + entExt + '\n' + zoneShapes(zones) + `[node name="${L.name}" type="Node2D"]\n\n`
+    + (bgRes ? `[ext_resource type="PackedScene" path="${bgRes}" id="2"]\n` : '') + entExt + crates.ext + '\n' + zoneShapes(zones) + crates.subs + `[node name="${L.name}" type="Node2D"]\n\n`
     + (bgRes ? `[node name="Background" parent="." instance=ExtResource("2")]\nposition = Vector2(0, ${(L.rows * T) - (V.bgView?.h || L.rows * T)})\n\n` : '')
-    + `[node name="Tiles" type="TileMapLayer" parent="."]\ntexture_filter = 1\ntile_map_data = PackedByteArray(${tileMapData()})\ntile_set = ExtResource("1")\nscript = ExtResource("3")\n` + (entNodes ? '\n' + entNodes : '')
+    + `[node name="Tiles" type="TileMapLayer" parent="."]\ntexture_filter = 1\ntile_map_data = PackedByteArray(${tileMapData()})\ntile_set = ExtResource("1")\nscript = ExtResource("3")\n` + (entNodes ? '\n' + entNodes : '') + (crates.nodes ? '\n' + crates.nodes : '')
     + (zones.length ? `\n[node name="Zones" type="Node2D" parent="."]\n\n` + zoneNodes(zones, base ? base + '/' : '', 'zone') : '');
-  const json = { background: L.bg || null, entities: (L.ents || []).map(({ type, name, x, y }) => ({ type, name, x, y })), tile: T, cols: L.cols, rows: L.rows, tileset: 'tileset.png', tilesetCols: L.tsCols, solid: L.solid, kinds: Object.fromEntries(Object.entries(L.kinds || {}).filter(([, k]) => k)), cells: L.cells, zones: zones.map(({ id, ...q }) => q), source: 'kiln' };
+  const json = { background: L.bg || null, entities: (L.ents || []).map(({ type, name, x, y, tile }) => ({ type, name, x, y, tile })), tile: T, cols: L.cols, rows: L.rows, tileset: 'tileset.png', tilesetCols: L.tsCols, solid: L.solid, kinds: Object.fromEntries(Object.entries(L.kinds || {}).filter(([, k]) => k)), cells: L.cells, zones: zones.map(({ id, ...q }) => q), source: 'kiln' };
   try {
     await saveFiles(dir, [{ name: 'tileset.png', b64: toDataURL(tsImg) }, { name: `${L.name}.tres`, text: tres }, { name: `${L.name}.tscn`, text: tscn },
       { name: 'level.json', text: JSON.stringify(json) + '\n' }]);
-    await writeRuntime({ tiles: LEVEL_TILES_GD, zone: ZONE_GD }).catch(() => {});
+    await writeRuntime({ tiles: LEVEL_TILES_GD, zone: ZONE_GD, ...(crates.nodes ? { crate: CRATE_GD } : {}) }).catch(() => {});
     changed(); toast(`Saved to ${dir}/${g.root ? ' (Godot paths)' : ''}`, 'ok');
   } catch (e) { toast('Save failed: ' + e.message, 'bad'); }
 }

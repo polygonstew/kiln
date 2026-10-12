@@ -5,9 +5,16 @@ import { api, pref } from './core.js';
 import { S as FS } from './files.js';
 import { BRAIN_GD } from './brains.js';
 import { INPUT_GD } from './input_godot.js';
+import { GAME, P, roleBrain } from './gametype.js';
+import { ADVENTURE, adventureRuntime } from './adventure_godot.js';
+import { STACKER, STACKER_GD } from './stacker_godot.js';
+import { FLOW, FLOW_GD, flowJSON } from './flow_godot.js';
+import { STORY, STORY_GD } from './story_godot.js';
+import { DIALOGUE_GD } from './dialogue_godot.js';
 
 const MAIN_GD = `extends Node2D
-## Kiln demo: a title screen (optional), then the level with the player, a camera that follows it and the HUD.
+## Kiln game: a title screen (optional), then the level with the player, a camera (following it, room by room or
+## fixed on one screen) and the HUD. Doors and room exits call go_to_level().
 ## Written by Kiln's Play button; the build is a copy, so change this freely.
 
 @export var level_scene: PackedScene
@@ -18,7 +25,12 @@ const MAIN_GD = `extends Node2D
 @export var options_menu: PackedScene
 @export var pause_menu: PackedScene       ## Esc while playing
 @export var logic_scripts: Array[Script] = []   ## Kiln Logic graphs (logic/*.gd): each runs on its own node while playing
+@export var adventure: Script             ## point & click: Kiln's adventure runtime (_kiln/adventure/adventure.gd)
+@export_file("*.json") var flow := ""     ## Kiln Flow: the game's path of scenes (flow/game.json); when set, it runs the game
+@export var player_brain := "res://_kiln/brains/player.gd"   ## for a player actor without a Brain of its own
+@export_enum("follow", "rooms", "fixed") var camera_mode := "follow"   ## scrolls with the player · room by room · one screen
 @export var title := "Kiln demo"
+@export var controls := "Arrows / stick move · Space / A jumps · X attacks · C / B shoots"   ## under the title
 @export var show_title := true
 @export var playtest := true            ## in Kiln's Stage: take live tuning and screenshot requests from the page
 var playing := false
@@ -26,14 +38,21 @@ var menus: Array[Node] = []               # open menu screens, top last
 var player: Node2D
 var _web: JavaScriptObject                # the page around a web build (Kiln's Stage talks through it)
 var _tuned := ""
-const BRAIN := "res://_kiln/brains/player.gd"
+var world: Node2D                         # the level being played (built again by go_to_level)
+signal level_started(level: Node2D)       # after every level change (the stacker and Logic can listen)
 
 func _ready() -> void:
 \tprocess_mode = Node.PROCESS_MODE_ALWAYS    # Main hears Esc / Start while paused; the world under it pauses
+\tadd_to_group("kiln_main")                  # zones and rooms ask Main to change level
 \tKilnInput.ensure()                         # keys and gamepad for every action (_kiln/game/input.gd)
 \tif playtest and OS.has_feature("web"):
 \t\t_web = JavaScriptBridge.get_interface("window")
-\tif title_menu:
+\tif flow != "":                             # the flow decides everything: videos, menus, levels, rooms…
+\t\t_setup()
+\t\tvar f: Node = load("res://_kiln/game/flow.gd").new()
+\t\tadd_child(f)
+\t\tf.begin(flow)
+\telif title_menu:
 \t\t_open(title_menu)
 \telif show_title:
 \t\t_title_screen()
@@ -60,7 +79,20 @@ func _on_menu(a: String) -> void:
 \t\t"start":
 \t\t\twhile menus.size():
 \t\t\t\t_close_top()
-\t\t\t_start()
+\t\t\tget_tree().paused = false
+\t\t\tif flow != "":
+\t\t\t\tflow_done("done")
+\t\t\telse:
+\t\t\t\t_start()
+\t\t"save":
+\t\t\tget_tree().call_group("kiln_adventure", "save_game")
+\t\t"load":
+\t\t\twhile menus.size():
+\t\t\t\t_close_top()
+\t\t\tget_tree().paused = false
+\t\t\tif not playing:
+\t\t\t\t_start()
+\t\t\tget_tree().call_group("kiln_adventure", "load_game")
 \t\t"open:options":
 \t\t\tif options_menu:
 \t\t\t\t_open(options_menu)
@@ -119,7 +151,7 @@ func _title_screen() -> void:
 \tplay.pressed.connect(func(): ui.queue_free(); _start())
 \tbox.add_child(play)
 \tvar help := Label.new()
-\thelp.text = "Arrows / stick move · Space / A jumps · X attacks · C / B shoots"
+\thelp.text = controls
 \thelp.add_theme_font_size_override("font_size", 8)
 \thelp.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 \tbox.add_child(help)
@@ -127,20 +159,75 @@ func _title_screen() -> void:
 \tplay.grab_focus()
 
 func _start() -> void:
+\t_setup()
+\t_enter(level_scene, "")
+
+# ---- the parts that last the whole game, added once: the HUD, the point & click runtime, the Logic graphs
+var _set_up := false
+func _setup() -> void:
+\tif _set_up:
+\t\treturn
+\t_set_up = true
 \tplaying = true
-\tvar world := Node2D.new()
+\tif hud_scene:
+\t\tadd_child(hud_scene.instantiate())
+\tif adventure:                              # point & click: cursor, inventory, saving (_kiln/adventure/)
+\t\tvar a := CanvasLayer.new()
+\t\ta.set_script(adventure)
+\t\tadd_child(a)
+\tfor s in logic_scripts:
+\t\tvar n := Node.new()
+\t\tn.name = s.resource_path.get_file().get_basename()
+\t\tn.set_script(s)
+\t\tn.process_mode = Node.PROCESS_MODE_PAUSABLE
+\t\tadd_child(n)
+
+# ---- for the flow (_kiln/game/flow.gd): a menu screen, a level or room, nothing (under a video), a scene's outcome
+func open_menu(scene: PackedScene) -> void:
+\t_open(scene)
+
+func play_scene(scene: PackedScene, entry := "") -> void:
+\t_setup()
+\t_enter(scene, entry)
+
+func clear_world() -> void:
+\tif world:
+\t\tremove_child(world)
+\t\tworld.queue_free()
+\tworld = null
+\tplayer = null
+\t_cam = null
+
+## A scene of the flow ended with this outcome (a Door zone to "next in the flow", a room's "leaves" hotspot).
+func flow_done(outcome := "done") -> void:
+\tget_tree().call_group_flags(SceneTree.GROUP_CALL_DEFERRED, "kiln_flow", "done", outcome)   # after physics: a zone may be asking
+
+## Go to another level (a Door zone, a room's exit): the world is built again from that scene, the player appears at
+## the marker named entry (a room's Entries/<entry>) or at its PlayerStart. The HUD, menus and Logic carry on.
+func go_to_level(path: String, entry := "") -> void:
+\t_enter.call_deferred(load(path), entry)
+
+func _enter(scene: PackedScene, entry: String) -> void:
+\tif world:
+\t\tremove_child(world)
+\t\tworld.queue_free()
+\tworld = Node2D.new()
 \tworld.process_mode = Node.PROCESS_MODE_PAUSABLE
 \tadd_child(world)
+\tmove_child(world, 0)                       # under the HUD and menus
 \tvar view := get_viewport_rect().size
 \tvar start := Vector2(48, view.y - 16)
-\tvar tiles: TileMapLayer = null
-\tif level_scene:
-\t\tvar lv := level_scene.instantiate()
+\tvar lv: Node = null
+\tif scene:
+\t\tlv = scene.instantiate()
 \t\tworld.add_child(lv)
-\t\tvar m := lv.get_node_or_null("PlayerStart") as Node2D
+\t\tvar m := lv.get_node_or_null("Entries/" + entry) if entry != "" else null
+\t\tif m == null:
+\t\t\tm = lv.get_node_or_null("PlayerStart")
+\t\tif m == null:
+\t\t\tm = lv.get_node_or_null("Entries/start")
 \t\tif m:
-\t\t\tstart = m.position
-\t\ttiles = lv.get_node_or_null("Tiles") as TileMapLayer
+\t\t\tstart = (m as Node2D).position
 \telse:
 \t\t# no level yet: the background scene (if any) over a long flat floor
 \t\tif background_scene:
@@ -153,39 +240,63 @@ func _start() -> void:
 \t\tfloor.add_child(shape)
 \t\tfloor.position = Vector2(3000, view.y)
 \t\tworld.add_child(floor)
+\tplayer = null
 \tif player_scene:
 \t\tvar p := player_scene.instantiate() as Node2D
 \t\tp.position = start
 \t\tif not p.is_in_group("player"):
 \t\t\tp.add_to_group("player")
-\t\tif p.get_node_or_null("Brain") == null and ResourceLoader.exists(BRAIN):
+\t\tif p.get_node_or_null("Brain") == null and ResourceLoader.exists(player_brain):
 \t\t\tvar b := Node.new()
 \t\t\tb.name = "Brain"
-\t\t\tb.set_script(load(BRAIN))
+\t\t\tb.set_script(load(player_brain))
 \t\t\tp.add_child(b)
 \t\tplayer = p
 \t\tif _web:
 \t\t\t_retune()   # the Stage's numbers go in before the player starts
 \t\tworld.add_child(p)
-\t\tvar cam := Camera2D.new()
-\t\tcam.position_smoothing_enabled = true
-\t\tp.add_child(cam)
-\t\tcam.make_current()
-\t\tif tiles:
-\t\t\tvar r := tiles.get_used_rect()
-\t\t\tvar ts := tiles.tile_set.tile_size
-\t\t\tcam.limit_left = r.position.x * ts.x
-\t\t\tcam.limit_top = r.position.y * ts.y
-\t\t\tcam.limit_right = r.end.x * ts.x
-\t\t\tcam.limit_bottom = r.end.y * ts.y
-\tif hud_scene:
-\t\tadd_child(hud_scene.instantiate())
-\tfor s in logic_scripts:
-\t\tvar n := Node.new()
-\t\tn.name = s.resource_path.get_file().get_basename()
-\t\tn.set_script(s)
-\t\tn.process_mode = Node.PROCESS_MODE_PAUSABLE
-\t\tadd_child(n)
+\t_camera(lv, view)
+\tlevel_started.emit(world)
+
+# the camera: follow (scrolls with the player, kept inside the level), rooms (one screen-sized room at a time,
+# sliding to the next as the player walks through a doorway) or fixed (one screen, centred on the level)
+var _cam: Camera2D
+var _room := Vector2.ZERO                    # rooms: a room's size, the screen rounded up to whole tiles
+func _camera(lv: Node, view: Vector2) -> void:
+\t_cam = Camera2D.new()
+\tvar bounds := Rect2(Vector2.ZERO, view)
+\tvar bounded := true
+\tvar tiles := lv.get_node_or_null("Tiles") as TileMapLayer if lv else null
+\tif tiles and tiles.get_used_rect().has_area():
+\t\tvar ts := Vector2(tiles.tile_set.tile_size)
+\t\tbounds = Rect2(Vector2(tiles.get_used_rect().position) * ts, Vector2(tiles.get_used_rect().size) * ts)
+\t\t_room = (view / ts).ceil() * ts
+\telif lv and lv.get("size") is Vector2:       # a point & click room: its background's size
+\t\tbounds = Rect2(Vector2.ZERO, lv.get("size"))
+\telse:
+\t\tbounded = false                          # nothing to measure: the camera goes where the player goes
+\tif camera_mode == "follow" and player:
+\t\t_cam.position_smoothing_enabled = true
+\t\tplayer.add_child(_cam)
+\t\tif not bounded:
+\t\t\t_cam.make_current()
+\t\t\treturn
+\t\t_cam.limit_left = int(bounds.position.x)
+\t\t_cam.limit_top = int(bounds.position.y)
+\t\t_cam.limit_right = int(bounds.end.x)
+\t\t_cam.limit_bottom = int(bounds.end.y)
+\telse:
+\t\tworld.add_child(_cam)
+\t\t_cam.position = bounds.get_center() if camera_mode == "fixed" or player == null else _room_centre()
+\t_cam.make_current()
+
+func _room_centre() -> Vector2:
+\tvar size := _room if _room != Vector2.ZERO else get_viewport_rect().size
+\treturn (player.global_position / size).floor() * size + size / 2
+
+func _physics_process(delta: float) -> void:
+\tif camera_mode == "rooms" and is_instance_valid(player) and _cam:
+\t\t_cam.position = _cam.position.move_toward(_room_centre(), 1800.0 * delta)   # a quick slide to the next room
 
 # ---- Kiln Stage: inside Kiln's Stage the sliders tune the player while you play, and the camera button asks
 # ---- for a screenshot. Web builds only; in Godot itself _web is null and none of this runs.
@@ -231,14 +342,16 @@ export async function listScenes(folder) {      // [name, res path] of folder/<n
   return out;
 }
 
-// what goes in the game: the Stage's pickers (pref 'stage.build'); the first time, the player actor and the first
-// level / background / HUD in the folder
+// what goes in the game: the Stage's pickers (pref 'stage.build:<asset folder>', one set per game); the first time, the
+// player actor and the first level (a point & click: the first room) / background / HUD in the folder
+export const buildKey = () => 'stage.build:' + FS.root;
 export async function gamePicks() {
-  const p = pref.get('stage.build', { start: 'none' });
+  const p = pref.get(buildKey(), { start: 'none' });
   if ('player' in p) return p;
-  const [levels, scenes, actors, huds] = await Promise.all(['levels', 'backgrounds', 'sprites', 'hud'].map(listScenes));
-  const q = { ...p, player: await findPlayer(actors), level: levels[0]?.[1] || '', bg: scenes[0]?.[1] || '', hud: huds[0]?.[1] || '' };
-  pref.set('stage.build', q);
+  const [levels, rooms, scenes, actors, huds] = await Promise.all(['levels', 'rooms', 'backgrounds', 'sprites', 'hud'].map(listScenes));
+  const first = (GAME.path === 'adventure' ? rooms[0] || levels[0] : levels[0] || rooms[0])?.[1] || '';
+  const q = { ...p, player: await findPlayer(actors), level: first, bg: scenes[0]?.[1] || '', hud: huds[0]?.[1] || '' };
+  pref.set(buildKey(), q);
   return q;
 }
 
@@ -251,29 +364,54 @@ export async function findPlayer(actors) {
   return actors[0]?.[1] || '';
 }
 
-// The game's own files for the build: the main scene, main.gd, the controls and a player brain.
+// The game's own files for the build: the main scene, main.gd, the controls, the player's brain and the runtime the
+// game's path needs (gametype.js): the point & click runtime when it starts in a room, the stacker for a stacking puzzle.
 // pick = { level, bg, player, hud (res:// scene paths or ''), name, start: 'menu' | 'title' | 'none' };
 // shipped = true for Export game (no Stage bridge: the game ignores the page around it)
 export async function gameFiles(pick, shipped = false) {
   const ext = [], props = [];
   const add = (key, path) => { if (!path) return; ext.push(`[ext_resource type="PackedScene" path="${path}" id="${key}"]`); props.push(`${key}_scene = ExtResource("${key}")`); };
-  add('level', pick.level); add('background', pick.level ? '' : pick.bg); add('player', pick.player); add('hud', pick.hud);
+  // a Flow (the game's path of scenes) runs the game when it has scenes; then rooms anywhere in it bring the point & click runtime
+  const F = (await fetch('/api/project?id=flow-game').then(r => r.ok ? r.json() : null).catch(() => null))?.flow, flowOn = !!F?.nodes?.length;
+  const room = flowOn ? F.nodes.some(n => n.kind === 'room') : /(^|\/)rooms\//.test(pick.level || ''), stack = GAME.path === 'puzzle' && GAME.puzzle === 'stack';
+  add('level', pick.level); add('background', pick.level ? '' : pick.bg); add('player', stack ? '' : pick.player); add('hud', pick.hud);
   // saved Kiln menus (Menus area): the title menu if asked for, options from it, pause on Esc
   const mn = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/menus')).catch(() => ({ items: [] }));
   for (const k of ['title', 'options', 'pause']) if ((k !== 'title' || pick.start === 'menu') && (mn.items || []).some(i => i.name === k + '.tscn')) { ext.push(`[ext_resource type="PackedScene" path="res://menus/${k}.tscn" id="${k}m"]`); props.push(`${k}_menu = ExtResource("${k}m")`); }
-  // Logic graphs: every logic/*.gd runs while playing
-  const lg = ((await api('/api/fs?path=' + encodeURIComponent(FS.root + '/logic')).catch(() => ({ items: [] }))).items || []).filter(i => /\.gd$/.test(i.name));
-  lg.forEach((f, i) => ext.push(`[ext_resource type="Script" path="res://logic/${f.name}" id="lg${i}"]`));
+  // Logic graphs: every logic/*.gd runs while playing (a stacking puzzle's stacker runs the same way)
+  const lg = ((await api('/api/fs?path=' + encodeURIComponent(FS.root + '/logic')).catch(() => ({ items: [] }))).items || []).filter(i => /\.gd$/.test(i.name)).map(i => 'logic/' + i.name);
+  if (stack) lg.push(STACKER);
+  lg.forEach((f, i) => ext.push(`[ext_resource type="Script" path="res://${f}" id="lg${i}"]`));
   if (lg.length) props.push(`logic_scripts = Array[Script]([${lg.map((_, i) => `ExtResource("lg${i}")`).join(', ')}])`);
+  if (room) { ext.push(`[ext_resource type="Script" path="res://${ADVENTURE}" id="adv"]`); props.push('adventure = ExtResource("adv")'); }
+  if (flowOn) props.push('flow = "res://flow/game.json"');
+  const brain = room ? 'walker' : roleBrain('hero') || 'player';
+  props.push(`player_brain = "res://_kiln/brains/${brain}.gd"`, `camera_mode = "${room ? 'follow' : P().camera}"`, `controls = ${JSON.stringify(room ? CONTROLS.adventure : CONTROLS[stack ? 'stack' : GAME.path] || CONTROLS.scroller)}`);
   const main = `[gd_scene load_steps=${ext.length + 2} format=3]\n\n[ext_resource type="Script" path="res://main.gd" id="main"]\n${ext.join('\n')}\n\n`
     + `[node name="Main" type="Node2D"]\nscript = ExtResource("main")\n${props.join('\n')}\ntitle = ${JSON.stringify(pick.name || 'Kiln demo')}\nshow_title = ${pick.start !== 'none'}\n${shipped ? 'playtest = false\n' : ''}`;
   const files = { 'kiln_main.tscn': main, 'main.gd': MAIN_GD, '_kiln/game/input.gd': INPUT_GD };     // the controls, always current
+  if (room) Object.assign(files, adventureRuntime());
+  if (stack) files[STACKER] = STACKER_GD;
+  const from = pref.get('flow.from', ''); pref.set('flow.from', '');      // Flow's "▶ From here": this build starts there
+  if (flowOn) Object.assign(files, { 'flow/game.json': flowJSON(F.nodes.some(n => n.id === from) ? { ...F, start: from } : F, rel => 'res://' + rel), [FLOW]: FLOW_GD, [STORY]: STORY_GD, '_kiln/ui/dialogue.gd': DIALOGUE_GD });
   // the player brain main.gd falls back on: the folder's own copy (here or in the old sprites/_kiln/), else Kiln's
   const ls = async d => ((await api('/api/fs?path=' + encodeURIComponent(`${FS.root}/${d}`)).catch(() => ({ items: [] }))).items || []).map(i => i.name);
-  if (!(await ls('_kiln/brains')).includes('player.gd')) files['_kiln/brains/player.gd'] = (await ls('sprites/_kiln/brains')).includes('player.gd')
-    ? await fetch('/api/fs/raw?path=' + encodeURIComponent(`${FS.root}/sprites/_kiln/brains/player.gd`)).then(r => r.text()) : BRAIN_GD.player;
+  if (!(await ls('_kiln/brains')).includes(brain + '.gd')) files[`_kiln/brains/${brain}.gd`] = (await ls('sprites/_kiln/brains')).includes(brain + '.gd')
+    ? await fetch('/api/fs/raw?path=' + encodeURIComponent(`${FS.root}/sprites/_kiln/brains/${brain}.gd`)).then(r => r.text()) : BRAIN_GD[brain];
   return files;
 }
+// the line under the title, per path; controlsText(level) for the Stage
+export const controlsText = level => /(^|\/)rooms\//.test(level || '') ? CONTROLS.adventure : CONTROLS[GAME.path === 'puzzle' && GAME.puzzle === 'stack' ? 'stack' : GAME.path] || CONTROLS.scroller;
+const CONTROLS = {
+  scroller: 'Arrows / stick move · Space / A jumps · X attacks · C / B shoots',
+  wild: 'Arrows / stick move · Space / A jumps · X attacks · C / B shoots',
+  topdown: 'WASD / left stick move · arrows / right stick shoot · X attacks',
+  puzzle: 'Arrows / stick move · Space / A jumps · walk into crates to push them',
+  stack: '← → move the brick · ↑ turns it · ↓ drops it faster',
+  adventure: 'Click to walk · click a thing to use it · right-click to look · click an item, then a thing, to use it there',
+  text: 'Space turns the page · click a choice, or type what you do',
+  fmv: 'Space skips a video · 1–6 or a click choose · press in time when it says NOW',
+};
 
 // Build for the Stage: onLog(lines) gets the build log as it grows; resolves true when the game is ready at /play/.
 export async function buildGame(pick, onLog) {

@@ -2,7 +2,7 @@
 // actor), the words, an optional voice line (recorded in Puppet, with lip sync), and then: the next line, a jump,
 // the end, or choices (each with a condition on items or flags and things it does). The preview plays it. Save
 // writes dialogue/<name>.json, and the runner (dialogue_godot.js → _kiln/ui/dialogue.gd) plays it through the Kiln HUD in Godot.
-import { h, api, toast, pref, select } from './core.js';
+import { h, api, toast, pref, select, on } from './core.js';
 import { saveFiles, S as FS } from './files.js';
 import { listScenes } from './playbuild.js';
 import { gameJSON, DIALOGUE_GD } from './dialogue_godot.js';
@@ -11,7 +11,7 @@ import { openProjects } from './projects.js';
 import { writeRuntime } from './layout.js';
 
 const IFS = [['', 'always'], ['item', 'if has item'], ['noitem', 'if lacks item'], ['flag', 'if flag set'], ['noflag', 'if flag not set']];
-const DOS = [['', 'does nothing'], ['give', 'gives item'], ['take', 'takes item'], ['flag', 'sets flag'], ['unflag', 'clears flag'], ['message', 'messages Logic']];
+const DOS = [['', 'does nothing'], ['give', 'gives item'], ['take', 'takes item'], ['flag', 'sets flag'], ['unflag', 'clears flag'], ['message', 'messages Logic'], ['flow', 'ends the Flow scene as']];
 const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9_]+/g, '_').replace(/^_|_$/g, '');
 const newBeat = () => ({ id: 'b' + Date.now().toString(36) + Math.floor(Math.random() * 99), who: '', text: '', voice: '', next: '', choices: [], do: [] });
 let V = {}, D = null, list = [], actors = [], voices = {}, keepT = 0;
@@ -95,6 +95,11 @@ function beatCard(b, i) {
       select([['', 'Narrator'], ...D.cast.map(c => [c.name, c.name])], b.who || '', v => { b.who = v; b.voice = ''; changed(); drawBeats(); }),
       actor ? select([['', vs.length ? 'no voice' : 'no voice lines yet'], ...vs], b.voice || '', v => { b.voice = v; changed(); }) : '',
       h('span', { class: 'grow' }),
+      h('button', { class: 'ibtn' + (b.pic ? ' on' : ''), title: b.pic ? `Picture: ${b.pic} (click to change, right click to remove)` : 'A picture for this line: shown on the page in a text adventure (Flow → Story)',
+        oncontextmenu: e => { e.preventDefault(); b.pic = ''; changed(); drawBeats(); },
+        onclick: () => import('./pictures.js').then(m => m.pickPicture('Picture for this line', async url => {
+          const b64 = url.startsWith('data:') ? url : await fetch(url).then(r => r.blob()).then(bl => new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(bl); }));
+          const n = `${D.name}_${i + 1}`; await saveFiles('pictures', [{ name: n + '.png', b64 }]); b.pic = `pictures/${n}.png`; changed(); drawBeats(); })) }, '▣'),
       h('button', { class: 'ibtn', title: 'Move up', onclick: () => move(-1) }, '↑'), h('button', { class: 'ibtn', title: 'Move down', onclick: () => move(1) }, '↓'),
       h('button', { class: 'ibtn', title: 'Insert a line after this one', onclick: () => { D.beats.splice(i + 1, 0, { ...newBeat(), who: b.who }); changed(); drawBeats(); } }, '+'),
       h('button', { class: 'ibtn', title: 'Delete this line', onclick: () => { D.beats.splice(i, 1); for (const x of D.beats) { if (x.next === b.id) x.next = ''; for (const c of x.choices || []) if (c.next === b.id) c.next = ''; } if (!D.beats.length) D.beats.push(newBeat()); changed(); drawBeats(); } }, '✕')),
@@ -112,6 +117,8 @@ const grow = t => { t.style.height = 'auto'; t.style.height = t.scrollHeight + 2
 /* --------------------------------------------------------- keeping it ---- */
 function changed() { V.state.textContent = '● not saved for the game yet'; clearTimeout(keepT); keepT = setTimeout(keep, 1200); }
 const keep = () => D && api('/api/project', { id: 'dialogue-' + D.name, data: { meta: { kind: 'dialogue', name: D.name }, dialogue: D } }).catch(e => toast('Could not keep the dialogue: ' + e.message, 'bad'));
+// another area (Flow) opens a conversation here
+on('open-dialogue', n => { pref.set('dialogue.cur', n); if (V.list) open(n); });
 async function open(name) {
   const d = await fetch('/api/project?id=dialogue-' + encodeURIComponent(name)).then(r => r.ok ? r.json() : null).catch(() => null);
   if (!d?.dialogue) return toast('Could not open ' + name, 'bad');

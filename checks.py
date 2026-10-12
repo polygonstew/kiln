@@ -84,7 +84,7 @@ def doctor(r, groot):
     unsaved = {}
     for pj in sorted((r / 'kiln').glob('*.json')) if (r / 'kiln').exists() else []:
         kind, _, nm = pj.stem.partition('-')
-        folder = {'actor': 'sprites', 'scene': 'backgrounds', 'level': 'levels', 'hud': 'hud'}.get(kind)
+        folder = {'actor': 'sprites', 'scene': 'backgrounds', 'level': 'levels', 'room': 'rooms', 'hud': 'hud'}.get(kind)
         if folder and nm and not (r / folder / nm).exists():
             unsaved.setdefault(kind, []).append(nm)
             if kind == 'actor' and pj.stat().st_size < 30e6:      # not exported, so no manifest: read its size from the project

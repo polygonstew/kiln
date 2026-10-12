@@ -136,7 +136,9 @@ func hurt(from_position: Vector2 = Vector2.INF, damage: int = 1) -> void:
 \thit_flash()
 \tsquash(0.18)
 \tshake(3.0, 0.2)
-\tif from_position != Vector2.INF:
+\tif from_position != Vector2.INF and motion_mode == MOTION_MODE_FLOATING:   # seen from above: straight away from the hit
+\t\tvelocity = from_position.direction_to(global_position) * knockback
+\telif from_position != Vector2.INF:
 \t\tvelocity = Vector2(signf(global_position.x - from_position.x) * knockback, -knockback * 0.4)
 \tif sprite.sprite_frames.has_animation("hurt"):
 \t\tsprite.play("hurt")
@@ -242,8 +244,8 @@ func _on_hit(other: Node) -> void:
 \tif other is Area2D and other.name != "Hurtbox":
 \t\treturn          # only bodies and Kiln Hurtboxes count, not hitboxes or other triggers
 \tvar t := other if other.has_method("hurt") else other.get_parent()
-\tif t == shooter:
-\t\treturn
+\tif t == shooter or (is_instance_valid(shooter) and t.is_in_group("player") == shooter.is_in_group("player")):
+\t\treturn          # not the shooter, and no friendly fire (enemies don't shoot enemies)
 \thit.emit(t)
 \tif t.has_method("hurt"):
 \t\tt.hurt(global_position, damage)
