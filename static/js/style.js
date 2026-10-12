@@ -54,10 +54,16 @@ export function editStyle() {
   const avoid = h('textarea', { rows: 2, value: s.avoid, oninput: e => s.avoid = e.target.value });
   const name = h('input', { type: 'text', value: s.name, oninput: e => s.name = e.target.value });
   const scale = h('input', { type: 'number', value: s.scale || '', min: 0, max: 256, placeholder: 'off', style: { width: '80px' }, oninput: e => s.scale = +e.target.value || 0 });
+  // art directions to start from (static/templates/directions.json; the template pictures were made with them)
+  const dirs = h('div', { class: 'sb-dirs' });
+  fetch('/templates/directions.json').then(r => r.json()).then(D => dirs.replaceChildren(...Object.entries(D).map(([k, d]) => h('button', { class: 'sb-dir', title: d.words,
+    onclick: () => { Object.assign(s, { name: d.name, words: d.words, avoid: d.avoid, light: d.light }); name.value = s.name; words.value = s.words; avoid.value = s.avoid; for (const b of dirs.children) b.classList.toggle('on', b === dirs.children[Object.keys(D).indexOf(k)]); } },
+    h('b', {}, d.name), h('small', {}, 'in the spirit of ' + d.inspired))))).catch(() => {});
   const m = h('div', { class: 'modal', onclick: e => { if (e.target === m) m.remove(); } }, h('div', { style: { width: 'min(640px, 94vw)' } },
     h('header', {}, h('span', { class: 'grow' }, 'Style bible'), h('button', { class: 'ibtn', onclick: () => m.remove() }, '✕')),
     h('div', { class: 'body' },
       h('p', { class: 'note', style: { marginTop: 0 } }, 'The look every asset in this game shares. Forge, pose frames and Scenes add these words to their prompts and pull colours into the master palette, so a new enemy matches the hero drawn last week.'),
+      h('div', { class: 'fld wide' }, h('span', { class: 'fl' }, 'Start from an art direction'), dirs),
       field('Name', name),
       h('div', { class: 'fld wide' }, h('span', { class: 'fl' }, 'Style words (added to every prompt)'), words),
       h('div', { class: 'fld wide' }, h('span', { class: 'fl' }, 'Always avoid'), avoid),

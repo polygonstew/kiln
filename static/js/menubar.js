@@ -47,6 +47,7 @@ const MENUS = () => [
     null,
     ['Find anything…', 'Areas, actions, actors, scenes, files', () => window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true })), 'Ctrl+K'],
     ['Style bible…', 'The look every asset shares: words, palette, outline, light', () => $('#stylechip')?.click()],
+    ['Services & keys…', 'Connect the picture and writing services Forge uses (step by step)', () => import('./setup.js').then(m => m.openSetup())],
   ]],
   ['View', [
     ...areaList().map(a => [a.label, `Go to ${a.label}`, () => go(a.id), a.key]),

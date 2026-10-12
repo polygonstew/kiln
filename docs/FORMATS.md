@@ -177,6 +177,12 @@ arrays of `{id, name, text, link?: 'level:<n>'|'scene:<n>', done?}`, `story.them
 
 - `kiln/game-path.json` also holds `look`: `modern` (1280×720, smooth: project default_texture_filter linear, stretch canvas_items, no `texture_filter = 1` in scenes) or `pixel` (480×270, sharp: the old way). Folders without one are Pixel.
 - Template art: `static/templates/<name>.webp` + `art.json` (descriptions) from `tools/template_art.py`; kits in `adventure_kits.js`.
+- Keys: `~/.config/kiln/keys.env` (mode 600, written by Edit → Services & keys…, setup.py/setup.js): CF_ACCOUNT_ID,
+  CF_API_TOKEN, OPENROUTER_API_KEY, GEMINI_API_KEY; wins over ~/.config/uwf-apps/{keys,cloudflare}.env. GET /api/keys gives
+  the last 4 characters only.
+- Art directions: `static/templates/directions.json` `{ key: { name, inspired, words, avoid, light, pixel } }`: cold signal
+  (Signalis), neon cinema (REPLACED), oil and grief (Disco Elysium), gothic relic (Blasphemous), classic 16-bit. The
+  Style bible offers them ("Start from an art direction"); template_art.py paints each template picture in one.
 - Levels things: `{ type: 'body', shape: box|ball|plank|seesaw, colour? }` → RigidBody2D (+ StaticBody2D pivot and PinJoint2D for a seesaw); `{ type: 'button' }` → Area2D with `_kiln/level/button.gd`; `{ type: 'gate' }` → AnimatableBody2D with `_kiln/level/gate.gd`.
 - Ragdoll: actor `ragdoll: true` + `rig` → `sprites/<actor>/ragdoll.tscn` (+ `rag_<bone>.png`), `_kiln/actor/ragdoll.gd`; juice.gd `ragdoll` export.
 - Cards: `kiln/cards-game.json` → `cards/cards.json` `{ hp, energy, hand, cards: {id: {name, cost, attack, block, heal, draw, picture}}, deck: [ids] }`; runtime `_kiln/cards/battle.gd`.

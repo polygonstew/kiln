@@ -79,7 +79,16 @@ library.tar.zst = all the user's games, plus a copy of the code). Everything bel
    true headless mode (its mod-script-pipe needs the GUI running), so: ffmpeg (installed; sox is not) on the server for
    trim, fade, normalize (loudnorm), loop points and convert to .ogg for music, plus an "Open in Audacity" button for
    hand edits (audacity is installed at /usr/bin/audacity; the kiln user service may need DISPLAY to launch it).
-4. A "sleek pass": the user finds some things corny; review Gloop's look, emoji in UI, make defaults calm.
+4. DONE 2026-10-12: Edit → Services & keys… (setup.js/setup.py) for new users' Forge keys. Template art repainted in
+   the art directions (Style bible presets; total template spend ~$2.65 of the $5 OpenRouter key).
+5. **Built-in help answers (user idea 2026-10-12, not built):** ship a small local model for "ask about Kiln" in the
+   Gloop helper: Qwen2.5-1.5B-Instruct Q4 GGUF (~1 GB, already in the user's Ollama as qwen2.5:1.5b) or Qwen3-1.7B /
+   Llama 3.2 3B, run by llama.cpp's llama-server (one binary, no Ollama needed for players). Answer only from
+   retrieved text: split help.html + docs/*.md (~200 KB) into sections, pick the top 3-4 by BM25 (plain Python, no
+   embedding model), put them in the prompt and link the source section. Godot: index the class reference for the
+   nodes Kiln writes (CharacterBody2D, Camera2D, AnimatedSprite2D…), not all docs. Settings → "Use your own key"
+   (OpenRouter / Gemini / Groq) for better answers. Never call it AI in the UI (it's Gloop).
+6. A "sleek pass": the user finds some things corny; review Gloop's look, emoji in UI, make defaults calm.
 4. Ideas from research to offer: Blender-style named workspaces across areas, Construct's pin-to-edge (done), Bitsy-like
    constraints for first games.
 

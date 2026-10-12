@@ -1,0 +1,17 @@
+{
+ "cold": { "name": "Cold signal", "inspired": "Signalis", "light": "top", "pixel": false,
+   "words": "cold minimalist sci-fi horror, PS1-era low-poly look rendered as a flat image, muted teal, grey and bone white with deep red accents, film grain, faint CRT scanlines, one stark light source, lonely and melancholic",
+   "avoid": "cartoon, cute, bright cheerful colours, glossy, cluttered detail, text, watermark" },
+ "neon": { "name": "Neon cinema", "inspired": "REPLACED", "light": "back", "pixel": false,
+   "words": "cinematic 2.5D pixel art at high resolution, 1980s retro-futurist cyberpunk, volumetric fog and god rays, hard rim light, neon magenta and cyan glow against deep shadow, wet reflective surfaces",
+   "avoid": "cartoon, cute, flat lighting, pastel, text, watermark" },
+ "oil": { "name": "Oil and grief", "inspired": "Disco Elysium", "light": "top-left", "pixel": false,
+   "words": "expressionist oil painting, thick visible brush strokes and palette-knife texture, muted earthy ochres, greys and teals with bold accents, painterly light, world-weary and literary",
+   "avoid": "cartoon, cel shading, clean vector, cute, glossy 3d render, text, watermark, signature, frame" },
+ "gothic": { "name": "Gothic relic", "inspired": "Blasphemous", "light": "top", "pixel": false,
+   "words": "detailed gothic pixel art at high resolution, dark Spanish baroque religious iconography, crimson, gold and bone on black, dramatic chiaroscuro, ornate and grim",
+   "avoid": "cartoon, cute, pastel, clean modern, text, watermark" },
+ "classic": { "name": "Classic 16-bit", "inspired": "SNES-era games", "light": "top-left", "pixel": true,
+   "words": "detailed 16-bit pixel art, crisp hard edges, limited palette, strong silhouette",
+   "avoid": "blurry, painterly smudges, gradients, anti-aliasing, 3d render, photo" }
+}

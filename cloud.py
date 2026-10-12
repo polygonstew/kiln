@@ -8,18 +8,23 @@ from store import settings, save_settings
 HOME = Path.home()
 CLOUD_CAP = float(os.environ.get('KILN_CLOUD_CAP', '2.00'))   # dollars of paid cloud images, ever
 KEYS = HOME / '.config/uwf-apps/keys.env'
+OWN = HOME / '.config/kiln/keys.env'       # Kiln's own keys, written by Services & keys (setup.py); win over the others
 
 
-def keys():
+def read_env(path):
     env = {}
     try:
-        for line in KEYS.read_text().splitlines():
+        for line in Path(path).read_text().splitlines():
             if '=' in line and not line.strip().startswith('#'):
                 k, v = line.split('=', 1)
                 env[k.strip().replace('export ', '')] = v.strip().strip('"').strip("'")
     except Exception:
         pass
     return env
+
+
+def keys():
+    return {**read_env(KEYS), **read_env(OWN)}
 
 
 def post_json(url, body, headers, timeout=180):
@@ -63,14 +68,13 @@ def cf_dims(aspect):
 
 
 def cf_env():
-    env = {}
-    try:
-        for line in CF_ENV.read_text().splitlines():
-            if '=' in line:
-                k, v = line.split('=', 1); env[k.strip()] = v.strip().strip('"')
-    except Exception:
-        pass
-    return env
+    own = read_env(OWN)
+    return {**read_env(CF_ENV), **{k: own[k] for k in ('CF_ACCOUNT_ID', 'CF_API_TOKEN') if own.get(k)}}
+
+
+def has_cf():
+    e = cf_env()
+    return bool(e.get('CF_ACCOUNT_ID') and e.get('CF_API_TOKEN'))
 
 
 def cf_used():

@@ -11,9 +11,10 @@ import release
 import tidy
 import video
 import audio
+import setup
 import writer
 from store import settings, save_settings
-from cloud import CF_ENV, CF_FREE, CLOUD_CAP, cf_used, cloud_image, cloud_spent, free_today, keys, openrouter_left, post_json
+from cloud import CF_FREE, has_cf, CLOUD_CAP, cf_used, cloud_image, cloud_spent, free_today, keys, openrouter_left, post_json
 from checks import GODOT, list_scripts, check_script, doctor, snapshot, history, restore_copy
 
 ROOT = Path(__file__).resolve().parent
@@ -347,8 +348,8 @@ def status():
         s['fast'] = {'ok': False}
     k = keys()
     cap_left = max(0, CLOUD_CAP - cloud_spent()); acct = openrouter_left()
-    used = cf_used() if CF_ENV.exists() else None
-    s['cloud'] = {'ok': CF_ENV.exists() or bool(k.get('OPENROUTER_API_KEY')), 'free': CF_ENV.exists(), 'free_today': free_today(),
+    used = cf_used() if has_cf() else None
+    s['cloud'] = {'ok': has_cf() or bool(k.get('OPENROUTER_API_KEY')), 'free': has_cf(), 'free_today': free_today(),
                   'free_left': None if used is None else max(0, round(1 - used / CF_FREE, 3)),
                   'cap': CLOUD_CAP, 'spent': round(cloud_spent(), 2), 'account': None if acct is None else round(acct, 2),
                   'left': round(cap_left if acct is None else min(cap_left, acct), 2)}
@@ -730,6 +731,8 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/cloudimg':
                 f = CLOUD_DIR / Path(q.get('f', '')).name
                 return self.send(200, f.read_bytes(), 'image/png') if f.exists() else self.send(404, {'err': 'gone'})
+            if u.path == '/api/keys':           # which services are connected (last 4 characters only)
+                return self.send(200, setup.status())
             if u.path == '/api/projects':
                 return self.send(200, list_projects())
             if u.path == '/api/project':
@@ -805,6 +808,8 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/export':
                 d, files = write_files(b['dest'], b['files'])
                 return self.send(200, {'dir': d, 'files': files})
+            if u.path == '/api/keys':           # {save: {NAME: key}} or {test: service}
+                return self.send(200, setup.test(b['test']) if b.get('test') else setup.save(b.get('save') or {}))
             if u.path == '/api/audio':          # {path, dest (in the asset folder), trim, fade_in, fade_out, normalize} → the new sound
                 root = Path(settings()['root'])
                 return self.send(200, {'file': audio.process(in_home(b['path']), in_home(root / b['dest']), bool(b.get('trim')), b.get('fade_in', 0), b.get('fade_out', 0), bool(b.get('normalize')))})

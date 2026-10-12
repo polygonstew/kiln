@@ -115,7 +115,7 @@ async function fmvDemo(g) {
 
 /* ------------------------------------------------------------ top-down: four rooms ---- */
 async function topdownDemo(g) {
-  g.step('A hero who shoots, slimes that chase, a slime king that fires back…');
+  g.step('A penitent who shoots, ichor that chases, a great ichor that fires back…');
   const P = await person(g, 'ranger', 'ranger', 96, 'hero');
   const bolt = { name: 'proj_bolt', fps: 12, loop: true, span: 1, frames: [ballFrame(8, '#fff6c0', '#f0a030'), ballFrame(7, '#fff6c0', '#f0a030')], boxes: [null, null] };
   const pr = await (await fetch('/api/project?id=actor-ranger')).json();
@@ -138,7 +138,7 @@ async function topdownDemo(g) {
     ents: [{ id: uid(), type: 'start', name: 'PlayerStart', ...at2(8, 11) }, ...[[26, 6], [30, 16], [64, 8], [12, 34], [24, 38]].map(([x, y]) => ({ id: uid(), type: 'actor', name: 'slime', ...at2(x, y) })),
       { id: uid(), type: 'actor', name: 'slime_king', ...at2(60, 36) }] }));
   await g.put('hud-hud', { meta: { kind: 'hud', name: 'hud' }, hud: starterHud('hud') });
-  await g.put('menus-game', titleMenu('SLIME CELLAR', '#ff4f6d'));
+  await g.put('menus-game', titleMenu('THE CRYPT', '#c8323c'));
   return { level: 'res://levels/dungeon/dungeon.tscn', player: 'res://sprites/ranger/ranger.tscn', hud: 'res://hud/hud/hud.tscn' };
 }
 
@@ -190,15 +190,15 @@ async function art(g, name, dest, file, { cut = false, height = 0 } = {}) {
 const titleMenu = (title, accent) => { const m = MENU_DEFAULTS(); m.title.title = title; m.title.dim = .3; m.title.fontSize = 22; if (accent) m.title.accent = accent; return { meta: { kind: 'menus', name: 'game' }, menus: m }; };
 
 async function match3Demo(g) {
-  g.step('Sweets for the pieces, a candy land behind the board…');
+  g.step('Relics for the pieces, a candlelit nave behind the board…');
   const pieces = [];
   for (const c of ['red', 'yellow', 'green', 'blue', 'purple', 'orange']) pieces.push(await art(g, 'm3_' + c, 'pictures/pieces', c, { cut: true, height: 128 }));
-  const bg = await art(g, 'm3_bg', 'pictures', 'candy_land');
-  await g.put('menus-game', titleMenu('SWEET SWAP', '#ff5d9e'));
+  const bg = await art(g, 'm3_bg', 'pictures', 'nave');
+  await g.put('menus-game', titleMenu('RELIQUARY', '#c8323c'));
   g.step('Three boards, each harder, in the flow…');
   const board = (id, name, x, cols, goal, moves) => [id, 'match3', name, x, { cols, rows: cols, goal, moves, pieces, picture: bg }];
   await g.put('flow-game', flow([['t', 'menu', 'Title', 0, { menu: 'title', picture: bg }], board('b1', 'Board 1', 240, 7, 1200, 18), board('b2', 'Board 2', 480, 8, 2400, 20), board('b3', 'Board 3', 720, 8, 4000, 22),
-    ['e', 'end', 'Sweet!', 960, { text: 'Every board cleared. Sweet!' }]],
+    ['e', 'end', 'Absolved', 960, { text: 'Every board cleared. The relics are whole.' }]],
     [['t', 'done', 'b1'], ['b1', 'win', 'b2'], ['b2', 'win', 'b3'], ['b3', 'win', 'e'], ['b1', 'lose', 'b1'], ['b2', 'lose', 'b2'], ['b3', 'lose', 'b3']]));
   return {};
 }
@@ -213,11 +213,11 @@ async function cardsDemo(g) {
     { id: 'strike', name: 'Strike', cost: 1, attack: 6, copies: 5, picture: pic.strike }, { id: 'guard', name: 'Guard', cost: 1, block: 5, copies: 4, picture: pic.guard },
     { id: 'mend', name: 'Mend', cost: 1, heal: 5, copies: 1, picture: pic.mend }, { id: 'focus', name: 'Focus', cost: 0, draw: 2, copies: 1, picture: pic.focus },
     { id: 'smash', name: 'Smash', cost: 2, attack: 15, copies: 1, picture: pic.smash }] } });
-  await g.put('menus-game', titleMenu('THREE FOES', '#e3b04b'));
+  await g.put('menus-game', titleMenu('THREE PENANCES', '#c9a24a'));
   g.step('The road: three fights in the flow…');
-  await g.put('flow-game', flow([['t', 'menu', 'Title', 0, { menu: 'title' }], ['f1', 'cards', 'Goblin', 240, { hp: 22, pattern: 'attack 5, attack 7, block 4', picture: foe.goblin }],
-    ['f2', 'cards', 'Skeleton knight', 480, { hp: 36, pattern: 'block 6, attack 9, attack 11', picture: foe.knight }], ['f3', 'cards', 'Dragon whelp', 720, { hp: 55, pattern: 'attack 8, attack 14, block 10, attack 18', picture: foe.dragon }],
-    ['win', 'end', 'Victory', 960, { text: 'Three foes down. The road is yours.' }], ['lose', 'end', 'Fallen', 960, { text: 'You fell. Try another way to play your deck.', y: 200 }]],
+  await g.put('flow-game', flow([['t', 'menu', 'Title', 0, { menu: 'title' }], ['f1', 'cards', 'Heretic', 240, { hp: 22, pattern: 'attack 5, attack 7, block 4', picture: foe.goblin }],
+    ['f2', 'cards', 'Skeleton knight', 480, { hp: 36, pattern: 'block 6, attack 9, attack 11', picture: foe.knight }], ['f3', 'cards', 'Gargoyle', 720, { hp: 55, pattern: 'attack 8, attack 14, block 10, attack 18', picture: foe.dragon }],
+    ['win', 'end', 'Victory', 960, { text: 'Three foes down. The bells ring for you.' }], ['lose', 'end', 'Fallen', 960, { text: 'You fell. Try another way to play your deck.', y: 200 }]],
     [['t', 'done', 'f1'], ['f1', 'win', 'f2'], ['f2', 'win', 'f3'], ['f3', 'win', 'win'], ['f1', 'lose', 'lose'], ['f2', 'lose', 'lose'], ['f3', 'lose', 'lose']]));
   return {};
 }
