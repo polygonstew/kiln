@@ -528,6 +528,14 @@ function drawRight() {
       opt('style', 'Frame', frames); opt('slotStyle', 'Slots', frames); col('fill', 'Fill'); col('edge', 'Light edge'); col('edge2', 'Dark edge'); col('cursor', 'Cursor'); col('text', 'Text');
       F.push(field('Details', check('item name + description box', w.details, v => { w.details = v; r(); })));
       F.push(h('div', { class: 'sec', style: { padding: '8px 0 0', borderBottom: 0 } }, h('h3', {}, 'Items', h('span', { class: 'grow' }),
+        // one list of items for the whole game (Rooms → Items keeps it): fill this inventory from it
+        h('button', { class: 'btn sm ghost', title: 'Fill this inventory from the game\'s items (Rooms → Items): names, descriptions, pictures', onclick: async () => {
+          const G = (await fetch('/api/project?id=items-adventure').then(x => x.ok ? x.json() : null).catch(() => null))?.items?.items || [];
+          if (!G.length) return toast('The game has no items yet: Rooms → Items (or Help → Rule book lists them)');
+          w.items = G.map(g => ({ id: g.id, name: g.name, desc: g.look || '', icon: g.icon ? FS.root + '/' + g.icon : '', count: 1 }));
+          for (const it of w.items) if (it.icon) loadImg(it.icon);
+          w.sel = 0; r(); drawRight(); toast(`${G.length} items from the game`, 'ok');
+        } }, 'Game\'s items'),
         h('button', { class: 'btn sm', title: 'Add an item to the next free slot', onclick: () => { (w.items = w.items || []).push({ id: 'item' + (w.items.length + 1), name: 'New item', desc: '', icon: '', count: 1 }); w.sel = w.items.length - 1; r(); drawRight(); } }, '+ Item')),
         ...(w.items || []).map((it, i) => h('div', { class: 'invitem' + (i === w.sel ? ' on' : ''), onclick: () => { w.sel = i; r(); drawRight(); } },
           h('button', { class: 'btn sm ghost', title: 'Pick an icon (first frame of a saved actor or sprite)', onclick: e => { e.stopPropagation(); pickSprite(p => { it.icon = p; loadImg(p); r(); drawRight(); }); } }, it.icon ? '🖼' : 'Icon…'),

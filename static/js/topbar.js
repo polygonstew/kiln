@@ -50,6 +50,12 @@ const row = (label, hint, run) => h('button', { title: hint, onclick: () => { do
 function layoutPop(anchor) {
   import('./dock.js').then(D => popup(anchor, D.layoutMenu(cur).map(([label, run]) => run ? row(label, '', run) : h('div', { class: 'tb-sub' }, label))));
 }
+// the game's one list of items (kept as kiln/items-adventure.json; Rooms and the HUD inventory use it)
+async function openItemsHere() {
+  const { api } = await import('./core.js');
+  const I = (await fetch('/api/project?id=items-adventure').then(r => r.ok ? r.json() : null).catch(() => null))?.items || { items: [], combos: [] };
+  (await import('./rooms_items.js')).openItems(I, next => api('/api/project', { id: 'items-adventure', data: { meta: { kind: 'items', name: 'adventure' }, items: next } }));
+}
 function moreMenu(anchor, rest) { popup(anchor, rest.map(m => row(m.title, '', () => go(m.id)))); }
 function gameMenu(e) {
   const godot = document.querySelector('#rootchip .godot');
@@ -59,6 +65,7 @@ function gameMenu(e) {
     row('Open game…', 'Switch to another of your games', () => import('./games.js').then(m => m.openGame())),
     row('Kind of game…', `Now: ${P().label}`, () => import('./gametype.js').then(m => m.choosePath())),
     row('Rule book…', 'How to play, written from your game', () => import('./rules.js').then(m => m.openRules())),
+    row('Items…', 'The game\'s items: one list for point & click, the HUD inventory, conversations and Logic', openItemsHere),
     row('Browse its files', 'The Files area', () => go('files')),
     row('Export game…', 'For players: web, Windows, Linux, macOS', () => import('./release.js').then(m => m.openRelease())),
   ]);

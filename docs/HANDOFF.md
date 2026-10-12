@@ -69,7 +69,8 @@ library.tar.zst = all the user's games, plus a copy of the code). Everything bel
 **Not done yet (in order):**
 1. DONE (session 6, after the credit top-up): **Camera** area (camera.js): dead zone, damping, look-ahead, bias, zoom,
    modes incl. scroll, confine; live sketch; camera/camera.json → main.gd. Verified in Godot (scroll + zoom).
-2. Half-built work found in the audit: **one items database** (HUD items.json and adventure items are separate lists);
+2. DONE: one items list: the game chip → Items… edits kiln/items-adventure.json (the game's items); the HUD inventory
+   widget has "Game's items" to fill itself from it. Still half-built:
    Godot skeleton export lacks head views + LipSync (rig_godot.js); 2D lighting; cutscenes.
 3. A "sleek pass": the user finds some things corny; review Gloop's look, emoji in UI, make defaults calm.
 4. Ideas from research to offer: Blender-style named workspaces across areas, Construct's pin-to-edge (done), Bitsy-like

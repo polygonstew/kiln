@@ -14,7 +14,7 @@ export async function openItems(I, save) {
   for (const d of (await ls('icons')).filter(i => i.dir)) for (const i of await ls('icons/' + d.name)) if (/\.png$/i.test(i.name) && i.name !== 'sheet.png') icons.push(`icons/${d.name}/${i.name}`);
   const body = h('div', { class: 'body' });
   const m = h('div', { class: 'modal', onclick: e => { if (e.target === m) m.remove(); } }, h('div', { style: { width: 'min(820px, 96vw)' } },
-    h('header', {}, h('span', { class: 'grow' }, 'Items'), h('button', { class: 'ibtn', title: 'Close', onclick: () => m.remove() }, '✕')), body));
+    h('header', {}, h('span', { class: 'grow' }, 'The game\'s items'), h('button', { class: 'ibtn', title: 'Close', onclick: () => m.remove() }, '✕')), body));
   document.body.append(m);
   let t = 0; const keep = () => { clearTimeout(t); t = setTimeout(() => save(I), 500); };
   const opts = (v, none) => [h('option', { value: '' }, none), ...I.items.map(i => h('option', { value: i.id, selected: i.id === v }, i.name))];
