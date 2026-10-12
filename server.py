@@ -10,6 +10,7 @@ import play
 import release
 import tidy
 import video
+import audio
 import writer
 from store import settings, save_settings
 from cloud import CF_ENV, CF_FREE, CLOUD_CAP, cf_used, cloud_image, cloud_spent, free_today, keys, openrouter_left, post_json
@@ -804,6 +805,12 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/export':
                 d, files = write_files(b['dest'], b['files'])
                 return self.send(200, {'dir': d, 'files': files})
+            if u.path == '/api/audio':          # {path, dest (in the asset folder), trim, fade_in, fade_out, normalize} → the new sound
+                root = Path(settings()['root'])
+                return self.send(200, {'file': audio.process(in_home(b['path']), in_home(root / b['dest']), bool(b.get('trim')), b.get('fade_in', 0), b.get('fade_out', 0), bool(b.get('normalize')))})
+            if u.path == '/api/audio/open':     # {path, app: audacity | cutroom}: hand edits on this machine
+                audio.open_in(in_home(b['path']), 'cutroom' if b.get('app') == 'cutroom' else 'audacity')
+                return self.send(200, {'ok': True})
             if u.path == '/api/video/card':     # {text, seconds, name, colour?} → a title card, videos/<name>.ogv
                 nm = re.sub(r'[^a-z0-9_]+', '_', b['name'].lower()).strip('_') or 'card'
                 still = base64.b64decode(b['image'].split(',', 1)[1]) if str(b.get('image', '')).startswith('data:') else None      # a picture to zoom into

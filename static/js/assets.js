@@ -28,7 +28,7 @@ export function assetShelf() {
   let kind = 'all', q = '', all = [];
   const grid = h('div', { class: 'as-grid' }), search = h('input', { type: 'text', placeholder: 'Find…', oninput: () => { q = search.value.toLowerCase(); draw(); } });
   const chips = h('div', { class: 'as-chips' });
-  const el = h('div', { class: 'sec as-shelf' }, h('h3', {}, 'Assets', h('span', { class: 'grow' }), h('button', { class: 'ibtn', title: 'Look again', onclick: load }, '↻')), h('div', { class: 'as-top' }, chips, search), grid);
+  const el = h('div', { class: 'sec as-shelf' }, h('h3', {}, 'Assets', h('span', { class: 'grow' }), h('button', { class: 'btn sm ghost', title: 'A sound or music from your computer, then tidy it (trim, fade, loudness)', onclick: () => import('./sound_tools.js').then(m => m.addSound()) }, '+ Sound'), h('button', { class: 'ibtn', title: 'Look again', onclick: load }, '↻')), h('div', { class: 'as-top' }, chips, search), grid);
   function draw() {
     chips.replaceChildren(...KINDS.filter(([k]) => k === 'all' || all.some(a => a.kind === k)).map(([k, l]) => h('button', { class: kind === k ? 'on' : '', onclick: () => { kind = k; draw(); } }, l)));
     const shown = all.filter(a => (kind === 'all' || a.kind === kind) && (!q || a.name.toLowerCase().includes(q)));
@@ -36,7 +36,7 @@ export function assetShelf() {
   }
   const tile = a => h('div', { class: 'as-tile', draggable: true, title: `${a.name} (${a.kind}): click to open, drag onto a canvas`,
     ondragstart: e => { e.dataTransfer.setData(DRAG, JSON.stringify(a)); e.dataTransfer.effectAllowed = 'copy'; },
-    onclick: () => OPEN[a.kind]?.(a.name) },
+    onclick: () => a.kind === 'sound' ? import('./sound_tools.js').then(m => m.openSoundTools(a.path)) : OPEN[a.kind]?.(a.name) },
     a.thumb ? h('img', { src: a.thumb, loading: 'lazy' }) : h('i', {}, { sound: '♪', video: '▶', dialogue: '❝', level: '▦', scene: '▭', item: '◆', room: '⌂' }[a.kind] || '·'),
     h('b', {}, a.name.replace(/\.\w+$/, '')), h('small', {}, a.kind));
   async function load() { all = await gather(); draw(); }

@@ -73,7 +73,9 @@ library.tar.zst = all the user's games, plus a copy of the code). Everything bel
    widget has "Game's items" to fill itself from it. DONE: Godot skeleton export has the head views (Head_<view>) and mouths (Mouth_<shape>) on the head bone with
    _kiln/actor/rig_face.gd (show_head, set_mouth, say = lip sync); verified in Godot. Still half-built:
    Godot skeleton export lacks head views + LipSync (rig_godot.js); 2D lighting; cutscenes.
-3. **Audio section** (user asked 2026-10-12: "use audacity headless for the audio/music sections?"): Audacity has no
+3. DONE: **Sound tools** (audio.py + sound_tools.js; asset shelf → a sound, or + Sound): trim, fade, loudnorm, .ogg/.wav,
+   Open in Audacity / Open in Cutroom (the user's editor, no file argument: it opens, they drag the sound in).
+   Original note: Audacity has no
    true headless mode (its mod-script-pipe needs the GUI running), so: ffmpeg (installed; sox is not) on the server for
    trim, fade, normalize (loudnorm), loop points and convert to .ogg for music, plus an "Open in Audacity" button for
    hand edits (audacity is installed at /usr/bin/audacity; the kiln user service may need DISPLAY to launch it).
