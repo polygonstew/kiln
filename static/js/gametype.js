@@ -9,7 +9,7 @@ import { h, api, emit, on, toast } from './core.js';
 // tint: [accent, lighter, dark background] (null = Kiln's own ember); level: [cols, rows] of a new level;
 // camera: follow (scrolls with the player), rooms (snaps screen by screen), fixed (one screen);
 // tabs: the path's own top bar, [area id, name it goes by on this path] (topbar.js puts every other area under More)
-const ACTION_TABS = [['home', 'Home'], ['gamedoc', 'Doc'], ['flow', 'Flow'], ['forge', 'Forge'], ['animate', 'Animate'], ['scenes', 'Scenes'], ['levels', 'Levels'], ['hud', 'HUD'], ['dialogue', 'Dialogue'], ['logic', 'Logic'], ['menus', 'Menus'], ['stage', 'Stage']];
+const ACTION_TABS = [['home', 'Home'], ['gamedoc', 'Doc'], ['flow', 'Flow'], ['forge', 'Forge'], ['animate', 'Animate'], ['scenes', 'Scenes'], ['levels', 'Levels'], ['hud', 'HUD'], ['camera', 'Camera'], ['dialogue', 'Dialogue'], ['logic', 'Logic'], ['menus', 'Menus'], ['stage', 'Stage']];
 export const PATHS = {
   scroller: { label: '2D side-scroller', like: 'Mario, Contra, Celeste', what: 'Run, jump and fight across wide levels.', tint: ['#f29a3a', '#ffbb6e', '#3a2610'],
     brains: { hero: 'player', enemy: 'patrol', flyer: 'flyer', boss: 'patrol' }, camera: 'follow', level: [60, 17], tabs: ACTION_TABS },

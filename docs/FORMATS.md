@@ -184,3 +184,4 @@ arrays of `{id, name, text, link?: 'level:<n>'|'scene:<n>', done?}`, `story.them
 - Room pictures keep their format (`background.webp|jpg|png`, adventure_godot.js picFile); hotspot pictures may have `scale`.
 - `videos/<name>.ogv` title cards can zoom into a picture (`/api/video/card` with `image`).
 - Rule book: `kiln/rules-game.json` `{ rules: { sections: [{ title, text }] } }` → `docs/RULES.md` and `rules/rules.json` (main.gd `_rules()`, menu action `rules`).
+- Camera: `kiln/camera-game.json` → `camera/camera.json` `{ game: { mode, dead_w, dead_h, damping, look, bias, zoom, confine, scroll }, levels: { name: {…} } }`; main.gd `_camera()` (drag margins, smoothing, zoom, offset, look-ahead, scroll mode).

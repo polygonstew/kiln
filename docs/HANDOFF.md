@@ -67,9 +67,8 @@ library.tar.zst = all the user's games, plus a copy of the code). Everything bel
 - Earlier today (5b, below): looks, kits, physics, ragdolls, match-3, cards, VN, runner, rule book, Gloop, templates.
 
 **Not done yet (in order):**
-1. **Camera section** (user picked it): a Camera area modelled on Cinemachine (dead zone / soft zone drawn over the
-   level, look-ahead, damping, zoom, shake, confiner) + Godot Camera2D drag margins; `camera/camera.json` read by
-   main.gd `_camera()`. Keep Kiln's look ("keep our edge"; user: "stay away from corny looking stuff").
+1. DONE (session 6, after the credit top-up): **Camera** area (camera.js): dead zone, damping, look-ahead, bias, zoom,
+   modes incl. scroll, confine; live sketch; camera/camera.json → main.gd. Verified in Godot (scroll + zoom).
 2. Half-built work found in the audit: **one items database** (HUD items.json and adventure items are separate lists);
    Godot skeleton export lacks head views + LipSync (rig_godot.js); 2D lighting; cutscenes.
 3. A "sleek pass": the user finds some things corny; review Gloop's look, emoji in UI, make defaults calm.

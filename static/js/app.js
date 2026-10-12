@@ -15,7 +15,7 @@ import { initTop, markTab } from './topbar.js';
 import { dockArea } from './dock.js';
 
 const mods = [files];
-const optional = ['home', 'gamedoc', 'flow', 'forge', 'animate', 'scenes', 'levels', 'rooms', 'cards', 'hud', 'stage', 'concepts', 'logic', 'dialogue', 'menus'];
+const optional = ['home', 'gamedoc', 'flow', 'forge', 'animate', 'scenes', 'levels', 'rooms', 'cards', 'camera', 'hud', 'stage', 'concepts', 'logic', 'dialogue', 'menus'];
 const views = {};
 let cur = null;
 

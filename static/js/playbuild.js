@@ -30,7 +30,7 @@ const MAIN_GD = `extends Node2D
 @export var adventure: Script             ## point & click: Kiln's adventure runtime (_kiln/adventure/adventure.gd)
 @export_file("*.json") var flow := ""     ## Kiln Flow: the game's path of scenes (flow/game.json); when set, it runs the game
 @export var player_brain := "res://_kiln/brains/player.gd"   ## for a player actor without a Brain of its own
-@export_enum("follow", "rooms", "fixed") var camera_mode := "follow"   ## scrolls with the player · room by room · one screen
+@export_enum("follow", "rooms", "fixed", "scroll") var camera_mode := "follow"   ## scrolls with the player · room by room · one screen · by itself
 @export var title := "Kiln demo"
 @export var controls := "Arrows / stick move · Space / A jumps · X attacks · C / B shoots"   ## under the title
 @export var show_title := true
@@ -319,8 +319,27 @@ func _enter(scene: PackedScene, entry: String) -> void:
 # sliding to the next as the player walks through a doorway) or fixed (one screen, centred on the level)
 var _cam: Camera2D
 var _room := Vector2.ZERO                    # rooms: a room's size, the screen rounded up to whole tiles
+var _cs := {}                                # Kiln's Camera settings for this level (camera/camera.json), if any
 func _camera(lv: Node, view: Vector2) -> void:
 \t_cam = Camera2D.new()
+\t_cs = {}
+\tif FileAccess.file_exists("res://camera/camera.json"):
+\t\tvar d = JSON.parse_string(FileAccess.get_file_as_string("res://camera/camera.json"))
+\t\tif d is Dictionary:
+\t\t\t_cs = d.get("levels", {}).get(String(lv.name) if lv else "", d.get("game", {}))
+\tif _cs.has("mode"):
+\t\tcamera_mode = _cs["mode"]
+\t_cam.zoom = Vector2.ONE * float(_cs.get("zoom", 1.0))
+\t_cam.offset.y = float(_cs.get("bias", 0.0)) * view.y
+\tif _cs.has("damping"):
+\t\t_cam.position_smoothing_speed = float(_cs["damping"])
+\tif camera_mode == "follow" and _cs.has("dead_w"):          # the dead zone: the player moves freely inside it
+\t\t_cam.drag_horizontal_enabled = true
+\t\t_cam.drag_vertical_enabled = true
+\t\t_cam.drag_left_margin = float(_cs["dead_w"])
+\t\t_cam.drag_right_margin = float(_cs["dead_w"])
+\t\t_cam.drag_top_margin = float(_cs["dead_h"])
+\t\t_cam.drag_bottom_margin = float(_cs["dead_h"])
 \tvar bounds := Rect2(Vector2.ZERO, view)
 \tvar bounded := true
 \tvar tiles := lv.get_node_or_null("Tiles") as TileMapLayer if lv else null
@@ -336,6 +355,8 @@ func _camera(lv: Node, view: Vector2) -> void:
 \t\tbounds = Rect2(Vector2.ZERO, lv.get("size"))
 \telse:
 \t\tbounded = false                          # nothing to measure: the camera goes where the player goes
+\tif not _cs.get("confine", true):
+\t\tbounded = false
 \tif camera_mode == "follow" and player:
 \t\t_cam.position_smoothing_enabled = true
 \t\tplayer.add_child(_cam)
@@ -358,6 +379,10 @@ func _room_centre() -> Vector2:
 func _physics_process(delta: float) -> void:
 \tif camera_mode == "rooms" and is_instance_valid(player) and _cam:
 \t\t_cam.position = _cam.position.move_toward(_room_centre(), 1800.0 * delta)   # a quick slide to the next room
+\telif camera_mode == "scroll" and _cam:                      # a runner / shmup: the screen moves on by itself
+\t\t_cam.position.x += float(_cs.get("scroll", 60.0)) * delta
+\telif camera_mode == "follow" and _cam and is_instance_valid(player) and "velocity" in player and _cs.has("look"):
+\t\t_cam.offset.x = move_toward(_cam.offset.x, signf(player.velocity.x) * float(_cs["look"]), float(_cs["look"]) * 2.0 * delta)   # look-ahead
 
 # ---- Kiln Stage: inside Kiln's Stage the sliders tune the player while you play, and the camera button asks
 # ---- for a screenshot. Web builds only; in Godot itself _web is null and none of this runs.
@@ -458,6 +483,8 @@ export async function gameFiles(pick, shipped = false) {
   if (stack) files[STACKER] = STACKER_GD;
   const from = pref.get('flow.from', ''); pref.set('flow.from', '');      // Flow's "▶ From here": this build starts there
   if (flowOn && F.nodes.some(n => n.kind === 'match3')) files[MATCH3] = MATCH3_GD;
+  const cam = (await fetch('/api/project?id=camera-game').then(r => r.ok ? r.json() : null).catch(() => null))?.camera;
+  if (cam) files['camera/camera.json'] = JSON.stringify(cam, null, 1) + '\n';          // Kiln's Camera settings
   const rules = (await fetch('/api/project?id=rules-game').then(r => r.ok ? r.json() : null).catch(() => null))?.rules;
   if (rules?.sections?.length) files['rules/rules.json'] = JSON.stringify(rules.sections, null, 1) + '\n';      // "How to play" in the menus
   if (flowOn && F.nodes.some(n => n.kind === 'cards')) Object.assign(files, { [BATTLE]: BATTLE_GD,

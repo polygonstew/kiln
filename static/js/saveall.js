@@ -3,7 +3,7 @@
 // place them, the HUD before the dialogue that talks in it. Used by File → Save all and by the demo game.
 import { h, api, emit, toast } from './core.js';
 
-const ORDER = [['actor', 'animate'], ['scene', 'scenes'], ['hud', 'hud'], ['level', 'levels'], ['menus', 'menus'], ['dialogue', 'dialogue'], ['room', 'rooms'], ['cards', 'cards'], ['graph', 'logic'], ['flow', 'flow']];
+const ORDER = [['actor', 'animate'], ['scene', 'scenes'], ['hud', 'hud'], ['level', 'levels'], ['menus', 'menus'], ['dialogue', 'dialogue'], ['room', 'rooms'], ['cards', 'cards'], ['camera', 'camera'], ['graph', 'logic'], ['flow', 'flow']];
 
 // onStep(text) hears what is being saved; resolves to { saved, failed: [names] }
 export async function saveAll(onStep = () => {}) {
