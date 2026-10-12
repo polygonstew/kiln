@@ -1,6 +1,7 @@
 // Flow → Godot: the game's path of scenes as flow/game.json, and flow.gd, the runtime that plays it. main.gd hands
 // the game to flow.gd when a flow exists. Each scene ends with an outcome ("done", a choice's words, "hit" or "miss"
 // in a quick-time moment, "yes" or "no" for a check, the name of an exit) and the flow follows that link.
+import { parseMoves } from './cards_godot.js';
 export const FLOW = '_kiln/game/flow.gd';
 
 // the game's flow file: { start, nodes: { id: { kind, name, …res:// paths } }, links: [{ from, out, to }] }; res(rel) → res://…
@@ -8,11 +9,13 @@ export function flowJSON(F, res) {
   const r = rel => rel ? res(rel) : '', nodes = {};
   for (const n of F.nodes) nodes[n.id] = {
     kind: n.kind, name: n.name || n.kind,
-    video: r(n.video), picture: r(n.picture), skip: n.skip !== false,
+    video: r(n.video), picture: r(n.picture), portrait: r(n.portrait), skip: n.skip !== false,
     scene: n.kind === 'level' && n.level ? res(`levels/${n.level}/${n.level}.tscn`) : n.kind === 'room' && n.room ? res(`rooms/${n.room}/${n.room}.tscn`) : n.kind === 'menu' ? res(`menus/${n.menu || 'title'}.tscn`) : '',
     entry: n.entry || '', dialogue: n.dialogue ? res(`dialogue/${n.dialogue}.json`) : '',
     text: n.text || '', options: n.options || [], seconds: +n.seconds || 0, fallback: +n.fallback || 0,
     from: +n.from || 0, to: +n.to || 0, action: n.action || 'any', flag: n.flag || '', item: n.item || '',
+    cols: +n.cols || 8, rows: +n.rows || 8, pieces: (n.pieces || []).filter(Boolean).map(res), goal: +n.goal || 1500, hp: +n.hp || 30,
+    moves: n.kind === 'cards' ? parseMoves(n.pattern) : +n.moves || 20,
   };
   return JSON.stringify({ start: F.start || F.nodes[0]?.id || '', nodes, links: F.links }, null, 1) + '\n';
 }
@@ -29,6 +32,8 @@ export const FLOW_GD = `extends Node
 ##   choice  words, a picture or a looping video and buttons (1-6 keys), maybe against the clock → the chosen words
 ##   quick   a quick-time moment: press the action while the video shows "NOW" → hit, else → miss
 ##   check   a story flag and / or an item → yes or no
+##   match3  a match-3 board (_kiln/puzzle/match3.gd) over a picture → win or lose
+##   cards   a card battle against one enemy (_kiln/cards/battle.gd); your health carries over → win or lose
 ##   end     the end: words on screen, a key goes back to the start of the flow
 
 const STORY := "res://_kiln/ui/story.gd"
@@ -43,6 +48,7 @@ var hit := false
 var _video: VideoStreamPlayer
 var _left := 0.0                # a choice's clock
 var _now: Label
+var run := {}                   # what lasts the whole game between scenes (a card battler's health)
 
 func _ready() -> void:
 \tadd_to_group("kiln_flow")
@@ -89,6 +95,18 @@ func go(id: String) -> void:
 \t\t"check":
 \t\t\tvar yes: bool = (n["flag"] == "" or _flags().has(n["flag"])) and (n["item"] == "" or _has(n["item"]))
 \t\t\tdone.call_deferred("yes" if yes else "no")
+\t\t"match3":
+\t\t\t_talk_picture(n)
+\t\t\tvar b: Node = load("res://_kiln/puzzle/match3.gd").new()
+\t\t\tb.setup(n)
+\t\t\tlayer.add_child(b)
+\t\t\tb.finished.connect(done)
+\t\t"cards":
+\t\t\t_layer()
+\t\t\tvar c: Node = load("res://_kiln/cards/battle.gd").new()
+\t\t\tc.setup(n, run)
+\t\t\tlayer.add_child(c)
+\t\t\tc.finished.connect(done)
 \t\t"end":
 \t\t\t_words(n.get("text", "The end."), true)
 \t\t_:
@@ -145,6 +163,7 @@ func _show_video(n: Dictionary, looping: bool) -> void:
 
 func _talk(n: Dictionary) -> void:
 \tvar l := _layer()
+\tl.layer = 20                               # under the conversation's box (25) and its choices (30)
 \tif n.get("picture", "") != "":
 \t\tvar pic := TextureRect.new()
 \t\tpic.texture = load(n["picture"])
@@ -152,6 +171,16 @@ func _talk(n: Dictionary) -> void:
 \t\tpic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 \t\tpic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
 \t\tl.add_child(pic)
+\tif n.get("portrait", "") != "":             # the one talking, standing on the right (a visual novel)
+\t\tvar who := TextureRect.new()
+\t\twho.texture = load(n["portrait"])
+\t\twho.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+\t\twho.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+\t\twho.anchor_left = 0.55
+\t\twho.anchor_right = 1.0
+\t\twho.anchor_top = 0.08
+\t\twho.anchor_bottom = 1.0
+\t\tl.add_child(who)
 \tvar runner: Node = load(STORY if n["kind"] == "story" else DIALOGUE).new()
 \tadd_child(runner)
 \tvar shared = _runner_flags()

@@ -37,9 +37,10 @@ def convert(src, name, root):
     threading.Thread(target=run, daemon=True).start()
 
 
-def card(text, seconds, name, root, colour='10223a'):
+def card(text, seconds, name, root, colour='10223a', image=None):
     """A title card: words in the middle of a plain colour for `seconds`, fading in and out, as videos/<name>.ogv.
-    Stand-ins for scenes not filmed yet, chapter titles, credits. Quick, so it runs straight away."""
+    With an image (bytes): the picture slowly zooming in (a Ken Burns move) with the words as a caption. Stand-ins
+    for scenes not filmed yet, chapter titles, credits. Quick, so it runs straight away."""
     ff = shutil.which('ffmpeg')
     if not ff:
         raise RuntimeError('ffmpeg is not installed on this machine')
@@ -47,9 +48,20 @@ def card(text, seconds, name, root, colour='10223a'):
     out.mkdir(parents=True, exist_ok=True)
     words = str(text).replace('\\', '').replace("'", '’').replace(':', '\\:')[:120]
     s = max(1.0, min(30.0, float(seconds)))
-    vf = f"drawtext=text='{words}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=(h-text_h)/2,fade=in:0:12,fade=out:st={s - .5}:d=.5"
-    r = subprocess.run([ff, '-y', '-loglevel', 'error', '-f', 'lavfi', '-i', f'color=c=0x{colour}:s=960x540:d={s}', '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo',
-                        '-vf', vf, '-shortest', '-c:v', 'libtheora', '-q:v', '7', '-c:a', 'libvorbis', str(out / f'{name}.ogv')], capture_output=True, text=True, timeout=120)
+    fade = f"fade=in:0:12,fade=out:st={s - 0.5:.2f}:d=0.5"
+    if image:
+        pic = out / '.src' / f'{name}_still'
+        pic.parent.mkdir(parents=True, exist_ok=True)
+        pic.write_bytes(image)
+        frames = int(s * 25)
+        vf = (f"scale=1920:-2,zoompan=z='min(zoom+0.0007,1.15)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={frames}:s=1280x720:fps=25,"
+              f"drawtext=text='{words}':fontcolor=white:fontsize=38:x=(w-text_w)/2:y=h-80:box=1:boxcolor=black@0.45:boxborderw=14,{fade}")
+        src = ['-i', str(pic)]                      # one picture: zoompan makes every frame from it
+    else:
+        vf = f"drawtext=text='{words}':fontcolor=white:fontsize=48:x=(w-text_w)/2:y=(h-text_h)/2,{fade}"
+        src = ['-f', 'lavfi', '-i', f'color=c=0x{colour}:s=960x540:d={s}']
+    r = subprocess.run([ff, '-y', '-loglevel', 'error', *src, '-f', 'lavfi', '-i', 'anullsrc=r=44100:cl=stereo',
+                        '-vf', vf, '-t', str(s), '-shortest', '-c:v', 'libtheora', '-q:v', '7', '-c:a', 'libvorbis', str(out / f'{name}.ogv')], capture_output=True, text=True, timeout=180)
     if r.returncode:
         raise RuntimeError(r.stderr.strip()[-300:])
     return f'videos/{name}.ogv'

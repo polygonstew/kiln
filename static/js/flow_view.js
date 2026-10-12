@@ -15,6 +15,8 @@ export const KINDS = {
   choice: ['Choice', '#36c3ae', 'Buttons over a picture or a looping video, maybe against the clock'],
   quick: ['Quick-time', '#ff4f6d', 'A video with a moment to press a key in: hit or miss'],
   check: ['Check', '#9cc76b', 'A story flag or an item: yes or no'],
+  match3: ['Match-3', '#ff5d73', 'A board of pieces: line up three of a kind to reach the score'],
+  cards: ['Card battle', '#e3b04b', 'A fight with your deck (Cards) against one enemy'],
   end: ['End', '#a29e92', 'The end: words on screen, then back to the start'],
 };
 const NS = 'http://www.w3.org/2000/svg';

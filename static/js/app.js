@@ -14,7 +14,7 @@ import './gametype.js';        // the game's path (kind of game): tint, tabs, br
 import { initTop, markTab } from './topbar.js';
 
 const mods = [files];
-const optional = ['gamedoc', 'flow', 'forge', 'animate', 'scenes', 'levels', 'rooms', 'hud', 'stage', 'concepts', 'logic', 'dialogue', 'menus'];
+const optional = ['gamedoc', 'flow', 'forge', 'animate', 'scenes', 'levels', 'rooms', 'cards', 'hud', 'stage', 'concepts', 'logic', 'dialogue', 'menus'];
 const views = {};
 let cur = null;
 

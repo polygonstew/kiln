@@ -121,7 +121,7 @@
  },
  "bn_priestess": {
   "aspect": "3:4",
-  "prompt": "Full body, seen from the side facing left, standing, on a plain flat white background, whole figure in frame, no shadow. A dignified older woman, a voodoo priestess in a long white dress and a colourful headwrap, beads, wise expression."
+  "prompt": "Full body, seen from the side facing left, standing, on a plain flat bright green background, whole figure in frame, no shadow. A dignified older woman, a voodoo priestess in a long white dress and a colourful headwrap, beads, wise expression."
  },
  "bn_book": {
   "aspect": "1:1",
@@ -138,5 +138,65 @@
  "bn_chalk": {
   "aspect": "1:1",
   "prompt": "A single stick of white chalk, game inventory icon, centred, on a plain flat white background."
+ },
+ "m3_red": {
+  "aspect": "1:1",
+  "prompt": "A single glossy round red cherry candy, match-3 game piece, centred, on a plain flat white background."
+ },
+ "m3_yellow": {
+  "aspect": "1:1",
+  "prompt": "A single glossy yellow lemon drop candy shaped like a star, match-3 game piece, centred, on a plain flat white background."
+ },
+ "m3_green": {
+  "aspect": "1:1",
+  "prompt": "A single glossy green apple jelly candy shaped like a leaf, match-3 game piece, centred, on a plain flat white background."
+ },
+ "m3_blue": {
+  "aspect": "1:1",
+  "prompt": "A single glossy blue raspberry candy shaped like a teardrop, match-3 game piece, centred, on a plain flat white background."
+ },
+ "m3_purple": {
+  "aspect": "1:1",
+  "prompt": "A single glossy purple grape candy shaped like a heart, match-3 game piece, centred, on a plain flat white background."
+ },
+ "m3_orange": {
+  "aspect": "1:1",
+  "prompt": "A single glossy orange candy shaped like a square cushion, match-3 game piece, centred, on a plain flat white background."
+ },
+ "m3_bg": {
+  "aspect": "16:9",
+  "prompt": "Background for a match-3 puzzle game: a dreamy candy land with pink clouds, lollipop trees and soft hills, pastel colours, calm empty middle."
+ },
+ "cd_strike": {
+  "aspect": "1:1",
+  "prompt": "Card art: a gleaming sword slashing with a motion arc, dramatic, centred."
+ },
+ "cd_guard": {
+  "aspect": "1:1",
+  "prompt": "Card art: a sturdy round wooden shield with an iron rim, glowing faintly, centred."
+ },
+ "cd_mend": {
+  "aspect": "1:1",
+  "prompt": "Card art: a small glass potion bottle with glowing green healing liquid, centred."
+ },
+ "cd_focus": {
+  "aspect": "1:1",
+  "prompt": "Card art: an open spellbook with glowing pages and floating runes, centred."
+ },
+ "cd_smash": {
+  "aspect": "1:1",
+  "prompt": "Card art: a huge war hammer smashing down with sparks, dramatic, centred."
+ },
+ "cd_goblin": {
+  "aspect": "3:4",
+  "prompt": "A sneaky green goblin with a dagger and a grin, game enemy portrait, full body facing the viewer, on a plain flat white background."
+ },
+ "cd_knight": {
+  "aspect": "3:4",
+  "prompt": "A skeleton knight in rusty armour with a cracked shield, game enemy portrait, full body facing the viewer, on a plain flat white background."
+ },
+ "cd_dragon": {
+  "aspect": "3:4",
+  "prompt": "A small fierce red dragon whelp with spread wings, game boss portrait, full body facing the viewer, on a plain flat white background."
  }
 }

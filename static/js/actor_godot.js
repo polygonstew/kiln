@@ -169,7 +169,7 @@ func die() -> void:
 \t\tcollision_layer = 0
 \t\tawait get_tree().create_timer(1.6).timeout
 \t\tif is_in_group("player"):
-\t\t\tget_tree().reload_current_scene()
+\t\t\t_again()
 \t\telse:
 \t\t\tqueue_free()
 \t\treturn
@@ -179,9 +179,17 @@ func die() -> void:
 \t\tsprite.play("death")
 \t\tawait sprite.animation_finished
 \tif is_in_group("player"):
-\t\tget_tree().reload_current_scene()
+\t\t_again()
 \telse:
 \t\tqueue_free()
+
+# the player is out: Kiln's main.gd plays the level again (the HUD, menus and flow carry on), else the scene restarts
+func _again() -> void:
+\tvar main := get_tree().get_first_node_in_group("kiln_main")
+\tif main and main.has_method("replay"):
+\t\tmain.replay()
+\telse:
+\t\tget_tree().reload_current_scene()
 
 ## Spawn a Kiln effect scene (plays once, removes itself) at a point in the world.
 func _effect(scene: PackedScene, at: Vector2) -> void:

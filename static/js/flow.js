@@ -114,6 +114,7 @@ function outs(n) {
     case 'choice': return (n.options || []).filter(Boolean).length ? n.options.filter(Boolean) : ['…'];
     case 'quick': return ['hit', 'miss'];
     case 'check': return ['yes', 'no'];
+    case 'match3': case 'cards': return ['win', 'lose'];
     case 'end': return [];
     default: return ['done'];
   }
@@ -130,6 +131,8 @@ function summary(n) {
     case 'quick': return `${n.video ? v(n.video) : 'no video'} · press ${n.action === 'any' ? 'any key' : n.action} at ${n.from}–${n.to}s`;
     case 'check': return [n.flag && 'flag ' + n.flag, n.item && 'has ' + n.item].filter(Boolean).join(' and ') || 'pick a flag or an item';
     case 'end': return (n.text || '').slice(0, 40);
+    case 'match3': return `${n.cols || 8}×${n.rows || 8} · ${n.goal || 1500} in ${n.moves || 20} moves`;
+    case 'cards': return `${n.name}: ${n.hp || 30} health · ${n.pattern || 'attack 6'}`;
     default: return '';
   }
 }
@@ -227,10 +230,11 @@ function inspector() {
     : 'Nothing yet. Add scenes on the left, or start from a shape: intro video → title → stage 1 → a talk in an alley → stage 1.1 → the end, say. Each dot on a scene is a way it can end; drag it to what comes next.'));
   const set = (k, full = true) => v => { snapshot(); n[k] = v; changed(full); };
   const opts = (list, none) => [['', none], ...list.map(x => Array.isArray(x) ? x : [x, x])];
-  const pic = () => field('Picture', h('span', { class: 'rm-pic' }, n.picture ? h('img', { src: '/api/fs/raw?path=' + encodeURIComponent(FS.root + '/' + n.picture) }) : '',
+  const pic = (key = 'picture', label = 'Picture') => field(label, h('span', { class: 'rm-pic' }, n[key] ? h('img', { src: '/api/fs/raw?path=' + encodeURIComponent(FS.root + '/' + n[key]) }) : '',
     h('button', { class: 'btn sm', onclick: () => pickPicture('Picture', async url => { const b64 = url.startsWith('data:') ? url : await fetch(url).then(r => r.blob()).then(b => new Promise(ok => { const fr = new FileReader(); fr.onload = () => ok(fr.result); fr.readAsDataURL(b); }));
-      const name = slug(n.name) || 'picture'; await saveFiles('pictures', [{ name: name + '.png', b64 }]); set('picture')(`pictures/${name}.png`); }) }, n.picture ? 'Change' : 'Pick…'),
-    n.picture ? h('button', { class: 'ibtn', title: 'No picture', onclick: () => set('picture')('') }, '✕') : ''), 'Copied into pictures/');
+      const name = (slug(n.name) || 'picture') + (key === 'picture' ? '' : '_' + key);
+      await saveFiles('pictures', [{ name: name + '.png', b64: key === 'portrait' ? await cutOut(b64) : b64 }]); set(key)(`pictures/${name}.png`); }) }, n[key] ? 'Change' : 'Pick…'),
+    n[key] ? h('button', { class: 'ibtn', title: 'No picture', onclick: () => set(key)('') }, '✕') : ''), key === 'portrait' ? 'Who is talking: stands on the right, over the background' : 'Copied into pictures/');
   const vid = k => field('Video', h('span', { class: 'rm-pic' }, select(opts(L.videos, L.videos.length ? 'Pick a video…' : 'None yet'), n[k] || '', set(k)), h('button', { class: 'btn sm', title: 'A video file from your computer: Kiln turns it into Ogg Theora for Godot', onclick: () => addVideo(set(k)) }, 'Add…'),
     h('button', { class: 'btn sm ghost', title: 'Words on a plain colour for a few seconds: a stand-in until the scene is filmed, a chapter title, credits', onclick: () => titleCard(n, set(k)) }, 'Title card…')), 'videos/*.ogv');
   const k = n.kind, body = [];
@@ -240,7 +244,7 @@ function inspector() {
   if (k === 'room') body.push(field('Room', select(opts(Object.keys(L.rooms), 'Pick a room…'), n.room || '', set('room')), 'A "Leaves" hotspot ends it'),
     n.room ? field('Arrive at', select((L.rooms[n.room] || ['start']).map(e => [e, e]), n.entry || 'start', set('entry'))) : '');
   if (k === 'talk' || k === 'story') body.push(field('Conversation', select(opts(L.dialogues, 'Pick one…'), n.dialogue || '', set('dialogue')), 'A line or choice sending the message flow:<word> ends it with <word>'),
-    k === 'talk' ? pic() : h('p', { class: 'note' }, 'Shown as full pages: each line of the conversation can have its own picture (Dialogue → a line\'s Picture).'));
+    k === 'talk' ? [pic('picture', 'Background'), pic('portrait', 'Character')] : h('p', { class: 'note' }, 'Shown as full pages: each line of the conversation can have its own picture (Dialogue → a line\'s Picture).'));
   if (k === 'choice') {
     body.push(field('Words', h('input', { type: 'text', value: n.text || '', placeholder: 'Which way?', onchange: e => set('text', false)(e.target.value) })), vid('video'), n.video ? '' : pic(),
       field('Buttons', h('div', { class: 'fw-opts' }, ...(n.options || []).map((o, i) => h('span', {}, h('input', { type: 'text', value: o, onchange: e => { snapshot(); const old = n.options[i]; n.options[i] = e.target.value; for (const l of F.links) if (l.from === n.id && l.out === old) l.out = e.target.value; changed(true); } }),
@@ -256,6 +260,17 @@ function inspector() {
     field('Prompt', h('input', { type: 'text', value: n.text || '', placeholder: 'NOW!', onchange: e => set('text', false)(e.target.value) })));
   if (k === 'check') body.push(field('Flag', h('input', { type: 'text', value: n.flag || '', placeholder: 'e.g. door_open', onchange: e => set('flag')(slug(e.target.value)) }), 'Set by a hotspot or a conversation'),
     field('Item', select(opts(L.items, 'Any'), n.item || '', set('item')), 'Carried now'));
+  if (k === 'match3') {
+    const num = (key, label, d, hint) => field(label, h('input', { type: 'number', min: 1, value: n[key] || d, style: { width: '80px' }, onchange: e => set(key)(+e.target.value) }), hint);
+    body.push(num('cols', 'Columns', 8), num('rows', 'Rows', 8), num('goal', 'Goal', 1500, 'Points to win'), num('moves', 'Moves', 20, 'Swaps you get'), pic(),
+      field('Pieces', h('div', { class: 'fw-pieces' }, ...[0, 1, 2, 3, 4, 5].map(i => { const p = (n.pieces || [])[i];
+        return h('button', { class: 'fw-piece', title: p ? `${p} (click to change, right click to remove)` : 'A picture for this piece (a gem, a sweet…)', oncontextmenu: e => { e.preventDefault(); const a = [...(n.pieces || [])]; a[i] = ''; set('pieces')(a); },
+          onclick: () => import('./pictures.js').then(m => m.pickFromSheet(`Piece ${i + 1}`, async url => { const name = `${slug(n.name) || 'board'}_${i + 1}`; await saveFiles('pictures/pieces', [{ name: name + '.png', b64: url }]); const a = [...(n.pieces || [])]; a[i] = `pictures/pieces/${name}.png`; set('pieces')(a); })) },
+          p ? h('img', { src: '/api/fs/raw?path=' + encodeURIComponent(FS.root + '/' + p) }) : String(i + 1)); })), 'Six kinds; none = coloured gems. Pick from a sheet or any picture'));
+  }
+  if (k === 'cards') body.push(field('Health', h('input', { type: 'number', min: 1, value: n.hp || 30, style: { width: '80px' }, onchange: e => set('hp')(+e.target.value) }), 'The enemy\'s'),
+    field('Moves', h('input', { type: 'text', value: n.pattern || 'attack 6, attack 8, block 5', onchange: e => set('pattern')(e.target.value) }), 'What it does, turn by turn: attack N or block N, repeating'),
+    pic(), h('p', { class: 'note' }, 'The picture is the enemy. Your cards and deck: the Cards area.'), h('button', { class: 'btn sm', onclick: () => emit('tab', 'cards') }, 'Open Cards'));
   if (k === 'end') body.push(field('Words', h('textarea', { rows: 4, value: n.text || '', placeholder: 'The end.', onchange: e => set('text')(e.target.value) })));
   return h('div', {},
     h('div', { class: 'sec' }, h('h3', {}, KINDS[k][0], h('span', { class: 'grow' }), h('button', { class: 'btn sm ghost danger', title: 'Remove this scene (Ctrl+Z brings it back)', onclick: remove }, 'Delete')),
@@ -267,6 +282,13 @@ function inspector() {
     h('div', { class: 'sec' }, h('h3', {}, 'Then'), ...outs(n).map(o => { const l = F.links.find(l => l.from === n.id && l.out === o);
       return field(o, select([['', 'nothing yet'], ...F.nodes.filter(x => x.id !== n.id).map(x => [x.id, x.name])], l?.to || '', v => { snapshot(); F.links = F.links.filter(x => !(x.from === n.id && x.out === o)); if (v) F.links.push({ from: n.id, out: o, to: v }); changed(true); })); }),
       k === 'end' ? h('p', { class: 'note' }, 'After the end, the game goes back to the start.') : ''));
+}
+
+// a character picture without its plain background
+async function cutOut(url) {
+  const { cutout } = await import('./cutout.js'), { imgData } = await import('./core.js'), im = cutout(await imgData(url));
+  const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; c.getContext('2d').putImageData(im, 0, 0);
+  return c.toDataURL('image/png');
 }
 
 /* ------------------------------------------------------------ for Godot / playing ---- */

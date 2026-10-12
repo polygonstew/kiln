@@ -62,7 +62,7 @@ async function roomPicture(url) {           // the background, smoothly fitted t
   return c.toDataURL('image/webp', .9);
 }
 // a person from one picture: cut out, ~270 px tall (a third of the 720 px room); idle breathes, walk sways and bobs (paper-puppet style)
-function personFrames(cut) {
+export function personFrames(cut) {
   const pad = 12, fw = cut.width + pad * 2, fh = cut.height + pad, src = fromImageData(cut);
   const frame = (angle, bob, sy = 1) => { const c = canvasOf(fw, fh), x = c.getContext('2d');
     x.translate(fw / 2, fh); x.rotate(angle * Math.PI / 180); x.scale(1, sy); x.drawImage(src, -cut.width / 2, -cut.height - bob); return c.toDataURL('image/png'); };

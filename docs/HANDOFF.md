@@ -45,18 +45,20 @@ Verified in headless Godot: the adventure demo played through to its ending; flo
 check → end; story pages with a typed answer; top-down shooting + room camera; push crate + exit → next level.
 Also verified: the stacker (bricks fall, land, next spawns). FMV/text templates were tested through hand-made flows, not their template builds.
 
-**Next (user, 2026-10-12, top priority):** "the current demos look pretty bad… make the pixelation an option, leaning toward
-the non-retro use, so users can use higher-end artwork, but keep all the retro approaches in; keep it modern feeling."
-1. A per-game **Look**: Modern (default for new games: smooth filtering, 1280×720 or 1920×1080 base, no forced pixelize) or
-   Pixel (today's 480×270, nearest filtering, Forge pixelize). Ask in New game next to the path; store in game-path.json.
-   Touch points: play.py project.godot (window size, stretch, default_texture_filter), every writer that hard-codes
-   `texture_filter = 1` (actor_godot, rooms, levels, hud, scenes), Forge's pixelize step (make it a toggle), Stage size.
-2. Better-looking templates: painted backgrounds/characters instead of code-drawn boxes. The user gave $5 of OpenRouter
-   credit (key pasted in chat 2026-10-12, "be tight with it") for template artwork; Kiln's cloud engine already uses
-   OpenRouter (cloud.py, cap KILN_CLOUD_CAP). Generate once, keep the art as files in the repo (e.g. static/templates/),
-   not regenerated per user.
-3. "Templates" is the UI name for demos (code still says demo*.js).
-4. Play lives inside tabs (Stage, Flow, Rooms); never put a global ▶ Play back in the top bar.
+## Session 5b (2026-10-12, later): looks, kits, physics, new kinds of game
+
+Done: per-game **Look** (Modern default / Pixel), Forge full-colour mode (cutout.js); **templates** (the UI word for demos)
+for every path on painted art (static/templates, tools/template_art.py: 51 pictures, 35 from the free quota, $0.62 paid
+from the user's OpenRouter key OPENROUTER_KILN_TEMPLATES_KEY), point & click **kits** (The Last Light, Star Janitor,
+Bayou Noir) with art slots (keep / new / mine / sheet); item pictures from a picture or a sheet; **character guide**;
+**Gloop** (helper.js) instead of the welcome window; **physics** things in Levels (box, ball, plank, seesaw, button, gate)
+and **ragdolls** from Puppet rigs (+ physics guide with examples); new paths **match-3**, **card battler** (Cards area),
+**visual novel** (Talk portraits), **endless runner**; Play lives only inside tabs.
+Verified in Godot or in the browser on the built game: every kit, every template (screenshots), button/gate, ragdoll.
+Gotchas: PinJoint2D angular limits make 2D physics NaN (don't use them); Godot's default font has no emoji; WebP data
+must be saved as .webp; a white figure on a white background can't be cut out (generate characters on flat green).
+Next ideas: a gamepad cursor for point & click, cards with special effects (poison, draw-and-discard), match-3 special
+pieces, shmup path, Puppet for big painted characters (rig a cut-out picture), more kits.
 
 ## Running
 

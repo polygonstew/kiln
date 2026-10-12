@@ -47,6 +47,12 @@ const ALL = [
   ['fm_video', 'Videos', 'Your video clips: Flow → a Video scene → Add… turns any video into one Godot plays.', 'flow', s => s.videos > 0],
   ['fm_choice', 'A choice', 'A Choice scene: buttons over a picture or a looping video, maybe against the clock.', 'flow', s => s.flow.includes('choice')],
   ['fm_quick', 'A quick-time moment', 'Press in time or it goes wrong: a Quick-time scene with a hit and a miss.', 'flow', s => s.flow.includes('quick')],
+  ['m3_board', 'A board', 'A Match-3 scene in Flow: its size, the score to reach, the moves you get.', 'flow', s => s.flow.includes('match3')],
+  ['m3_pieces', 'Pieces', 'Six pictures for the pieces (Flow → the board → Pieces), from a sheet or one by one.', 'flow', s => s.flow.includes('match3')],
+  ['cd_cards', 'Cards', 'Your deck in the Cards area: what each card costs and does, and a picture.', 'cards', s => s.kinds.cards],
+  ['cd_fight', 'A fight', 'A Card battle scene in Flow: an enemy, its health and what it does each turn.', 'flow', s => s.flow.includes('cards')],
+  ['vn_scene', 'A scene', 'A Talk scene in Flow with a background and a character on the right.', 'flow', s => s.flow.includes('talk')],
+  ['rn_level', 'A long run', 'A long level with gaps and steps, and a Door zone going to "Next in the game Flow" at the end.', 'levels', s => s.levels.some(l => l.cols >= 100)],
   ['av_sound', 'Sound', 'Music for a room and a sound when something is used (Rooms), voice lines in Dialogue.', 'rooms', s => s.rooms.some(r => r.sound)],
 ];
 const PATH_STEPS = {
@@ -57,6 +63,10 @@ const PATH_STEPS = {
   adventure: ['idea', 'av_story', 'av_hero', 'av_room', 'av_hotspots', 'av_item', 'av_talk', 'av_puzzle', 'av_second', 'av_sound', 'flow', 'menus', 'play', 'share'],
   text: ['idea', 'av_story', 'tx_pages', 'tx_story', 'flow', 'menus', 'play', 'share'],
   fmv: ['idea', 'av_story', 'fm_video', 'flow', 'fm_choice', 'fm_quick', 'menus', 'play', 'share'],
+  match3: ['idea', 'm3_board', 'm3_pieces', 'flow', 'menus', 'play', 'share'],
+  cards: ['idea', 'cd_cards', 'cd_fight', 'flow', 'menus', 'play', 'share'],
+  vn: ['idea', 'av_story', 'tx_pages', 'vn_scene', 'flow', 'menus', 'play', 'share'],
+  runner: ['idea', 'hero', 'rn_level', 'backdrop', 'flow', 'menus', 'play', 'share'],
   wild: ['idea', 'hero', 'moves', 'world', 'backdrop', 'foe', 'hud', 'words', 'rules', 'menus', 'play', 'share'],
 };
 const stepsNow = () => PATH_STEPS[GAME.path === 'puzzle' ? GAME.puzzle : GAME.path].map(id => ALL.find(s => s[0] === id));

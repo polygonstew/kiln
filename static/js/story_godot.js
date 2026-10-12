@@ -111,13 +111,15 @@ func _build() -> void:
 \t_pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 \t_pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 \tpage.add_child(_pic)
+\tvar fs := maxi(8, int(get_viewport().get_visible_rect().size.y / 32))     # text that suits the screen: 8 px at 270, 22 at 720
 \t_who = Label.new()
 \t_who.add_theme_color_override("font_color", Color("#d9bf6a"))
-\t_who.add_theme_font_size_override("font_size", 9)
+\t_who.add_theme_font_size_override("font_size", maxi(8, fs * 2 / 3))
 \tpage.add_child(_who)
 \t_text = Label.new()
 \t_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 \t_text.add_theme_color_override("font_color", Color("#ece4cf"))
+\t_text.add_theme_font_size_override("font_size", fs)
 \tpage.add_child(_text)
 \tadd_child(_own)
 `;

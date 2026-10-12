@@ -10,6 +10,8 @@ export const MORE = {
     params: [['speed', 'Speed', 5, 200, 5, 40, 'px/s'], ['sight', 'Sight', 20, 400, 10, 150, 'px']] },
   turret: { label: 'Turret (top-down boss)', desc: 'Drifts toward the player and fires its projectile at it in a fan. Hurts on touch.',
     params: [['speed', 'Drift speed', 0, 120, 5, 15, 'px/s (0 stays put)'], ['fire_every', 'Fires every', .2, 5, .1, 1.4, 's'], ['shots', 'Shots per volley', 1, 7, 2, 3, 'in a fan'], ['sight', 'Sight', 40, 500, 10, 220, 'px']] },
+  runner: { label: 'Runner (endless)', desc: 'Runs right by itself, faster and faster; Space, a click or pad A jumps (higher while held). Falling off the level is the end.',
+    params: [['speed', 'Start speed', 40, 400, 5, 140, 'px/s'], ['speed_up', 'Speeds up', 0, 20, .5, 3, 'px/s every second'], ['jump_height', 'Jump height', 8, 200, 2, 60, 'px']] },
   walker: { label: 'Walker (point & click)', desc: 'Walks where you click, around the room\'s walk area, smaller further away. The stick or arrows walk too.',
     params: [['speed', 'Walk speed', 20, 200, 5, 70, 'px/s up close']] },
 };
@@ -156,6 +158,42 @@ func _physics_process(delta: float) -> void:
 \t\t_play(_walk_anim(actor.velocity) if actor.velocity.length() > 2.0 else "idle")
 \t_touch()
 ` + ANIM + TOUCH,
+
+  runner: HEAD('runner (endless)', 'Runs right by itself and speeds up; jump with Space / a click / pad A (hold for higher).\n## Falling below the level ends the run (the actor dies, so the level starts again).') + `
+@export var speed := 140.0       ## px/s at the start
+@export var speed_up := 3.0      ## px/s faster every second
+@export var jump_height := 60.0  ## px
+
+@onready var actor: CharacterBody2D = get_parent()
+@onready var sprite: AnimatedSprite2D = actor.get_node("Sprite")
+var gravity := 1400.0
+var _run := 0.0
+
+func _ready() -> void:
+\tKilnInput.ensure()
+
+func _physics_process(delta: float) -> void:
+\tif actor.get("dead"):
+\t\treturn
+\t_run += delta
+\tactor.velocity.x = speed + speed_up * _run
+\tactor.velocity.y += gravity * delta
+\tvar jump := Input.is_action_just_pressed("jump") or Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT)
+\tif jump and actor.is_on_floor():
+\t\tactor.velocity.y = -sqrt(2.0 * gravity * jump_height)
+\t\tif actor.has_method("sfx"):
+\t\t\tactor.sfx("jump")
+\tif Input.is_action_just_released("jump") and actor.velocity.y < 0.0:
+\t\tactor.velocity.y *= 0.5
+\tactor.move_and_slide()
+\tif actor.global_position.y > actor.get_viewport_rect().size.y * 2.0 and actor.has_method("die"):
+\t\tactor.die()
+\tvar anim := "run" if actor.is_on_floor() else ("jump" if actor.velocity.y < 0.0 else "fall")
+\tif not sprite.sprite_frames.has_animation(anim):
+\t\tanim = "walk" if sprite.sprite_frames.has_animation("walk") else "idle"
+\tif sprite.animation != anim:
+\t\tsprite.play(anim)
+`,
 
   walker: HEAD('walker (point & click)', 'Walks where it is told (walk_to, called by the adventure runtime when you click),\n## around the room\'s walk area (its NavigationRegion2D), and gets smaller further away (the room\'s depth scale).\n## The stick or the arrow keys walk it too.') + `
 @export var speed := 70.0   ## px/s at full size (it walks slower when it is smaller, further away)

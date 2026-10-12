@@ -806,7 +806,8 @@ class H(BaseHTTPRequestHandler):
                 return self.send(200, {'dir': d, 'files': files})
             if u.path == '/api/video/card':     # {text, seconds, name, colour?} → a title card, videos/<name>.ogv
                 nm = re.sub(r'[^a-z0-9_]+', '_', b['name'].lower()).strip('_') or 'card'
-                return self.send(200, {'file': video.card(b['text'], b.get('seconds', 3), nm, settings()['root'], re.sub(r'[^0-9a-fA-F]', '', b.get('colour', '10223a'))[:6] or '10223a')})
+                still = base64.b64decode(b['image'].split(',', 1)[1]) if str(b.get('image', '')).startswith('data:') else None      # a picture to zoom into
+                return self.send(200, {'file': video.card(b['text'], b.get('seconds', 3), nm, settings()['root'], re.sub(r'[^0-9a-fA-F]', '', b.get('colour', '10223a'))[:6] or '10223a', still)})
             if u.path == '/api/video':          # {path: a video file (an upload lands in videos/.src/ first), name} → videos/<name>.ogv
                 video.convert(in_home(b['path']), re.sub(r'[^a-z0-9_]+', '_', b['name'].lower()).strip('_') or 'video', settings()['root'])
                 return self.send(200, {'ok': True})

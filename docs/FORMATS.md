@@ -172,3 +172,14 @@ arrays of `{id, name, text, link?: 'level:<n>'|'scene:<n>', done?}`, `story.them
 - Levels: crate entities `{ type: 'crate', tile, x, y }` → CharacterBody2D with `_kiln/level/crate.gd`; Door zones with target `flow` → `flow:<zone name>`.
 - Puzzle stack: `_kiln/puzzle/stacker.gd` (runs like a Logic script; a zone named `goal` is the line). Top-down brains: topdown, chaser, turret (brains_more.js); KilnInput gains aim_* actions and `twin_stick()`.
 - Save game (point & click): `user://adventure_save.json` `{ room, x, y, carried, flags, gone }`.
+
+## Looks, kits, physics, cards (2026-10-12, later)
+
+- `kiln/game-path.json` also holds `look`: `modern` (1280×720, smooth: project default_texture_filter linear, stretch canvas_items, no `texture_filter = 1` in scenes) or `pixel` (480×270, sharp: the old way). Folders without one are Pixel.
+- Template art: `static/templates/<name>.webp` + `art.json` (descriptions) from `tools/template_art.py`; kits in `adventure_kits.js`.
+- Levels things: `{ type: 'body', shape: box|ball|plank|seesaw, colour? }` → RigidBody2D (+ StaticBody2D pivot and PinJoint2D for a seesaw); `{ type: 'button' }` → Area2D with `_kiln/level/button.gd`; `{ type: 'gate' }` → AnimatableBody2D with `_kiln/level/gate.gd`.
+- Ragdoll: actor `ragdoll: true` + `rig` → `sprites/<actor>/ragdoll.tscn` (+ `rag_<bone>.png`), `_kiln/actor/ragdoll.gd`; juice.gd `ragdoll` export.
+- Cards: `kiln/cards-game.json` → `cards/cards.json` `{ hp, energy, hand, cards: {id: {name, cost, attack, block, heal, draw, picture}}, deck: [ids] }`; runtime `_kiln/cards/battle.gd`.
+- Flow scene kinds added: `match3` (cols, rows, goal, moves, pieces) → `_kiln/puzzle/match3.gd`; `cards` (hp, pattern → moves, picture) ; `talk` gains `portrait`; `menu` gains `picture`.
+- Room pictures keep their format (`background.webp|jpg|png`, adventure_godot.js picFile); hotspot pictures may have `scale`.
+- `videos/<name>.ogv` title cards can zoom into a picture (`/api/video/card` with `image`).

@@ -3,7 +3,10 @@
 import { keyBackground, bbox, crop } from './core.js';
 
 // im: ImageData; o: { key, tol, keyGlobal, height (px, 0 = as drawn) } → ImageData
-export function cutout(im, { key = true, tol = 38, keyGlobal = false, height = 0 } = {}) {
+export function cutout(im, { key = true, tol = 0, keyGlobal = false, height = 0 } = {}) {
+  // how close to the background colour counts as background: low on white (white clothes stay), higher on a coloured
+  // screen (green, blue), where shading and noise in the screen must go too
+  if (!tol) { const d = im.data, [r, g, b] = [d[0], d[1], d[2]]; tol = Math.max(r, g, b) - Math.min(r, g, b) > 60 ? 48 : 14; }
   let out = key ? keyBackground(im, tol, keyGlobal) : im;
   const b = bbox(out);
   if (b) out = crop(out, b.x, b.y, b.w, b.h);

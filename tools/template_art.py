@@ -44,11 +44,28 @@ ART = {   # name: (aspect, prompt)
     'bn_bookshop': ('16:9', 'Interior of a dusty rare-book shop in the New Orleans French Quarter at night, seen from the side like a stage: wooden floor across the bottom third, tall bookshelves on the left, a cluttered desk with a green lamp and a newspaper in the middle, a front door with a glass pane on the right. Gothic mystery mood. Empty of people.'),
     'bn_cemetery': ('16:9', 'An old New Orleans cemetery at night seen from the side like a stage: raised white stone tombs, fog, Spanish moss, a full moon, a large tomb in the middle with a snake symbol carved on its door, a paved path across the bottom third. Gothic mystery mood. Empty of people.'),
     'bn_hero': ('3:4', FIG + 'A charming rumpled bookshop owner in a worn brown leather jacket over a white T-shirt, jeans, tousled blond hair.'),
-    'bn_priestess': ('3:4', FIG.replace('facing right', 'facing left') + 'A dignified older woman, a voodoo priestess in a long white dress and a colourful headwrap, beads, wise expression.'),
+    'bn_priestess': ('3:4', FIG.replace('facing right', 'facing left').replace('plain flat white background', 'plain flat bright green background') + 'A dignified older woman, a voodoo priestess in a long white dress and a colourful headwrap, beads, wise expression.'),
     'bn_book': ('1:1', 'A single old leather-bound book with a symbol on the cover, game inventory icon, centred, on a plain flat white background.'),
     'bn_note': ('1:1', 'A single torn yellowed paper note covered in faded ink symbols, game inventory icon, centred, on a plain flat white background.'),
     'bn_translated': ('1:1', 'A single folded paper with a snake symbol drawn in red ink, game inventory icon, centred, on a plain flat white background.'),
     'bn_chalk': ('1:1', 'A single stick of white chalk, game inventory icon, centred, on a plain flat white background.'),
+    # match-3: sweets and a backdrop
+    'm3_red': ('1:1', 'A single glossy round red cherry candy, match-3 game piece, centred, on a plain flat white background.'),
+    'm3_yellow': ('1:1', 'A single glossy yellow lemon drop candy shaped like a star, match-3 game piece, centred, on a plain flat white background.'),
+    'm3_green': ('1:1', 'A single glossy green apple jelly candy shaped like a leaf, match-3 game piece, centred, on a plain flat white background.'),
+    'm3_blue': ('1:1', 'A single glossy blue raspberry candy shaped like a teardrop, match-3 game piece, centred, on a plain flat white background.'),
+    'm3_purple': ('1:1', 'A single glossy purple grape candy shaped like a heart, match-3 game piece, centred, on a plain flat white background.'),
+    'm3_orange': ('1:1', 'A single glossy orange candy shaped like a square cushion, match-3 game piece, centred, on a plain flat white background.'),
+    'm3_bg': ('16:9', 'Background for a match-3 puzzle game: a dreamy candy land with pink clouds, lollipop trees and soft hills, pastel colours, calm empty middle.'),
+    # card battler: card pictures and enemies
+    'cd_strike': ('1:1', 'Card art: a gleaming sword slashing with a motion arc, dramatic, centred.'),
+    'cd_guard': ('1:1', 'Card art: a sturdy round wooden shield with an iron rim, glowing faintly, centred.'),
+    'cd_mend': ('1:1', 'Card art: a small glass potion bottle with glowing green healing liquid, centred.'),
+    'cd_focus': ('1:1', 'Card art: an open spellbook with glowing pages and floating runes, centred.'),
+    'cd_smash': ('1:1', 'Card art: a huge war hammer smashing down with sparks, dramatic, centred.'),
+    'cd_goblin': ('3:4', 'A sneaky green goblin with a dagger and a grin, game enemy portrait, full body facing the viewer, on a plain flat white background.'),
+    'cd_knight': ('3:4', 'A skeleton knight in rusty armour with a cracked shield, game enemy portrait, full body facing the viewer, on a plain flat white background.'),
+    'cd_dragon': ('3:4', 'A small fierce red dragon whelp with spread wings, game boss portrait, full body facing the viewer, on a plain flat white background.'),
 }
 
 

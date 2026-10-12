@@ -90,8 +90,8 @@ func begin(level_world: Node2D) -> void:
 \tnext_level = goal.get("target") if goal else ""
 \tline = Line2D.new()
 \tline.points = [Vector2(area.position.x, goal_y), Vector2(area.end.x, goal_y)]
-\tline.width = 1.0
-\tline.default_color = Color(1, 0.85, 0.3, 0.8)
+\tline.width = 4.0
+\tline.default_color = Color(1, 0.75, 0.2, 0.9)
 \tworld.add_child(line)
 \t_new_brick()
 

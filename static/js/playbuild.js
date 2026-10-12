@@ -11,6 +11,8 @@ import { STACKER, STACKER_GD } from './stacker_godot.js';
 import { FLOW, FLOW_GD, flowJSON } from './flow_godot.js';
 import { STORY, STORY_GD } from './story_godot.js';
 import { DIALOGUE_GD } from './dialogue_godot.js';
+import { MATCH3, MATCH3_GD } from './match3_godot.js';
+import { BATTLE, BATTLE_GD, cardsJSON } from './cards_godot.js';
 
 const MAIN_GD = `extends Node2D
 ## Kiln game: a title screen (optional), then the level with the player, a camera (following it, room by room or
@@ -170,7 +172,10 @@ func _setup() -> void:
 \t_set_up = true
 \tplaying = true
 \tif hud_scene:
-\t\tadd_child(hud_scene.instantiate())
+\t\tvar hud := hud_scene.instantiate()
+\t\tif hud is CanvasLayer:                   # Kiln HUDs are laid out on a 480×270 screen: scale them to this one
+\t\t\thud.scale = Vector2.ONE * (get_viewport_rect().size.x / 480.0)
+\t\tadd_child(hud)
 \tif adventure:                              # point & click: cursor, inventory, saving (_kiln/adventure/)
 \t\tvar a := CanvasLayer.new()
 \t\ta.set_script(adventure)
@@ -207,7 +212,13 @@ func flow_done(outcome := "done") -> void:
 func go_to_level(path: String, entry := "") -> void:
 \t_enter.call_deferred(load(path), entry)
 
+## The player is out: the level they were in starts again.
+func replay() -> void:
+\t_enter.call_deferred(_last[0], _last[1])
+
+var _last := [null, ""]
 func _enter(scene: PackedScene, entry: String) -> void:
+\t_last = [scene, entry]
 \tif world:
 \t\tremove_child(world)
 \t\tworld.queue_free()
@@ -271,6 +282,10 @@ func _camera(lv: Node, view: Vector2) -> void:
 \t\tvar ts := Vector2(tiles.tile_set.tile_size)
 \t\tbounds = Rect2(Vector2(tiles.get_used_rect().position) * ts, Vector2(tiles.get_used_rect().size) * ts)
 \t\t_room = (view / ts).ceil() * ts
+\t\tif bounds.size.y < view.y:             # a low strip of tiles: keep its bottom, show sky above it
+\t\t\tbounds = Rect2(bounds.position.x, bounds.end.y - view.y, bounds.size.x, view.y)
+\t\tif bounds.size.x < view.x:             # narrower than the screen: the level in the middle
+\t\t\tbounds = Rect2(bounds.get_center().x - view.x / 2, bounds.position.y, view.x, bounds.size.y)
 \telif lv and lv.get("size") is Vector2:       # a point & click room: its background's size
 \t\tbounds = Rect2(Vector2.ZERO, lv.get("size"))
 \telse:
@@ -393,6 +408,9 @@ export async function gameFiles(pick, shipped = false) {
   if (room) Object.assign(files, adventureRuntime());
   if (stack) files[STACKER] = STACKER_GD;
   const from = pref.get('flow.from', ''); pref.set('flow.from', '');      // Flow's "▶ From here": this build starts there
+  if (flowOn && F.nodes.some(n => n.kind === 'match3')) files[MATCH3] = MATCH3_GD;
+  if (flowOn && F.nodes.some(n => n.kind === 'cards')) Object.assign(files, { [BATTLE]: BATTLE_GD,
+    'cards/cards.json': cardsJSON((await fetch('/api/project?id=cards-game').then(r => r.ok ? r.json() : null).catch(() => null))?.cards || {}, rel => 'res://' + rel) });
   if (flowOn) Object.assign(files, { 'flow/game.json': flowJSON(F.nodes.some(n => n.id === from) ? { ...F, start: from } : F, rel => 'res://' + rel), [FLOW]: FLOW_GD, [STORY]: STORY_GD, '_kiln/ui/dialogue.gd': DIALOGUE_GD });
   // the player brain main.gd falls back on: the folder's own copy (here or in the old sprites/_kiln/), else Kiln's
   const ls = async d => ((await api('/api/fs?path=' + encodeURIComponent(`${FS.root}/${d}`)).catch(() => ({ items: [] }))).items || []).map(i => i.name);
@@ -411,6 +429,10 @@ const CONTROLS = {
   adventure: 'Click to walk · click a thing to use it · right-click to look · click an item, then a thing, to use it there',
   text: 'Space turns the page · click a choice, or type what you do',
   fmv: 'Space skips a video · 1–6 or a click choose · press in time when it says NOW',
+  match3: 'Click a piece, then a neighbour, to swap them · or arrows and Space',
+  cards: 'Click a card (or 1–9) to play it · E or Enter ends the turn',
+  vn: 'Space or Enter reads on · pick a choice when it comes',
+  runner: 'Space, a click or pad A jumps (hold for higher)',
 };
 
 // Build for the Stage: onLog(lines) gets the build log as it grows; resolves true when the game is ready at /play/.
