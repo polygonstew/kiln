@@ -110,10 +110,3 @@ export function tour(area) {
   show();
 }
 export function endTour() { if (!cur) return; cur.parts.forEach(p => p.remove()); window.removeEventListener('keydown', cur.key, true); cur = null; }
-// the first visit to an area: a small offer, not the tour itself
-export function offerTour(area) {
-  if (!T[area] || pref.get('tour.seen.' + area, false) || document.querySelector('.tour-offer')) return;
-  const b = h('div', { class: 'tour-offer' }, h('span', {}, 'New here? '), h('button', { class: 'btn sm go', onclick: () => { b.remove(); tour(area); } }, 'Take the tour'),
-    h('button', { class: 'btn sm ghost', onclick: () => { pref.set('tour.seen.' + area, true); b.remove(); } }, 'No thanks'), h('small', {}, 'Shift+F1 any time'));
-  document.body.append(b); setTimeout(() => b.remove(), 15000);
-}

@@ -86,6 +86,8 @@ func _on_menu(a: String) -> void:
 \t\t\t\tflow_done("done")
 \t\t\telse:
 \t\t\t\t_start()
+\t\t"rules":
+\t\t\t_rules()
 \t\t"save":
 \t\t\tget_tree().call_group("kiln_adventure", "save_game")
 \t\t"load":
@@ -116,6 +118,46 @@ func _unhandled_input(e: InputEvent) -> void:
 \t\t_open(pause_menu)
 \telif not pause_menu:
 \t\t_simple_pause()
+
+## How to play: the rule book Kiln wrote (rules/rules.json), or at least the controls; Esc, Enter or a click closes it.
+func _rules() -> void:
+\tvar parts: Array = [{"title": "Controls", "text": controls}]
+\tif FileAccess.file_exists("res://rules/rules.json"):
+\t\tvar d = JSON.parse_string(FileAccess.get_file_as_string("res://rules/rules.json"))
+\t\tif d is Array and d.size():
+\t\t\tparts = d
+\tvar layer := CanvasLayer.new()
+\tlayer.layer = 60
+\tlayer.process_mode = Node.PROCESS_MODE_ALWAYS
+\tvar dim := ColorRect.new()
+\tdim.color = Color(0, 0, 0, 0.85)
+\tdim.set_anchors_preset(Control.PRESET_FULL_RECT)
+\tlayer.add_child(dim)
+\tvar scroll := ScrollContainer.new()
+\tscroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+\tscroll.offset_left = 40
+\tscroll.offset_right = -40
+\tscroll.offset_top = 24
+\tscroll.offset_bottom = -24
+\tlayer.add_child(scroll)
+\tvar box := VBoxContainer.new()
+\tbox.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+\tscroll.add_child(box)
+\tvar fs := maxi(8, int(get_viewport_rect().size.y / 36))
+\tfor p in parts:
+\t\tfor t in [[p.get("title", ""), fs + 4, Color(1, 0.8, 0.4)], [p.get("text", ""), fs, Color.WHITE]]:
+\t\t\tvar l := Label.new()
+\t\t\tl.text = t[0]
+\t\t\tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+\t\t\tl.add_theme_font_size_override("font_size", t[1])
+\t\t\tl.add_theme_color_override("font_color", t[2])
+\t\t\tbox.add_child(l)
+\tvar back := Button.new()
+\tback.text = "Back"
+\tback.pressed.connect(layer.queue_free)
+\tbox.add_child(back)
+\tadd_child(layer)
+\tback.grab_focus.call_deferred()
 
 # no Kiln pause menu: Esc / Start still pauses, with a word on screen
 var _paused_label: CanvasLayer
@@ -409,6 +451,8 @@ export async function gameFiles(pick, shipped = false) {
   if (stack) files[STACKER] = STACKER_GD;
   const from = pref.get('flow.from', ''); pref.set('flow.from', '');      // Flow's "▶ From here": this build starts there
   if (flowOn && F.nodes.some(n => n.kind === 'match3')) files[MATCH3] = MATCH3_GD;
+  const rules = (await fetch('/api/project?id=rules-game').then(r => r.ok ? r.json() : null).catch(() => null))?.rules;
+  if (rules?.sections?.length) files['rules/rules.json'] = JSON.stringify(rules.sections, null, 1) + '\n';      // "How to play" in the menus
   if (flowOn && F.nodes.some(n => n.kind === 'cards')) Object.assign(files, { [BATTLE]: BATTLE_GD,
     'cards/cards.json': cardsJSON((await fetch('/api/project?id=cards-game').then(r => r.ok ? r.json() : null).catch(() => null))?.cards || {}, rel => 'res://' + rel) });
   if (flowOn) Object.assign(files, { 'flow/game.json': flowJSON(F.nodes.some(n => n.id === from) ? { ...F, start: from } : F, rel => 'res://' + rel), [FLOW]: FLOW_GD, [STORY]: STORY_GD, '_kiln/ui/dialogue.gd': DIALOGUE_GD });

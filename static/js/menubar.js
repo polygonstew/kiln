@@ -72,6 +72,7 @@ const MENUS = () => [
     ['Into Godot', 'How what you make here reaches your Godot project', () => window.open('/help#godot', '_blank')],
     ['Gloop', 'Your little helper: what to do next, tours and guides', () => import('./helper.js').then(m => m.callGloop())],
     ['Character guide', 'What pictures a character needs, and how to clean them up', () => import('./guide_actor.js').then(m => m.openActorGuide())],
+    ['Rule book', 'How to play this game, written from what is in it; shown by the game\'s "How to play"', () => import('./rules.js').then(m => m.openRules())],
     ['Physics guide', 'How bodies, joints and ragdolls work, with examples to build', () => import('./guide_physics.js').then(m => m.openPhysicsGuide())],
     ['Shortcuts', 'Keys and mouse for the area you are in', () => window.dispatchEvent(new KeyboardEvent('keydown', { key: '?' })), '?'],
     ['For developers', 'Code map, API, events, tests', () => window.open('/help#dev', '_blank')],

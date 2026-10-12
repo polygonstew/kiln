@@ -8,7 +8,7 @@ import { initWheel, registerWheel } from './wheel.js';
 import './quick.js';
 import './sendto.js';
 import { initMenus } from './menubar.js';
-import { offerTour, endTour } from './tour.js';
+import { endTour } from './tour.js';     // tours start from Help, Gloop or Shift+F1, never by themselves
 import { initJourney } from './journey.js';
 import './gametype.js';        // the game's path (kind of game): tint, tabs, brains per role
 import { initTop, markTab } from './topbar.js';
@@ -35,7 +35,7 @@ function show(id) {
   }
   for (const [k, el] of Object.entries(views)) el.classList.toggle('on', k === m.id);
   markTab(m.id);
-  if (cur !== m.id) { endTour(); mods.find(x => x.id === cur)?.hide?.(); cur = m.id; m.show?.(); pref.set('tab', m.id); location.hash = m.id; setTimeout(() => cur === m.id && offerTour(m.id), 1200); }
+  if (cur !== m.id) { endTour(); mods.find(x => x.id === cur)?.hide?.(); cur = m.id; m.show?.(); pref.set('tab', m.id); location.hash = m.id; }
   views[m.id].focus({ preventScroll: true });
 }
 

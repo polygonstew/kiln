@@ -44,6 +44,7 @@ export async function callGloop() {
     ...(n ? [['Do it', () => import('./journey.js').then(m => m.doStep(n)), true]] : []),
     ['All the steps', () => import('./journey.js').then(m => m.openSteps())],
     ['Character guide', () => import('./guide_actor.js').then(m => m.openActorGuide())],
+    ['Rule book', () => import('./rules.js').then(m => m.openRules())],
     ['Physics guide', () => import('./guide_physics.js').then(m => m.openPhysicsGuide())],
   ]);
 }

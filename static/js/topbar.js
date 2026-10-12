@@ -53,6 +53,7 @@ function gameMenu(e) {
     row('New game…', 'A new game folder, starting clean', () => import('./games.js').then(m => m.newGame())),
     row('Open game…', 'Switch to another of your games', () => import('./games.js').then(m => m.openGame())),
     row('Kind of game…', `Now: ${P().label}`, () => import('./gametype.js').then(m => m.choosePath())),
+    row('Rule book…', 'How to play, written from your game', () => import('./rules.js').then(m => m.openRules())),
     row('Browse its files', 'The Files area', () => go('files')),
     row('Export game…', 'For players: web, Windows, Linux, macOS', () => import('./release.js').then(m => m.openRelease())),
   ]);
