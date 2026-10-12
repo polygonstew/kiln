@@ -1,4 +1,4 @@
-// Your game: how far the game in this asset folder has come, as a short path of steps (a hero, its moves, a world,
+// Your game: how far the game in this asset folder has come, as a short path of steps (an idea, a hero, its moves, a world,
 // a backdrop, a foe, a HUD, words, rules, menus, playing it, sharing it). The top-bar chip shows the count; its panel shows each
 // step with a "Do it" that opens the right area. After a save that finishes a step, a small card says so and points
 // at the next one, so there is always a clear, inviting next thing to make.
@@ -7,6 +7,7 @@ import { S as FS } from './files.js';
 
 // [id, title, why, area, test(state)]
 const STEPS = [
+  ['idea', 'An idea', 'A title and one sentence about your game in the Game doc. Stuck? It has questions, themes and an idea roll.', 'gamedoc', s => s.idea],
   ['hero', 'A hero', 'Someone to play: describe one in Forge, or draw and rig one in Animate.', 'forge', s => s.actors.some(a => a.role === 'hero')],
   ['moves', 'It moves', 'Walk, jump and attack: Animate → Puppet makes them from one drawing.', 'animate', s => s.actors.some(a => a.role === 'hero' && ['walk', 'jump', 'attack'].every(n => a.anims.includes(n)))],
   ['world', 'A world', 'Paint a level with platforms, ladders and spikes, and put your hero in it.', 'levels', s => s.kinds.level],
@@ -32,8 +33,10 @@ async function look() {
     if (d?.actor) actors.push({ name: d.actor.name, role: d.actor.role || (d.actor.kind === 'creature' ? 'enemy' : 'hero'), anims: (d.actor.anims || []).map(n => n.name) });
   }
   const built = !!(await api('/api/play/status').catch(() => ({}))).built;
+  const gd = await fetch('/api/project?id=gamedoc-game').then(r => r.ok ? r.json() : null).catch(() => null);
+  const idea = !!(gd?.doc?.v?.['pitch.title']?.trim() && gd.doc.v['pitch.logline']?.trim());
   const shared = !!((await api('/api/release/status').catch(() => ({}))).releases || []).length;
-  return { kinds, actors, built, shared, empty: !projects.some(p => p.kind !== 'style') };
+  return { kinds, actors, built, shared, idea, empty: !projects.some(p => p.kind !== 'style') };
 }
 async function refresh(saved) {
   state = await look();
@@ -54,7 +57,7 @@ function openPath(welcome) {
   const n = next();
   const p = h('div', { class: 'jr-panel' },
     h('div', { class: 'jr-head' }, h('b', {}, welcome ? 'Let\'s make a game' : 'Your game'), h('span', { class: 'grow' }), h('button', { class: 'ibtn', title: 'Close', onclick: () => p.remove() }, '✕')),
-    welcome ? h('p', { class: 'note' }, 'Eleven small steps from nothing to a game other people can play, with a gamepad. Each opens the right place; nothing here is locked or in order.') : '',
+    welcome ? h('p', { class: 'note' }, 'Twelve small steps from an idea to a game other people can play, with a gamepad. Each opens the right place; nothing here is locked or in order.') : '',
     h('div', { class: 'jr-steps' }, ...STEPS.map(([id, title, why, area], i) => h('div', { class: 'jr-step' + (done.has(id) ? ' done' : n?.[0] === id ? ' next' : '') },
       h('i', {}, done.has(id) ? '✓' : String(i + 1)), h('div', { class: 'jr-t' }, h('b', {}, title), h('small', {}, why)),
       done.has(id) ? '' : h('button', { class: 'btn sm' + (n?.[0] === id ? ' go' : ' ghost'), title: 'Open ' + area, onclick: () => { p.remove(); go(area); } }, 'Do it')))),

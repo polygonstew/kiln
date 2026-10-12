@@ -19,6 +19,7 @@ level background). Everything it writes is plain Godot (`.tscn`, `.tres`, `.gd`)
 
 | Key | Area | What it does |
 |---|---|---|
+| – | **Game doc** | The design document: pitch, story, world and lore, characters, mechanics, levels, look, plan; questions, themes, names and ideas when stuck; a one-page pitch to send |
 | 1 | **Files** | The asset folder as a file manager: tree, thumbnails, animated previews, drop-in import, rename, trash |
 | 2 | **Forge** | *What are you making?* Sprites (characters, creatures, items, props, effects, portraits, vehicles, UI pieces) from a description or an image, on the art's own pixel grid; **Background** (depth layers → Scenes), **Tileset** (→ Levels), **Icon set** (one palette) |
 | 3 | **Animate** | Pixel editor, timeline, onion skin, animation sets, sheet cutter, Workshop (roles, faces, hit reactions, brains, sounds, effects, projectiles), **Puppet** (bones, Flash-style timeline, image / parts-kit import, swappable heads, pixel mouths, lip sync from voice lines) |

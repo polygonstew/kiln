@@ -15,6 +15,7 @@
   menus/                title / options / pause scenes (Menus)
   dialogue/             <name>.json conversations (Dialogue); voice lines live in sprites/<actor>/voice/
   logic/                <graph>.gd compiled Logic graphs and your own scripts (Play runs every logic/*.gd)
+  docs/                 GAME.md, pitch.html, game_doc.html (Game doc → Save doc; editable source kiln/gamedoc-game.json)
   icons/<set>/          <item>.png + sheet.png + sheet.json (Forge → Icon set: one palette, one size)
   tiles/                <name>.png tileset sheets (Forge → Tileset: row 1 four fills, row 2 two lit tops, platform, underside)
   _kiln/                Kiln's runtime scripts (below)
@@ -147,3 +148,10 @@ hud.gd joins group `kiln_hud`; juice.gd joins `kiln_actors`.
 
 ## Level autotiles
 `terrains: [{ name, first }]`: 16 pieces from tile `first`; piece = first + mask (1 above, 2 right, 4 below, 8 left = same-terrain neighbour). TileSet: `terrain_set_0/mode = 2` (match sides) with peering bits per piece.
+
+## Game doc (kiln/gamedoc-game.json)
+`{meta, doc: {v: {...}}}`: one flat map keyed `<section>.<part>` (gamedoc_shape.js). Text parts are strings, list parts
+arrays of `{id, name, text, link?: 'level:<n>'|'scene:<n>', done?}`, `story.themes` an array of strings, `pitch.keyart`
+`{kind: 'scene'|'actor', name}`, `cast.notes` `{<actor>: {want, flaw, voice, notes}}`, `levels.notes` `{<level>: text}`,
+`<section>.thoughts` the questions answered from the Stuck? panel (`{name: question, text: answer}`).
+

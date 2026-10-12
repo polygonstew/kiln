@@ -8,6 +8,8 @@ static/index.html    shell: top bar (KILN logo = menu, tabs, style chip, asset-f
 static/help.html     the in-app guide (searchable); screenshots in static/help/*.jpg
 static/desk.html     the Desk: home apps as windows (Ubuntu or Windows look)
 static/kiln.css      the whole design system (tokens at :root)
+cloud.py             the cloud image engine (Cloudflare free quota → OpenRouter, capped)   store.py  the settings file
+writer.py            Game doc ✦ ideas (free text engines only)    release.py  File → Export game (zips per target)
 play.py              ▶ Play builds: copy the asset folder to build/game, Godot web export to build/web, the Stage bridge
 tidy.py              moves an older layout of Kiln's runtime into _kiln/ and fixes every scene (File → Tidy)
 checks.py            GDScript list / check (godot --check-only), Doctor, history snapshots
@@ -35,6 +37,8 @@ static/js/
   puppet.js          Puppet (rig.js bones + render, timeline.js, rig_import/rig_kit parts kits, face.js + puppet_face.js
                      heads and mouths, lipsync.js voice → mouth cues, rig_godot.js Skeleton2D)
   actor_save.js      saving an actor (actor_godot.js scenes + juice.gd, brains.js, sfx.js, vfx.js, workshop.js)
+  gamedoc.js         Game doc (gamedoc_shape / _facts / _stuck / _sparks / _pitch)   games.js  New game / Open game
+  release.js         Export game dialog
   forge_kit.js       Forge makers' shared bits; forge_bg.js Background in layers; forge_sets.js Tileset + Icon set
   input_godot.js     KilnInput: every action on keys and a gamepad (_kiln/game/input.gd)
   icons.js           16px line icons

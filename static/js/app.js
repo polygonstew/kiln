@@ -12,7 +12,7 @@ import { offerTour, endTour } from './tour.js';
 import { initJourney } from './journey.js';
 
 const mods = [files];
-const optional = ['forge', 'animate', 'scenes', 'levels', 'hud', 'stage', 'concepts', 'logic', 'dialogue', 'menus'];
+const optional = ['gamedoc', 'forge', 'animate', 'scenes', 'levels', 'hud', 'stage', 'concepts', 'logic', 'dialogue', 'menus'];
 const views = {};
 let cur = null;
 

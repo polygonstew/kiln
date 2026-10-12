@@ -99,7 +99,7 @@ override everything; each gets a Help section and a Godot export):**
   5. [x] DONE **Doctor**: check the asset folder (oversized sprites, too many colours, missing files/refs, unused files) with one-click fixes.
   6. **Items database**: items with icon, stats, text → Godot Resources, feeding HUD inventory and pickups.
   7. **2D lighting**: normal maps from sprites for Godot lights (CanvasTexture), torch/lamp presets.
-- [x] DONE 2026-10-11 (lore bible + writing help still open) **Dialogue + lore**: dialogue trees (lines, choices, conditions, item checks) for the HUD dialogue box, a lore bible
+- [x] DONE 2026-10-11 (lore bible + writing help: Game doc, 2026-10-12) **Dialogue + lore**: dialogue trees (lines, choices, conditions, item checks) for the HUD dialogue box, a lore bible
   (characters, places, factions) and a writing assistant (free text engines first, per the AI cost rules; no model names
   in the UI). Export: JSON + a runner that drives `hud.gd say()`.
 - [ ] **Cutscenes**: a timeline (camera moves, actor animations/positions, dialogue lines, fades, waits) exported as a
@@ -323,3 +323,8 @@ override everything; each gets a Help section and a Godot export):**
   all five, the Linux binary and the project run headless, the web zip plays in Chromium. File menu: New game / Open game
   (games.js) and New / Open / Save via data-file buttons (the old text matching pressed "Save font for engines" in HUD and
   missed Logic, Dialogue, Menus).
+- 2026-10-12: Game doc area (user: "a game document section… lore, mechanics, if you get stuck something to think about or
+  suggested themes… a decent document you can pitch"): gamedoc*.js + writer.py (✦ ideas, free engines only: Gemini free →
+  Gemini lite → OpenRouter free). Facts from the game (cast with sprites, enemies, controls, levels, graphs, style), Stuck?
+  panel per section, pitch one-pager + whole doc + docs/GAME.md. Journey step 1 "An idea". Lore bible item covered.
+
