@@ -1,7 +1,7 @@
 // Play builds: a small playable game from what is in the asset folder (a level, the player actor, a HUD, menus),
 // exported for the web with Godot and played in the Stage (stage.js). The build happens in a copy (server: play.py);
-// this file writes the main scene + main.gd that ties it together and runs the build.
-import { api } from './core.js';
+// this file writes the main scene + main.gd that ties it together (gameFiles; Export game uses them too) and runs the build.
+import { api, pref } from './core.js';
 import { S as FS } from './files.js';
 import { BRAIN_GD } from './brains.js';
 import { INPUT_GD } from './input_godot.js';
@@ -20,6 +20,7 @@ const MAIN_GD = `extends Node2D
 @export var logic_scripts: Array[Script] = []   ## Kiln Logic graphs (logic/*.gd): each runs on its own node while playing
 @export var title := "Kiln demo"
 @export var show_title := true
+@export var playtest := true            ## in Kiln's Stage: take live tuning and screenshot requests from the page
 var playing := false
 var menus: Array[Node] = []               # open menu screens, top last
 var player: Node2D
@@ -30,7 +31,7 @@ const BRAIN := "res://_kiln/brains/player.gd"
 func _ready() -> void:
 \tprocess_mode = Node.PROCESS_MODE_ALWAYS    # Main hears Esc / Start while paused; the world under it pauses
 \tKilnInput.ensure()                         # keys and gamepad for every action (_kiln/game/input.gd)
-\tif OS.has_feature("web"):
+\tif playtest and OS.has_feature("web"):
 \t\t_web = JavaScriptBridge.get_interface("window")
 \tif title_menu:
 \t\t_open(title_menu)
@@ -230,6 +231,17 @@ export async function listScenes(folder) {      // [name, res path] of folder/<n
   return out;
 }
 
+// what goes in the game: the Stage's pickers (pref 'stage.build'); the first time, the player actor and the first
+// level / background / HUD in the folder
+export async function gamePicks() {
+  const p = pref.get('stage.build', { start: 'none' });
+  if ('player' in p) return p;
+  const [levels, scenes, actors, huds] = await Promise.all(['levels', 'backgrounds', 'sprites', 'hud'].map(listScenes));
+  const q = { ...p, player: await findPlayer(actors), level: levels[0]?.[1] || '', bg: scenes[0]?.[1] || '', hud: huds[0]?.[1] || '' };
+  pref.set('stage.build', q);
+  return q;
+}
+
 // the player: an actor saved with the Player role (its scene joins the "player" group), else the first one
 export async function findPlayer(actors) {
   for (const [n, p] of actors) {
@@ -239,9 +251,10 @@ export async function findPlayer(actors) {
   return actors[0]?.[1] || '';
 }
 
-// Build: pick = { level, bg, player, hud (res:// scene paths or ''), name, start: 'menu' | 'title' | 'none' }.
-// onLog(lines) gets the build log as it grows; resolves true when the game is ready at /play/.
-export async function buildGame(pick, onLog) {
+// The game's own files for the build: the main scene, main.gd, the controls and a player brain.
+// pick = { level, bg, player, hud (res:// scene paths or ''), name, start: 'menu' | 'title' | 'none' };
+// shipped = true for Export game (no Stage bridge: the game ignores the page around it)
+export async function gameFiles(pick, shipped = false) {
   const ext = [], props = [];
   const add = (key, path) => { if (!path) return; ext.push(`[ext_resource type="PackedScene" path="${path}" id="${key}"]`); props.push(`${key}_scene = ExtResource("${key}")`); };
   add('level', pick.level); add('background', pick.level ? '' : pick.bg); add('player', pick.player); add('hud', pick.hud);
@@ -253,12 +266,18 @@ export async function buildGame(pick, onLog) {
   lg.forEach((f, i) => ext.push(`[ext_resource type="Script" path="res://logic/${f.name}" id="lg${i}"]`));
   if (lg.length) props.push(`logic_scripts = Array[Script]([${lg.map((_, i) => `ExtResource("lg${i}")`).join(', ')}])`);
   const main = `[gd_scene load_steps=${ext.length + 2} format=3]\n\n[ext_resource type="Script" path="res://main.gd" id="main"]\n${ext.join('\n')}\n\n`
-    + `[node name="Main" type="Node2D"]\nscript = ExtResource("main")\n${props.join('\n')}\ntitle = ${JSON.stringify(pick.name || 'Kiln demo')}\nshow_title = ${pick.start !== 'none'}\n`;
+    + `[node name="Main" type="Node2D"]\nscript = ExtResource("main")\n${props.join('\n')}\ntitle = ${JSON.stringify(pick.name || 'Kiln demo')}\nshow_title = ${pick.start !== 'none'}\n${shipped ? 'playtest = false\n' : ''}`;
   const files = { 'kiln_main.tscn': main, 'main.gd': MAIN_GD, '_kiln/game/input.gd': INPUT_GD };     // the controls, always current
   // the player brain main.gd falls back on: the folder's own copy (here or in the old sprites/_kiln/), else Kiln's
   const ls = async d => ((await api('/api/fs?path=' + encodeURIComponent(`${FS.root}/${d}`)).catch(() => ({ items: [] }))).items || []).map(i => i.name);
   if (!(await ls('_kiln/brains')).includes('player.gd')) files['_kiln/brains/player.gd'] = (await ls('sprites/_kiln/brains')).includes('player.gd')
     ? await fetch('/api/fs/raw?path=' + encodeURIComponent(`${FS.root}/sprites/_kiln/brains/player.gd`)).then(r => r.text()) : BRAIN_GD.player;
+  return files;
+}
+
+// Build for the Stage: onLog(lines) gets the build log as it grows; resolves true when the game is ready at /play/.
+export async function buildGame(pick, onLog) {
+  const files = await gameFiles(pick);
   const r = await api('/api/play/build', { root: FS.root, files, opts: { name: pick.name, w: 480, h: 270 } }).catch(e => ({ err: e.message }));
   if (r.err) { onLog([r.err]); return false; }
   for (;;) {

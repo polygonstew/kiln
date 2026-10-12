@@ -662,4 +662,22 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .fm-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; background: #121211; border: 1px solid var(--line); padding: 8px; border-radius: 3px; } .fm-cell small { color: var(--dim); font-size: 11px; }
 .fm-cell canvas { background: repeating-conic-gradient(#2a2a28 0 25%, #33322f 0 50%) 0 0/8px 8px; }
 .fm-wait { width: 96px; height: 96px; display: grid; place-items: center; color: var(--faint); font: 12px var(--mono); }
+/* Export game (release.js) */
+.rl h3 { margin: 0 0 8px; font: 600 11px var(--cond); letter-spacing: .1em; text-transform: uppercase; color: var(--dim); }
+.rl-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 22px; }
+@media (max-width: 640px) { .rl-cols { grid-template-columns: 1fr; } }
+.rl-icons { display: flex; flex-wrap: wrap; gap: 5px; }
+.rl-icon { width: 44px; height: 44px; border: 1px solid var(--line2); background: var(--p2) center / contain no-repeat; image-rendering: pixelated; cursor: pointer; font-size: 10px; color: var(--dim); }
+.rl-icon.on { outline: 2px solid var(--ember); outline-offset: 1px; }
+.rl-t { display: flex; gap: 8px; align-items: flex-start; margin: 5px 0; }
+.rl-t span { display: grid; } .rl-t small { color: var(--dim); font-size: 11px; } .rl-t.off { opacity: .55; }
+.rl-go { display: flex; gap: 12px; align-items: center; margin: 16px 0 8px; }
+.rl-made { display: grid; gap: 4px; }
+.rl-zip { display: flex; justify-content: space-between; gap: 10px; padding: 6px 10px; border: 1px solid var(--line); text-decoration: none; color: inherit; }
+.rl-zip:hover { border-color: var(--ember); } .rl-zip small { color: var(--dim); }
+/* Open a game (games.js) */
+.gm-row { width: 100%; background: none; border: 0; border-left: 2px solid transparent; color: inherit; font: inherit; text-align: left; }
+.gm-row b { flex: 1; font-weight: 600; } .gm-row small { color: var(--dim); }
+.gm-thumb { width: 40px; height: 40px; flex: none; background: var(--p2) 0 0 no-repeat; image-rendering: pixelated; border: 1px solid var(--line); }
 
+.mb-panel button.off { opacity: .4; cursor: default; } .mb-panel button.off:hover { background: none; }

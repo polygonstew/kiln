@@ -52,7 +52,7 @@ Kiln must stay small and plain enough for a person to read and debug by hand. Ev
 ## Backlog (top first)
 
 **Next up (2026-10-11, see docs/HANDOFF.md):**
-- [ ] **Export functions (user: set these up once demos, a real game and controller support exist; they do now):** File →
+- [x] DONE 2026-10-12 (release.py + release.js; also File → New game / Open game, data-file New/Open/Save) **Export functions (user: set these up once demos, a real game and controller support exist; they do now):** File →
   Export game: Web (zip of build/web, ready for itch.io), Linux and Windows desktop builds (Godot export templates, check
   they are installed), a project zip for Godot; name, icon, version, window size; one screen with what each target needs.
 - [ ] **Godot skeleton export** lacks head swaps and mouths (Puppet → rig_godot.js): add the head views and LipSync node.
@@ -313,7 +313,13 @@ override everything; each gets a Help section and a Godot export):**
   tooltips on every control, Logic script Delete + Restore, head views (front/back/left/right/¾) with Look / Turn around,
   Try mouths / Try heads. Readable output: Kiln's runtime in _kiln/ (layout.js) + File → Tidy game files (tidy.py).
   Controller support (KilnInput, _kiln/game/input.gd: keys + gamepad, pause works without a pause menu). File → Make a
-  demo game (every area → a playable game) and Save all. "Your game" journey chip (10 steps, Do it, nudges after saves).
+  demo game (every area → a playable game) and Save all. "Your game" journey chip (10 steps, now 11 with Share it; Do it, nudges after saves).
 - 2026-10-11: Forge makes every kind of asset: What are you making? → Sprite (+ UI pieces), Background in depth layers
   (→ Scenes), Tileset (seamless material → fills, tops, platform → Levels), Icon set (one palette → icons/). Server takes a
   picture-kind hint (layer / texture) so scenery comes without a figure in the middle. Tested on an isolated copy (free quota).
+- 2026-10-12: File → Export game (release.py on play.prepare; release.js): Web zip (nothreads, itch-ready), Windows .exe with
+  icon (Godot edits the resources itself), Linux, macOS (ad-hoc signed .app), Godot project zip; icon from an actor frame,
+  window scale, fullscreen, sharp pixels; shipped games skip the Stage bridge (playtest = false). Verified: demo exported for
+  all five, the Linux binary and the project run headless, the web zip plays in Chromium. File menu: New game / Open game
+  (games.js) and New / Open / Save via data-file buttons (the old text matching pressed "Save font for engines" in HUD and
+  missed Logic, Dialogue, Menus).

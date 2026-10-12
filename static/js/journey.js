@@ -1,5 +1,5 @@
 // Your game: how far the game in this asset folder has come, as a short path of steps (a hero, its moves, a world,
-// a backdrop, a foe, a HUD, words, rules, menus, playing it). The top-bar chip shows the count; its panel shows each
+// a backdrop, a foe, a HUD, words, rules, menus, playing it, sharing it). The top-bar chip shows the count; its panel shows each
 // step with a "Do it" that opens the right area. After a save that finishes a step, a small card says so and points
 // at the next one, so there is always a clear, inviting next thing to make.
 import { h, api, emit, on } from './core.js';
@@ -17,7 +17,10 @@ const STEPS = [
   ['rules', 'Rules', 'What happens when: a Logic graph (a zone gives gold, a key opens a door…).', 'logic', s => s.kinds.graph],
   ['menus', 'Menus', 'A title screen, options and pause.', 'menus', s => s.kinds.menus],
   ['play', 'Play it', 'Build it and play it right here, with keys or a gamepad.', 'stage', s => s.built && !!s.kinds.level],
+  ['share', 'Share it', 'Export it for the web (itch.io), Windows, Linux or a Mac, ready for other people to play.', 'export', s => s.shared],
 ];
+// "Do it": the area, or the Export game dialog
+const go = area => area === 'export' ? import('./release.js').then(m => m.openRelease()) : emit('tab', area);
 let state = null, done = new Set(), chip = null, first = true;
 
 async function look() {
@@ -29,7 +32,8 @@ async function look() {
     if (d?.actor) actors.push({ name: d.actor.name, role: d.actor.role || (d.actor.kind === 'creature' ? 'enemy' : 'hero'), anims: (d.actor.anims || []).map(n => n.name) });
   }
   const built = !!(await api('/api/play/status').catch(() => ({}))).built;
-  return { kinds, actors, built, empty: !projects.some(p => p.kind !== 'style') };
+  const shared = !!((await api('/api/release/status').catch(() => ({}))).releases || []).length;
+  return { kinds, actors, built, shared, empty: !projects.some(p => p.kind !== 'style') };
 }
 async function refresh(saved) {
   state = await look();
@@ -50,10 +54,10 @@ function openPath(welcome) {
   const n = next();
   const p = h('div', { class: 'jr-panel' },
     h('div', { class: 'jr-head' }, h('b', {}, welcome ? 'Let\'s make a game' : 'Your game'), h('span', { class: 'grow' }), h('button', { class: 'ibtn', title: 'Close', onclick: () => p.remove() }, '✕')),
-    welcome ? h('p', { class: 'note' }, 'Ten small steps from nothing to a game you can play with a gamepad. Each opens the right place; nothing here is locked or in order.') : '',
+    welcome ? h('p', { class: 'note' }, 'Eleven small steps from nothing to a game other people can play, with a gamepad. Each opens the right place; nothing here is locked or in order.') : '',
     h('div', { class: 'jr-steps' }, ...STEPS.map(([id, title, why, area], i) => h('div', { class: 'jr-step' + (done.has(id) ? ' done' : n?.[0] === id ? ' next' : '') },
       h('i', {}, done.has(id) ? '✓' : String(i + 1)), h('div', { class: 'jr-t' }, h('b', {}, title), h('small', {}, why)),
-      done.has(id) ? '' : h('button', { class: 'btn sm' + (n?.[0] === id ? ' go' : ' ghost'), title: 'Open ' + area, onclick: () => { p.remove(); emit('tab', area); } }, 'Do it')))),
+      done.has(id) ? '' : h('button', { class: 'btn sm' + (n?.[0] === id ? ' go' : ' ghost'), title: 'Open ' + area, onclick: () => { p.remove(); go(area); } }, 'Do it')))),
     h('p', { class: 'note' }, 'Want to see it all working first? ', h('a', { href: '#', onclick: e => { e.preventDefault(); p.remove(); import('./demo.js').then(m => m.makeDemo()); } }, 'Make the demo game'), ' and look inside each area.'));
   document.body.append(p);
   // a click anywhere else closes it (it never stands in the way)
@@ -64,7 +68,7 @@ function nudge(step) {
   document.querySelector('.jr-nudge')?.remove();
   const n = next();
   const card = h('div', { class: 'jr-nudge' }, h('b', {}, `✓ ${step[1]}!`), n ? h('span', {}, ` Next: ${n[1].toLowerCase()}. `) : h('span', {}, ' Every step done: it is a game.'),
-    n ? h('button', { class: 'btn sm go', onclick: () => { card.remove(); emit('tab', n[3]); } }, 'Go') : '', h('button', { class: 'ibtn', title: 'Close', onclick: () => card.remove() }, '✕'));
+    n ? h('button', { class: 'btn sm go', onclick: () => { card.remove(); go(n[3]); } }, 'Go') : '', h('button', { class: 'ibtn', title: 'Close', onclick: () => card.remove() }, '✕'));
   document.body.append(card);
   setTimeout(() => card.remove(), 12000);
 }

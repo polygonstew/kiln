@@ -191,7 +191,7 @@ function drawLeft() {
     h('i', { style: { width: '22px', height: '22px', display: 'block', border: '1px solid var(--line2)', background: c ? hex(c) : 'repeating-conic-gradient(#555 0 25%, #333 0 50%) 0 0/8px 8px' } }), label);
   V.left.replaceChildren(
     h('div', { class: 'sec' }, h('h3', {}, 'Actor', h('span', { class: 'grow' }),
-      h('button', { class: 'btn sm ghost', title: 'Open, rename, copy or remove your actors', onclick: openMenu }, 'Open'), h('button', { class: 'btn sm ghost', title: 'Start a new actor (this one is kept)', onclick: newActor }, 'New')),
+      h('button', { 'data-file': 'open', class: 'btn sm ghost', title: 'Open, rename, copy or remove your actors', onclick: openMenu }, 'Open'), h('button', { 'data-file': 'new', class: 'btn sm ghost', title: 'Start a new actor (this one is kept)', onclick: newActor }, 'New')),
       field('Name', nm),
       field('Frame', h('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, wIn, '×', hIn,
         h('button', { class: 'btn sm', title: 'Change the frame size. Art stays on the floor, centred.', onclick: () => resizeActor(+wIn.value, +hIn.value) }, 'Set'))),
@@ -747,7 +747,7 @@ function drawRight() {
       h('p', { class: 'note' }, 'Or pick any image in Files and press "Animate from sheet".')),
     h('div', { class: 'sec' }, h('h3', {}, 'Save to asset folder'),
       h('p', { class: 'note', style: { marginTop: 0 } }, h('b', {}, `sprites/${A.actor.name}/`), ' gets one strip PNG per animation, manifest.json, a Godot SpriteFrames .tres, and a packed sheet + JSON for other engines.'),
-      V.saveBtn = h('button', { class: 'btn go wide', onclick: exportActor }, 'Save ' + A.actor.name)));
+      V.saveBtn = h('button', { 'data-file': 'save', class: 'btn go wide', onclick: exportActor }, 'Save ' + A.actor.name)));
   drawSheet();
   feedPlayer();
 }

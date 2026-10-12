@@ -549,7 +549,7 @@ function drawLeft() {
   const L0 = LOOKS[SC.look];
   V.left.replaceChildren(
     h('div', { class: 'sec' }, h('h3', {}, 'Scene', h('span', { class: 'grow' }),
-      h('button', { class: 'btn sm ghost', title: 'Open, rename, copy or remove your scenes', onclick: openMenu }, 'Open'), h('button', { class: 'btn sm ghost', title: 'Start a new empty scene (the current one is kept)', onclick: async () => { const n = prompt('Name for the new scene', 'scene'); if (!n) return; await loadOwners(); ++loads; SC = blankScene(); SC.name = freeName(n, SC.id); sel = 0; undoS = []; redoS = []; drawAll(); save(); } }, 'New')),
+      h('button', { 'data-file': 'open', class: 'btn sm ghost', title: 'Open, rename, copy or remove your scenes', onclick: openMenu }, 'Open'), h('button', { 'data-file': 'new', class: 'btn sm ghost', title: 'Start a new empty scene (the current one is kept)', onclick: async () => { const n = prompt('Name for the new scene', 'scene'); if (!n) return; await loadOwners(); ++loads; SC = blankScene(); SC.name = freeName(n, SC.id); sel = 0; undoS = []; redoS = []; drawAll(); save(); } }, 'New')),
       field('Name', nm),
       field('Screen', select(VIEWS, `${SC.view.w}x${SC.view.h}`, v => { const [w, hh] = v.split('x').map(Number); SC.view = { w, h: hh }; for (const L of SC.layers) { L.w = L.gen === 'sky' && L.kind === 'gen' ? w : w * 2; L.h = hh; } drawAll(); process(); })),
       field('Haze', h('span', { style: { display: 'flex', gap: '8px', alignItems: 'center' } }, h('input', { type: 'color', value: SC.haze, oninput: e => { SC.haze = e.target.value; process(); } }),
@@ -687,7 +687,7 @@ function drawRight() {
     insp,
     h('div', { class: 'sec' }, h('h3', {}, 'Save to asset folder'),
       h('p', { class: 'note', style: { marginTop: 0 } }, h('b', {}, `backgrounds/${SC.name}/`), ' gets a PNG per layer, scene.json (scroll speeds, offsets) and a Godot Parallax2D scene.'),
-      h('button', { class: 'btn go wide', onclick: async e => {      // a scene takes a few seconds to write: say so on the button
+      h('button', { 'data-file': 'save', class: 'btn go wide', onclick: async e => {      // a scene takes a few seconds to write: say so on the button
         const b = e.currentTarget, t = b.textContent; b.disabled = true; b.textContent = 'Saving…';
         try { await exportScene(); } finally { b.disabled = false; b.textContent = t; }
       } }, 'Save ' + SC.name)));

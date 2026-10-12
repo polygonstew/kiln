@@ -324,8 +324,8 @@ function drawLeft() {
   const cols = h('input', { type: 'number', value: L.cols, min: 4, max: 400, title: 'Width in tiles (then Set)', style: { width: '60px' } }), rows = h('input', { type: 'number', value: L.rows, min: 4, max: 200, title: 'Height in tiles (then Set)', style: { width: '60px' } });
   V.left.replaceChildren(
     h('div', { class: 'sec' }, h('h3', {}, 'Level', h('span', { class: 'grow' }),
-        h('button', { class: 'btn sm ghost', title: 'Open, rename, copy or remove your levels', onclick: openMenu }, 'Open'),
-        h('button', { class: 'btn sm ghost', title: 'Start a new empty level (this one is kept)', onclick: () => { const n = prompt('Name for the new level', 'room'); if (!n) return; L = { ...blank(slug(n)), ts: L.ts, tile: L.tile, solid: L.solid, kinds: { ...(L.kinds || {}) } }; loadTiles().then(() => { changed(); drawLeft(); drawRight(); draw(); }); } }, 'New')),
+        h('button', { 'data-file': 'open', class: 'btn sm ghost', title: 'Open, rename, copy or remove your levels', onclick: openMenu }, 'Open'),
+        h('button', { 'data-file': 'new', class: 'btn sm ghost', title: 'Start a new empty level (this one is kept)', onclick: () => { const n = prompt('Name for the new level', 'room'); if (!n) return; L = { ...blank(slug(n)), ts: L.ts, tile: L.tile, solid: L.solid, kinds: { ...(L.kinds || {}) } }; loadTiles().then(() => { changed(); drawLeft(); drawRight(); draw(); }); } }, 'New')),
       field('Name', name),
       field('Size', h('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } }, cols, '×', rows,
         h('button', { class: 'btn sm', title: 'Resize the level in tiles (tiles stay where they are)', onclick: () => { H.push(); resize(+cols.value, +rows.value); drawBar(); } }, 'Set'),
@@ -420,7 +420,7 @@ async function takeOpen() {
 function drawRight() {
   V.right.replaceChildren(h('div', { class: 'sec' }, h('h3', {}, 'Save to asset folder'),
     h('p', { class: 'note', style: { marginTop: 0 } }, h('b', {}, `levels/${L.name}/`), ' gets the tileset PNG, a Godot TileSet (.tres) with each tile\'s collision and kind, and a scene (.tscn) with a TileMapLayer running _kiln/level_tiles.gd (kind_at(), hazards hurt).'),
-    h('button', { class: 'btn go wide', title: 'Write the level for Godot', onclick: exportLevel }, 'Save ' + L.name)));
+    h('button', { 'data-file': 'save', class: 'btn go wide', title: 'Write the level for Godot', onclick: exportLevel }, 'Save ' + L.name)));
 }
 // Godot 4 TileMapLayer.tile_map_data: uint16 format (0), then per cell 6 × int16: x, y, source, atlas x, atlas y, alternative
 function tileMapData() {

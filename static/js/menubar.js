@@ -13,15 +13,26 @@ const visibleButton = (re, root = view()) => [...(root?.querySelectorAll('button
 function press(re, what) { const b = visibleButton(re); if (b) b.click(); else toast(`${what} isn't available in ${areaList().find(a => a.id === currentArea())?.label || 'this area'}`); }
 const key = (k, o = {}) => (view() || document).dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, ...o }));
 const go = id => emit('tab', id);
+// File → New / Open / Save press the area's own button for it (marked data-file="new|open|save"), named after what
+// the area holds; greyed out where the area has none (Stage, Files)
+const NOUN = { animate: 'actor', scenes: 'scene', levels: 'level', hud: 'HUD', logic: 'graph', dialogue: 'dialogue', concepts: 'concept session', forge: 'image', menus: 'menus' };
+const fileButton = kind => [...(view()?.querySelectorAll(`[data-file=${kind}]`) || [])].find(b => b.offsetParent && !b.disabled);
+function fileItem(kind) {
+  const b = fileButton(kind), noun = b?.dataset.noun || NOUN[currentArea()] || '', area = areaList().find(a => a.id === currentArea())?.label || 'this area';
+  const label = kind === 'save' ? (b?.textContent.trim().replace(/^Save$/, 'Save ' + noun) || 'Save') : `${kind === 'new' ? 'New' : 'Open'} ${noun}`.trim() + (kind === 'open' ? '…' : '');
+  return [label, b ? b.title || label : `${area} has nothing to ${kind} here`, () => b?.click(), kind === 'save' ? 'Ctrl+S' : '', !b];
+}
 
 const MENUS = () => [
   ['File', [
-    ['New…', 'New actor, scene, level, HUD or concept session (in the area you are in)', () => press(/^New$/, 'New')],
-    ['Open…', 'Open a saved one', () => press(/^Open( image)?$/, 'Open')],
-    ['Save', 'Save what you are working on for the game (Ctrl+S)', () => press(/^Save /, 'Save'), 'Ctrl+S'],
+    ['New game…', 'A new, empty game folder (the one open now stays as it is)', () => import('./games.js').then(m => m.newGame())],
+    ['Open game…', 'Switch to another of your games', () => import('./games.js').then(m => m.openGame())],
+    null,
+    fileItem('new'), fileItem('open'), fileItem('save'),
     ['Save all for Godot', 'Save every actor, scene, HUD, level, menu, dialogue and graph again, each by its own area', () => import('./saveall.js').then(m => m.openSaveAll())],
     ['History…', 'Earlier versions of your actors, scenes, levels and HUDs: bring one back as a copy', openHistory],
     null,
+    ['Export game…', 'Your game for players: Web (itch.io), Windows, Linux, macOS, or the Godot project, each as a zip to download', () => import('./release.js').then(m => m.openRelease())],
     ['Make a demo game…', 'A small complete game in a new asset folder (yours stays as it is), made with every area, then played in the Stage', () => import('./demo.js').then(m => m.makeDemo())],
     null,
     ['Cut a sprite sheet…', 'Open a sheet and cut it into frames', () => { go('animate'); setTimeout(() => press(/^Cut a sprite sheet/, 'Cut a sheet'), 300); }],
@@ -76,9 +87,9 @@ async function godotPlugin() {
 }
 let open = null;
 function close() { open?.root.remove(); open?.sub?.remove(); $('#logo')?.classList.remove('on'); open = null; }
-function item(it) {
+function item(it) {      // [label, tooltip, action, key?, greyed out?]
   return it === null ? h('i', { class: 'mb-sep' })
-    : h('button', { title: it[1], onclick: () => { close(); it[2](); } }, h('span', {}, it[0]), it[3] ? h('kbd', {}, it[3]) : '');
+    : h('button', { title: it[1], class: it[4] ? 'off' : '', onclick: () => { if (it[4]) return; close(); it[2](); } }, h('span', {}, it[0]), it[3] ? h('kbd', {}, it[3]) : '');
 }
 function showSub(row, items) {
   open.sub?.remove();
@@ -108,7 +119,11 @@ export function initMenus() {
   document.addEventListener('pointerdown', e => { if (open && !open.root.contains(e.target) && !open.sub?.contains(e.target) && !e.target.closest('#logo')) close(); });
   window.addEventListener('keydown', e => {
     if (e.key === 'Escape' && open) { close(); return; }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); press(/^Save /, 'Save'); }     // Ctrl+S saves for the game, not the web page
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && !e.defaultPrevented) {     // Ctrl+S saves for the game, not the web page
+      e.preventDefault();
+      const b = fileButton('save');
+      b ? b.click() : toast(`Nothing to save in ${areaList().find(a => a.id === currentArea())?.label || 'this area'}: it keeps itself`);
+    }
     if (e.key === 'F1' && e.shiftKey) { e.preventDefault(); tour(currentArea()); }
     else if (e.key === 'F1') { e.preventDefault(); window.open('/help', '_blank'); }
   });

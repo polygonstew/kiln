@@ -26,7 +26,7 @@ export function graphArea({ setMode, openScript }) {
       h('button', { class: 'ibtn', title: 'Undo (Ctrl+Z)', onclick: () => gv.undo() }, '↶'), h('button', { class: 'ibtn', title: 'Redo (Ctrl+Y)', onclick: () => gv.redo() }, '↷'),
       h('button', { class: 'btn sm ghost', title: 'Copy the script into scripts/ as your own, to go on by hand (the graph stays as it is)', onclick: detach }, 'Make it my script'),
       h('button', { class: 'btn sm ghost danger', title: 'Delete this graph (its script goes to the .trash folder)', onclick: remove }, 'Delete'),
-      h('button', { class: 'btn sm go', title: 'Write logic/<name>.gd for the game and let Godot check it (Ctrl+S)', onclick: save }, 'Save')),
+      h('button', { 'data-file': 'save', class: 'btn sm go', title: 'Write logic/<name>.gd for the game and let Godot check it (Ctrl+S)', onclick: save }, 'Save')),
     gv.el);
   center.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') { e.preventDefault(); save(); } });
   const listSec = h('div', { class: 'sec' }), side = h('div');
@@ -42,8 +42,8 @@ export function graphArea({ setMode, openScript }) {
       graphs.length ? '' : h('p', { class: 'note', style: { marginTop: 0 } }, 'Game logic without code: events (a zone, a key, a timer…) wired to actions (say, spawn, heal…). Kiln turns each graph into a short GDScript.'),
       ...graphs.map(p => h('button', { class: 'lg-file' + (cur?.name === p.name ? ' on' : ''), title: `Open the graph (its script: logic/${p.name}.gd)`, onclick: () => open(p.name) }, h('i', { class: 'lg-gi' }), p.name, h('small', {}, 'graph'))),
       h('div', { style: { marginTop: '8px', display: 'flex', gap: '6px', flexWrap: 'wrap' } }, tpl,
-        h('button', { class: 'btn sm', title: 'A new graph, starting from the picked example', onclick: () => create(tpl.value) }, 'New graph'),
-        graphs.length ? h('button', { class: 'btn sm ghost', title: 'Rename, copy, remove or bring back graphs', onclick: manage }, 'Manage…') : ''));
+        h('button', { 'data-file': 'new', class: 'btn sm', title: 'A new graph, starting from the picked example', onclick: () => create(tpl.value) }, 'New graph'),
+        h('button', { 'data-file': 'open', class: 'btn sm ghost', title: 'Open, rename, copy, remove or bring back graphs', onclick: manage }, 'Open…')));
   }
   // what the node fields can pick from: zones in saved levels, saved actors, sounds
   async function lists() {

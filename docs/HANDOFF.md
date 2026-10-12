@@ -1,6 +1,6 @@
 # HANDOFF: start here (next session)
 
-Written 2026-10-11 at the end of session 4. Read this, then `CLAUDE.md` (rules), then whatever doc the task needs:
+Written 2026-10-11 at the end of session 4; updated 2026-10-12 (Export game, File → New / Open game). Read this, then `CLAUDE.md` (rules), then whatever doc the task needs:
 `docs/DEVELOPING.md` (code map, events, API), `docs/FORMATS.md` (what Kiln writes), `docs/LOOP.md` (backlog + log),
 `docs/RESUME.md` (the long running log: engines, machine limits, gotchas).
 
@@ -9,7 +9,9 @@ Written 2026-10-11 at the end of session 4. Read this, then `CLAUDE.md` (rules),
 A 2D pixel-art game *authoring shell over Godot*. Eleven areas (Files, Forge, Animate, Scenes, HUD, Stage, Levels,
 Concepts, Logic, Dialogue, Menus) feed each other and save plain Godot files; ▶ Play builds the asset folder into a real
 Godot web game that runs inside the Stage, with keys or a gamepad. A newcomer can press **File → Make a demo game** and
-get a complete small game made by every area, or follow the **Your game** chip (10 steps, each with "Do it").
+get a complete small game made by every area, or follow the **Your game** chip (11 steps, each with "Do it"). **File →
+Export game** makes it for players (Web zip for itch.io, Windows, Linux, macOS, Godot project); **File → New game / Open
+game** switch between games (each game is an asset folder).
 
 Session 4 (2026-10-11) added, all committed and pushed on `main`:
 
@@ -23,6 +25,8 @@ Session 4 (2026-10-11) added, all committed and pushed on `main`:
 | Controller | KilnInput (`_kiln/game/input.gd`): every action on keys + gamepad; pause works without a pause menu |
 | Whole game | File → Make a demo game (demo.js), File → Save all for Godot (saveall.js), Your game journey (journey.js) |
 | Forge makers | What are you making? → Sprite (+ UI pieces), **Background** in depth layers → Scenes, **Tileset** → Levels, **Icon set** → icons/ |
+| Export game (10-12) | release.py (on play.prepare) + release.js: five targets as zips in build/releases/; shipped games set `playtest = false` |
+| File menu (10-12) | games.js New game / Open game; New / Open / Save press buttons marked `data-file` (see DEVELOPING Conventions) |
 
 ## Running
 
@@ -35,8 +39,8 @@ Session 4 (2026-10-11) added, all committed and pushed on `main`:
 
 ## The user's game folder (handle with care)
 
-- Asset folder = `library/settings.json` → `root`, currently **`library/games/untitled_demo`**. The user works in it
-  live (actors `drowned_sailor`, `new_actor`, `eye_guy`, an image-named actor, level `room`, graph `hello`, dialogue
+- Asset folder = `library/settings.json` → `root`. On 2026-10-12 the user switched it to **`library/games/demo_game`** (they
+  made the demo game themselves); **`library/games/untitled_demo`** is their main work. They work in these live (actors `drowned_sailor`, `new_actor`, `eye_guy`, an image-named actor, level `room`, graph `hello`, dialogue
   `miner_greeting`, menus `game`, voice line `sprites/new_actor/voice/maintenance_107.mp3`). `library/games/untitled` is
   theirs too. Their `.trash/` holds their own deleted `scripts/my_script.gd`.
 - It still uses the **old runtime layout** (`sprites/_kiln/` etc.). Tidy was tested on a copy only; offer File → Tidy game
@@ -61,9 +65,8 @@ Session 4 (2026-10-11) added, all committed and pushed on `main`:
 
 ## Next (in order; details in docs/LOOP.md "Next up")
 
-1. **Export functions.** The user asked for these once demos, a real game and controller support existed, and they do
-   now. File → Export game: Web zip (itch.io-ready), Linux / Windows desktop (check Godot export templates), Godot project
-   zip; name, icon, version, window size. Builds on play.py.
+1. Export is done (2026-10-12). Possible follow-ups: Android (templates are installed; needs a keystore + SDK), an
+   itch.io upload with butler, a boot splash image.
 2. Godot skeleton export (rig_godot.js) lacks head views and mouths: add them plus the LipSync node.
 3. Items database (icons from Forge → Icon set already land in `icons/<set>/`), then 2D lighting, Cutscenes, more Menus
    backgrounds, a lore bible + writing help for Dialogue.

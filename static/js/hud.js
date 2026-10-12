@@ -453,10 +453,10 @@ function drawLeft() {
   drawFont();
   V.left.replaceChildren(
     h('div', { class: 'sec' }, h('h3', {}, 'HUD', h('span', { class: 'grow' }),
-      h('button', { class: 'btn sm ghost', title: 'Open, rename, copy or remove your HUDs', onclick: () => openProjects('hud', { current: HUD.name,
+      h('button', { 'data-file': 'open', class: 'btn sm ghost', title: 'Open, rename, copy or remove your HUDs', onclick: () => openProjects('hud', { current: HUD.name,
         open: async p => { const d = await fetch('/api/project?id=' + encodeURIComponent(p.id)).then(r => r.json()).catch(() => null); if (d?.hud) useHud(d.hud); },
         renamed: n => { HUD.name = n; pref.set('hud.cur', HUD); drawLeft(); }, removed: () => { HUD = newHud('hud'); starter(); useHud(HUD); } }) }, 'Open'),
-      h('button', { class: 'btn sm ghost', title: 'Start a new HUD (this one is kept)', onclick: () => { const n = prompt('Name for the new HUD', 'hud_2'); if (n) { HUD = newHud(hslug(n)); starter(); useHud(HUD); save(); } } }, 'New')),
+      h('button', { 'data-file': 'new', class: 'btn sm ghost', title: 'Start a new HUD (this one is kept)', onclick: () => { const n = prompt('Name for the new HUD', 'hud_2'); if (n) { HUD = newHud(hslug(n)); starter(); useHud(HUD); save(); } } }, 'New')),
       field('Name', nm),
       h('p', { class: 'note' }, 'Colours start from the style bible palette, so the HUD matches the sprites and scenes.')),
     h('div', { class: 'sec' }, h('h3', {}, 'Add'), h('div', { class: 'widgets' }, ...Object.keys(NAMES).map(btn))),
@@ -530,7 +530,7 @@ function drawRight() {
     h('div', { class: 'sec' }, h('h3', {}, 'Save to asset folder'),
       h('p', { class: 'note', style: { marginTop: 0 } }, h('b', {}, `hud/${HUD.name}/`), ' gets the full mock-up, each widget as parts (frame, fill, state strips, icons, 9-slice panels) and hud.json with positions and margins.'),
       field('States', range(pref.get('hud.states', 11), 2, 33, 1, v => pref.set('hud.states', v)), 'Frames in each meter strip (0% to 100%)'),
-      h('button', { class: 'btn go wide', onclick: exportHud }, 'Save ' + HUD.name)));
+      h('button', { 'data-file': 'save', class: 'btn go wide', onclick: exportHud }, 'Save ' + HUD.name)));
 }
 // actors that have status faces (faces.json saved by the Workshop)
 async function pickFaces(cb) {

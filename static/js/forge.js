@@ -86,7 +86,7 @@ export const forge = {
       h('section', { class: 'stage' },
         h('div', { class: 'bar' }, V.fits, h('span', { class: 'grow' }),
           h('span', { class: 'lbl' }, 'Zoom'), Object.assign(select([[0, 'Fit'], [2, '2×'], [4, '4×'], [6, '6×'], [8, '8×'], [12, '12×']], st.zoom, v => { st.zoom = +v; save(); paint(); }), { title: 'How big the source and the sprite show (Fit fills the space)' }),
-          h('button', { class: 'btn sm', title: 'Open an image from your computer as the source (or paste with Ctrl+V)', onclick: () => V.file.click() }, 'Open image'),
+          h('button', { 'data-file': 'open', class: 'btn sm', title: 'Open an image from your computer as the source (or paste with Ctrl+V)', onclick: () => V.file.click() }, 'Open image'),
           V.file = h('input', { type: 'file', accept: 'image/*', style: { display: 'none' }, onchange: e => e.target.files[0] && loadLocal(e.target.files[0]) })),
         h('div', { class: 'split' }, srcBox, outBox),
         h('div', { class: 'bar bot', style: { display: 'block', maxHeight: '34%', overflow: 'auto', padding: '10px 12px' } },
@@ -521,7 +521,7 @@ function drawRight() {
       h('p', { class: 'note' }, 'Makes this the actor\'s reference: its description, palette, size and scale are kept for every later frame.'),
       h('div', { class: 'btns' },
         h('button', { class: 'btn', onclick: () => sendToAnimate('frame') }, 'Add as frame'),
-        h('button', { class: 'btn', onclick: savePNG }, 'Save PNG'),
+        h('button', { 'data-file': 'save', class: 'btn', onclick: savePNG }, 'Save PNG'),
         h('button', { class: 'btn', onclick: savePalette }, 'Save palette'))));
   drawPal();
 }

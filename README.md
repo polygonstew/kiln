@@ -32,7 +32,8 @@ level background). Everything it writes is plain Godot (`.tscn`, `.tres`, `.gd`)
 | 0 | **Menus** | Title, options and pause screens → Godot scenes + saved settings |
 
 Everywhere: **▶ Play** builds the game into the Stage (keys or a **gamepad**); the **Your game** chip shows the next step;
-**File → Make a demo game** (a complete small game made with every area), **Save all for Godot**, **Tidy game files**,
+**File → New game / Open game** (each game is an asset folder), **New / Open / Save** for the area you are in,
+**Export game** (Web for itch.io, Windows, Linux, macOS, the Godot project), **Make a demo game**, **Save all for Godot**, **Tidy game files**,
 **Open…** (rename / copy / remove / restore anything you made), History, Doctor. **Ctrl+K** finds anything, **Shift+A**
 command wheel, right-click **Send to…** on every image, **?** shortcuts, tooltips on every control. Extra pages:
 **`/desk`** (home apps as windows), **Kiln Studio** (`kiln-studio`, a desktop window with meta.ai beside Kiln).

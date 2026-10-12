@@ -47,7 +47,7 @@ export const logic = {
         h('button', { class: 'btn sm', title: 'Ask Godot whether this script is valid (also runs on save)', onclick: check }, 'Check'),
         h('button', { class: 'btn sm ghost', title: 'Throw away unsaved changes', onclick: () => { if (cur) { V.ed.set(saved); dirty(false); } } }, 'Revert'),
         V.rm = h('button', { class: 'btn sm ghost danger', onclick: removeScript }, 'Delete'),
-        h('button', { class: 'btn sm go', title: 'Save (Ctrl+S); Godot checks it straight after', onclick: save }, 'Save')),
+        h('button', { 'data-file': 'save', 'data-noun': 'script', class: 'btn sm go', title: 'Save (Ctrl+S); Godot checks it straight after', onclick: save }, 'Save')),
       V.note, h('div', { style: { flex: 1, minHeight: 0 } }, V.ed.el),
       h('div', { class: 'bar bot' }, h('span', { class: 'note', style: { margin: 0 } }, 'Tab / Shift+Tab indent · Enter keeps the indent · Ctrl+/ comments lines · Ctrl+S saves · Ctrl+F finds')));
     el.append(V.left, h('section', { class: 'stage', style: { display: 'flex', flexDirection: 'column' } }, V.codePane, G.center), V.right);

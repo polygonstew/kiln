@@ -5,7 +5,7 @@
 import { h, api, toast, on, emit, pref, field, range, select, rawURL, download } from './core.js';
 import { S as FS } from './files.js';
 import { BRAINS } from './brains.js';
-import { listScenes, findPlayer, buildGame } from './playbuild.js';
+import { listScenes, gamePicks, buildGame } from './playbuild.js';
 
 const GAME = { w: 480, h: 270 };
 // what the player's body (juice.gd) takes: [key, label, min, max, step, default, unit]
@@ -157,10 +157,7 @@ function done(ok) {
 async function drawLeft() {
   const [levels, scenes, actors, huds] = await Promise.all(['levels', 'backgrounds', 'sprites', 'hud'].map(listScenes));
   lists = { levels, scenes, actors, huds };
-  const p = picks(), fresh = !('player' in p);
-  // first visit: the player actor, the first level / background / HUD
-  if (fresh) pref.set('stage.build', { ...p, player: await findPlayer(actors), level: levels[0]?.[1] || '', bg: scenes[0]?.[1] || '', hud: huds[0]?.[1] || '' });
-  const P = picks();
+  const P = await gamePicks();      // first visit: the player actor, the first level / background / HUD
   const jump = (title, fn, on) => h('button', { class: 'ibtn', title, disabled: !on, onclick: fn }, '↗');
   const row = (label, opts, key, none, title, go, hint) => field(label, h('div', { style: { display: 'flex', gap: '4px', alignItems: 'center' } },
     select([['', none], ...opts.map(([n, p]) => [p, n])], P[key] || '', v => { setPick(key, v); drawLeft(); }), jump(title, () => go(nameOf(P[key])), !!P[key])), hint);

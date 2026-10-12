@@ -23,6 +23,10 @@
   ASSETS.md             layout description
 ```
 
+Exports (File → Export game) are not written into the asset folder: they land in Kiln's `build/releases/` as
+`<name>-<version>-<web|windows|linux|macos|project>.zip` (download them from the dialog). The project zip is the Godot
+project the build uses: project.godot, kiln_main.tscn + main.gd, export_presets.cfg, icon.png/.ico and the asset folders.
+
 Point the asset folder at a game's assets (e.g. `~/.jcodes/pallidmask/assets`). Inside a Godot
 project, `.tres`/`.tscn` paths are written as `res://…` automatically (`/api/godot`).
 

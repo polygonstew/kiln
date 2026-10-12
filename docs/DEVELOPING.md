@@ -28,7 +28,7 @@ Anything that saves, deletes, renames or generates: run it on an **isolated copy
 `python3 tools/map.py` prints every module with its size and purpose (from its header comment) and fails if one
 passes 1000 lines or has no header. It is the code map: run it instead of keeping a hand-written list here.
 Rules for keeping Kiln readable are in CLAUDE.md ("Stay understandable"). Rough shape:
-- **Layout:** layout.js says where every file Kiln writes goes (content folders + the _kiln/ runtime); generators take paths from it. tidy.py moves an older layout. projects.js: the shared Open dialog. saveall.js: Save all (each area's saveProject(id) hook). demo.js: the demo game (procedural hero / slime / miner, scene, level, HUD, menus, dialogue, graph → saveAll → Stage). input_godot.js: KilnInput.
+- **Layout:** layout.js says where every file Kiln writes goes (content folders + the _kiln/ runtime); generators take paths from it. tidy.py moves an older layout. projects.js: the shared Open dialog. saveall.js: Save all (each area's saveProject(id) hook). demo.js: the demo game (procedural hero / slime / miner, scene, level, HUD, menus, dialogue, graph → saveAll → Stage). input_godot.js: KilnInput. games.js: File → New game / Open game (switch the asset folder). release.js: File → Export game (release.py exports Web / Windows / Linux / macOS / Godot project zips from play.prepare).
 - **Shell:** app.js (tabs), core.js (DOM, API, pixel pipeline), menubar.js, wheel.js, quick.js, sendto.js, owners.js
 - **Logic:** logic.js (scripts + editor gdedit.js) + logic_graph.js (graphs: list, palette, variables, live script), graph_view.js (the board), graph_nodes.js (node types → GDScript), graph_compile.js (graph → script)
 - **Dialogue:** dialogue.js (area: dialogues, cast, lines), dialogue_play.js (preview), dialogue_godot.js (game JSON + kiln_dialogue.gd runner)
@@ -78,6 +78,8 @@ Rules for keeping Kiln readable are in CLAUDE.md ("Stay understandable"). Rough 
 | `GET/POST /api/project` · `GET /api/projects` (with `sid` owner ids) | editable projects |
 | `GET /api/godot?path=` | the Godot project containing a path, or null |
 | `GET /api/index` · `GET /api/inbox?since=` · `GET /api/apps` · `GET /api/settings` | Ctrl+K, Downloads/concepts inbox, Desk, settings |
+| `POST /api/play/build {root, files, opts}` · `GET /api/play/status` · `GET /play/…` | ▶ Play web build (play.py) |
+| `POST /api/release {root, files, opts, targets}` · `GET /api/release/status` · `GET /api/release/file?f=` | Export game (release.py → build/releases/*.zip) |
 
 ## Godot plugin
 
@@ -87,6 +89,9 @@ Rules for keeping Kiln readable are in CLAUDE.md ("Stay understandable"). Rough 
 Never press "Link here" in tests: it changes Kiln's asset folder.
 
 ## Conventions
+
+- **File → New / Open / Save** press the area's own buttons, marked `'data-file': 'new' | 'open' | 'save'` (optional
+  `'data-noun'` names the thing when the button text doesn't). A new area marks its buttons and the File menu and Ctrl+S work.
 
 Plain-English UI text, a `title` tooltip on every control, no AI/model names in the UI, the dark theme with the
 ember accent (gold HUD look for wheel/menus). Commits end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.

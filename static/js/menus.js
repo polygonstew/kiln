@@ -91,7 +91,7 @@ async function sceneThumb(name) {     // the scene's layers flattened, for the p
 function drawRight() {
   V.right.replaceChildren(h('div', { class: 'sec' }, h('h3', {}, 'Save to asset folder'),
     h('p', { class: 'note', style: { marginTop: 0 } }, h('b', {}, 'menus/'), ' gets one scene per screen that is on, kiln_menu.gd (builds the screen from its items) and kiln_settings.gd (volumes, fullscreen and options, saved for the player). ▶ Play uses them: the title menu first, Esc pauses.'),
-    h('button', { class: 'btn go wide', onclick: exportMenus }, 'Save menus')),
+    h('button', { 'data-file': 'save', class: 'btn go wide', onclick: exportMenus }, 'Save menus')),
     h('div', { class: 'sec' }, h('h3', {}, 'In your own Godot code'),
       h('pre', { class: 'mn-code' }, 'var m = preload("res://menus/title.tscn").instantiate()\nadd_child(m)\nm.action.connect(func(a):\n\tif a == "start": m.queue_free()\n)\nKilnSettings.flag("screen_shake")\nKilnSettings.volume("Music")')));
 }

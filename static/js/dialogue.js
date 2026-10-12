@@ -27,7 +27,7 @@ export const dialogue = {
     el.append(V.left, h('section', { class: 'stage', style: { display: 'flex', flexDirection: 'column' } },
       h('div', { class: 'bar' }, V.name, V.state, h('span', { class: 'grow' }),
         h('button', { class: 'btn sm', title: 'Play it in the preview from the first line', onclick: () => D && V.play.load(D) }, '▶ Play'),
-        h('button', { class: 'btn sm go', title: 'Write dialogue/<name>.json and its runner for the game', onclick: save }, 'Save')),
+        h('button', { 'data-file': 'save', class: 'btn sm go', title: 'Write dialogue/<name>.json and its runner for the game', onclick: save }, 'Save')),
       h('div', { class: 'dl-scroll' }, V.list)), V.right);
     V.right.replaceChildren(h('div', { class: 'sec' }, h('h3', {}, 'Play it', h('small', {}, 'Space / click: go on')), V.play.el),
       h('div', { class: 'sec' }, h('h3', {}, 'In the game'), V.hudNote = h('p', { class: 'note', style: { marginTop: 0, color: 'var(--warn)', display: 'none' } }), h('p', { class: 'note', style: { marginTop: 0 } }, 'Start it from a Logic graph ("Start a dialogue", e.g. when the player enters a zone); "When a dialogue ends" and "Dialogue flag is set" carry on from it. Lines show in the HUD\'s dialogue box (HUD → add a Dialogue widget), or a plain box if the HUD has none; voice lines move the speaker\'s mouth; the player stands still until it ends.')));
@@ -57,8 +57,8 @@ async function refresh() {
 function drawLeft() {
   V.left.replaceChildren(h('div', { class: 'sec' }, h('h3', {}, 'Dialogues', h('span', { class: 'grow' }), h('small', {}, list.length || '')),
     ...list.map(p => h('button', { class: 'lg-file' + (D?.name === p.name ? ' on' : ''), title: `dialogue/${p.name}.json`, onclick: () => open(p.name) }, p.name)),
-    h('div', { style: { display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' } }, h('button', { class: 'btn sm', title: 'A new conversation', onclick: create }, 'New dialogue'),
-      list.length ? h('button', { class: 'btn sm ghost', title: 'Rename, copy, remove or bring back dialogues', onclick: manage }, 'Manage…') : '',
+    h('div', { style: { display: 'flex', gap: '6px', marginTop: '8px', flexWrap: 'wrap' } }, h('button', { 'data-file': 'new', class: 'btn sm', title: 'A new conversation', onclick: create }, 'New dialogue'),
+      h('button', { 'data-file': 'open', class: 'btn sm ghost', title: 'Open, rename, copy, remove or bring back dialogues', onclick: manage }, 'Open…'),
       D ? h('button', { class: 'btn sm ghost danger', title: 'Delete this dialogue (its game file goes to .trash)', onclick: remove }, 'Delete') : '')),
     D ? h('div', { class: 'sec' }, h('h3', {}, 'Cast', h('span', { class: 'grow' }), h('button', { class: 'btn sm ghost', title: 'Someone who speaks', onclick: addCast }, '+ Speaker')),
       D.cast.length ? h('div', { class: 'dl-cast' }, ...D.cast.map(castRow)) : h('p', { class: 'note', style: { marginTop: 0 } }, 'Who speaks. Link a speaker to an actor and its voice lines (Puppet → Voice line…) and mouth come along.')) : '');

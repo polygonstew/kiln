@@ -60,7 +60,7 @@ function drawLeft() {
   sessions().then(list => { const all = [...new Set([session, ...list])].sort(); sel.replaceChildren(...all.map(n => h('option', { value: n }, n))); sel.value = session; });
   V.left.replaceChildren(
     h('div', { class: 'sec' }, h('h3', {}, 'Session', h('span', { class: 'grow' }),
-        h('button', { class: 'btn sm ghost', title: 'Start a new concept session (a new folder)', onclick: () => { const n = prompt('Name for the session, e.g. "sewer level" or "bell-ringer boss"'); if (!n) return; session = slug(n); pref.set('concepts.session', session); api('/api/fs', { op: 'mkdir', path: dir() }).catch(() => {}).then(load); } }, 'New')),
+        h('button', { 'data-file': 'new', class: 'btn sm ghost', title: 'Start a new concept session (a new folder)', onclick: () => { const n = prompt('Name for the session, e.g. "sewer level" or "bell-ringer boss"'); if (!n) return; session = slug(n); pref.set('concepts.session', session); api('/api/fs', { op: 'mkdir', path: dir() }).catch(() => {}).then(load); } }, 'New')),
       sel, h('p', { class: 'note' }, `${items.length} image${items.length === 1 ? '' : 's'} in concepts/${session}/`),
       items.length ? h('button', { class: 'btn go wide', title: 'Turn every image here into a sprite with ONE shared palette, height and outline, so they belong together', onclick: batch }, 'Batch → sprites') : null),
     h('div', { class: 'sec' }, h('h3', {}, 'Make images on'),

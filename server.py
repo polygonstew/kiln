@@ -7,6 +7,7 @@ import base64, json, os, random, re, socket, struct, threading, time, urllib.req
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 import play
+import release
 import tidy
 from checks import GODOT, list_scripts, check_script, doctor, snapshot, history, restore_copy
 
@@ -881,6 +882,11 @@ class H(BaseHTTPRequestHandler):
             if u.path == '/api/tidy':
                 r = in_home(q.get('root') or settings()['root'])
                 return self.send(200, {'steps': tidy.plan(r)})
+            if u.path == '/api/release/status':
+                return self.send(200, {**release.STATE, 'targets': release.targets(), 'releases': release.releases()})
+            if u.path == '/api/release/file':
+                data = release.file(q.get('f', ''))
+                return self.send(200, data, 'application/zip') if data else self.send(404, {'err': 'no such release'})
             if u.path == '/api/play/status':
                 return self.send(200, {**play.STATE, 'built': play.built(), 'secure': play.secure_url(PORT)})
             if u.path == '/play' or u.path.startswith('/play/'):
@@ -953,6 +959,11 @@ class H(BaseHTTPRequestHandler):
                 g = godot_root(str(r))
                 base = ('res://' + (str(r.relative_to(g)) + '/' if str(r) != g else '')) if g else ''
                 return self.send(200, tidy.apply(r, base))
+            if u.path == '/api/release':
+                if release.STATE['running']:
+                    return self.send(409, {'err': 'an export is already running'})
+                threading.Thread(target=release.release, args=(in_home(b.get('root') or settings()['root']), b.get('files', {}), b.get('opts', {}), b.get('targets', [])), daemon=True).start()
+                return self.send(200, {'ok': True})
             if u.path == '/api/play/build':
                 if play.STATE['running']:
                     return self.send(409, {'err': 'a build is already running'})
