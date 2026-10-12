@@ -34,7 +34,7 @@ export const rooms = {
   mount(el) {
     el.className = 'view ws'; mounted = true;
     V.left = h('aside', { class: 'l' }); V.right = h('aside', { class: 'r' });
-    map = roomCanvas({ room: () => R, sel: () => sel, select: setSel, tool: () => tool, setTool, images: () => images, changed, snapshot, show, zoom: () => zoom, newHotspot });
+    map = roomCanvas({ room: () => R, sel: () => sel, select: setSel, tool: () => tool, setTool, images: () => images, changed, snapshot, show, zoom: () => zoom, newHotspot, dropAsset });
     V.vp = h('div', { class: 'viewport', style: { background: '#0e0e0d' } }, map.el);
     V.tools = h('span');
     el.append(V.left, h('section', { class: 'stage' },
@@ -113,6 +113,16 @@ function newHotspot(poly) {
   snapshot();
   const n = R.hotspots.length + 1, q = { id: uid(), name: 'thing_' + n, title: 'Thing ' + n, poly, does: 'say', look: '', text: '' };
   R.hotspots.push(q); sel = q.id; tool = 'select'; drawTools(); changed(true);
+}
+// from the asset shelf: a person stands where dropped, a picture sits there; either is a hotspot to set up
+function dropAsset(a, [x, y]) {
+  if (!['actor', 'picture', 'item'].includes(a.kind)) return toast('Drop a character, a picture or an item here');
+  const s = Math.round(Math.min(R.w, R.h) * (a.kind === 'actor' ? .14 : .05));
+  newHotspot(a.kind === 'actor' ? [[x - s / 2, y - s * 2], [x + s / 2, y - s * 2], [x + s / 2, y], [x - s / 2, y]] : [[x - s, y - s], [x + s, y - s], [x + s, y + s], [x - s, y + s]]);
+  const q = R.hotspots[R.hotspots.length - 1];
+  Object.assign(q, { title: a.name.replace(/\.\w+$/, ''), name: a.name.replace(/\W+/g, '_').toLowerCase() },
+    a.kind === 'actor' ? { does: 'talk', shows: { kind: 'actor', name: a.name } } : a.kind === 'item' ? { does: 'pick', item: a.id, vanish: true } : { shows: { kind: 'picture', path: a.path, scale: .5 } });
+  changed(true);
 }
 function remove() {
   snapshot();

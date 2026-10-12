@@ -92,6 +92,9 @@ export function flowView(ctx) {
     }
     if (d?.kind === 'node' && d.moved) ctx.changed(false);
   });
+  // an asset dragged from the shelf (assets.js): a scene of it where it lands
+  board.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('application/x-kiln-asset')) e.preventDefault(); });
+  board.addEventListener('drop', e => { const a = (() => { try { return JSON.parse(e.dataTransfer.getData('application/x-kiln-asset')); } catch { return null; } })(); if (!a) return; e.preventDefault(); const [x, y] = toBoard(e); ctx.drop?.(a, x - 90, y - 20); });
   board.addEventListener('dblclick', e => { const card = e.target.closest('.fw-node'); if (card) ctx.enter(ctx.flow().nodes.find(n => n.id === card.dataset.id)); });
   board.addEventListener('wheel', e => {
     e.preventDefault();

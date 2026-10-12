@@ -11,10 +11,14 @@ const SKIP = new Set(['gamedoc']);              // areas that read their own col
 // advanced panels (by area and title) that Simple mode hides
 export const ADVANCED = { forge: ['Hardware', 'Colour', 'Clean-up'], levels: ['Layers'], scenes: ['Weather', 'Review'], animate: ['Juice', 'Hit boxes'], rooms: ['Depth'], hud: ['Style'] };
 const areas = {};                               // id → { el, zones, src, placed, layout }
+// panels any area can add (Layout ▾ → Add a panel): made fresh for each area that asks
+const EXTRA = { Assets: () => import('./assets.js').then(m => m.assetShelf()), Preview: () => import('./preview.js').then(m => m.previewPanel()) };
 
 const keyOf = (node, side, i) => { const t = node.querySelector?.(':scope > h3'); const txt = t ? [...t.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join('').trim() : ''; return txt || `${side}#${i}`; };
-const blank = () => ({ where: {}, order: { l: [], r: [], b: [] }, hidden: [], folded: [], pinned: {}, size: { l: 300, r: 330, b: 220 } });
-const load = id => Object.assign(blank(), pref.get('dock.' + id, {}));
+// the canvases that take dropped assets start with the shelf under them
+const START_EXTRA = { flow: ['Assets'], levels: ['Assets'], rooms: ['Assets'] };
+const blank = id => ({ where: {}, order: { l: [], r: [], b: [] }, hidden: [], folded: [], pinned: {}, size: { l: 300, r: 330, b: 220 }, extra: [...(START_EXTRA[id] || [])] });
+const load = id => Object.assign(blank(id), pref.get('dock.' + id, {}));
 const keep = id => { pref.set('dock.' + id, areas[id].layout); };
 
 export function dockArea(id, el) {
@@ -38,6 +42,7 @@ export function dockArea(id, el) {
     new MutationObserver(() => place(A, side, s)).observe(s, { childList: true });
     A.fresh = { ...A.fresh, [side]: true }; place(A, side, s);
   }
+  for (const k of A.layout.extra) addExtra(A, k);
   apply(A);
 }
 
@@ -56,6 +61,15 @@ function place(A, side, src) {
     head(A, node, k);
     put(A, node, k, A.layout.where[k] || side);
   });
+  apply(A);
+}
+// an added panel (the asset shelf, the preview): bottom dock unless moved
+async function addExtra(A, k) {
+  if (!EXTRA[k] || A.el.querySelector(`.dk-panel[data-dk="${k}"]`)) return;
+  const node = await EXTRA[k]();
+  node.dataset.dk = k; node.classList.add('dk-panel', 'dk-extra');
+  head(A, node, k);
+  put(A, node, k, A.layout.where[k] || (k === 'Assets' ? 'b' : 'r'));
   apply(A);
 }
 function put(A, node, k, zone) {
@@ -128,21 +142,29 @@ export function layoutMenu(id) {
   const A = areas[id];
   const items = [];
   if (A) {
-    const all = [...A.el.querySelectorAll('.dk-panel')].map(n => n.dataset.dk).filter((k, i, a) => a.indexOf(k) === i);
+    const all = [...A.el.querySelectorAll('.dk-panel:not(.dk-extra)')].map(n => n.dataset.dk).filter((k, i, a) => a.indexOf(k) === i);
     items.push(['Panels', null], ...all.map(k => [(A.layout.hidden.includes(k) ? '☐ ' : '☑ ') + (k.includes('#') ? 'Panel ' + k.split('#')[1] : k), () => {
       A.layout.hidden = A.layout.hidden.includes(k) ? A.layout.hidden.filter(x => x !== k) : [...A.layout.hidden, k]; keep(id);
       const node = A.el.querySelector(`.dk-panel[data-dk="${CSS.escape(k)}"]`); if (A.layout.hidden.includes(k)) A.hold.append(node); else put(A, node, k, A.layout.where[k] || (A.placed.r.includes(node) ? 'r' : 'l')); apply(A);
     }]));
+    items.push(['Add a panel', null], ...Object.keys(EXTRA).map(k => [(A.layout.extra.includes(k) ? '☑ ' : '☐ ') + k, () => {
+      if (A.layout.extra.includes(k)) { A.layout.extra = A.layout.extra.filter(x => x !== k); A.el.querySelector(`.dk-panel[data-dk="${k}"]`)?.remove(); }
+      else { A.layout.extra.push(k); A.layout.hidden = A.layout.hidden.filter(x => x !== k); addExtra(A, k); }
+      keep(id); apply(A); }]));
     const saved = pref.get('dock.saved.' + id, {});
     items.push(['Layouts', null], ['Save this layout as…', () => { const n = prompt('Name for this layout', 'My layout'); if (n) pref.set('dock.saved.' + id, { ...saved, [n]: A.layout }); }],
-      ...Object.keys(saved).map(n => [`Use "${n}"`, () => { A.layout = Object.assign(blank(), JSON.parse(JSON.stringify(saved[n]))); keep(id); relayout(A); }]),
-      ['Reset to Kiln\'s layout', () => { A.layout = blank(); keep(id); relayout(A); }]);
+      ...Object.keys(saved).map(n => [`Use "${n}"`, () => { A.layout = Object.assign(blank(id), JSON.parse(JSON.stringify(saved[n]))); keep(id); relayout(A); }]),
+      ['Reset to Kiln\'s layout', () => { A.layout = blank(id); keep(id); relayout(A); }]);
   } else items.push(['This area has no panels to arrange', null]);
   items.push(['View', null], [(document.body.classList.contains('simple') ? '☑' : '☐') + ' Simple mode (hide the advanced panels)', () => setSimple(!document.body.classList.contains('simple'))]);
   return items;
 }
 function relayout(A) {
-  for (const n of [...A.el.querySelectorAll('.dk-panel')]) { const side = A.placed.r.includes(n) ? 'r' : 'l'; put(A, n, n.dataset.dk, A.layout.where[n.dataset.dk] || side); }
+  for (const n of [...A.el.querySelectorAll('.dk-panel')]) {
+    if (n.classList.contains('dk-extra') && !A.layout.extra.includes(n.dataset.dk)) { n.remove(); continue; }
+    const side = A.placed.r.includes(n) ? 'r' : 'l'; put(A, n, n.dataset.dk, A.layout.where[n.dataset.dk] || side);
+  }
+  for (const k of A.layout.extra) addExtra(A, k);
   apply(A);
 }
 export function setSimple(on) { document.body.classList.toggle('simple', on); pref.set('simple', on); }

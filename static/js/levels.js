@@ -289,6 +289,17 @@ function keys(e) {
 }
 function bind() {
   V.cv.addEventListener('contextmenu', e => e.preventDefault());
+  // a character from the asset shelf: placed with its feet on the tile under the drop
+  V.cv.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('application/x-kiln-asset')) e.preventDefault(); });
+  V.cv.addEventListener('drop', e => {
+    let a; try { a = JSON.parse(e.dataTransfer.getData('application/x-kiln-asset')); } catch { return; }
+    e.preventDefault();
+    if (a.kind !== 'actor') return toast('Drop a character here (from the asset shelf) to place it');
+    const p = cellAt(e); if (!p) return;
+    H.push(); (L.ents ||= []).push({ id: uid(), type: 'actor', name: a.name, x: p[0] * L.tile + L.tile / 2, y: (p[1] + 1) * L.tile });
+    if (!actorList.includes(a.name)) loadActorList();
+    changed(); draw(); drawLeft();
+  });
   V.cv.addEventListener('pointerdown', e => {
     if (blocked()) return;
     V.cv.setPointerCapture(e.pointerId);

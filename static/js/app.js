@@ -15,7 +15,7 @@ import { initTop, markTab } from './topbar.js';
 import { dockArea } from './dock.js';
 
 const mods = [files];
-const optional = ['gamedoc', 'flow', 'forge', 'animate', 'scenes', 'levels', 'rooms', 'cards', 'hud', 'stage', 'concepts', 'logic', 'dialogue', 'menus'];
+const optional = ['home', 'gamedoc', 'flow', 'forge', 'animate', 'scenes', 'levels', 'rooms', 'cards', 'hud', 'stage', 'concepts', 'logic', 'dialogue', 'menus'];
 const views = {};
 let cur = null;
 
@@ -67,7 +67,7 @@ async function boot() {
     tools: [...(views[m.id]?.querySelectorAll('button.btn.go, button.btn:not(.ghost):not(.sm)') || [])].filter(b => b.offsetParent && b.textContent.trim()).slice(0, 10)
       .map(b => ({ label: b.textContent.trim().slice(0, 24), hint: b.title, run: () => b.click() })),
   }));
-  show(location.hash.slice(1) || pref.get('tab', 'files'));
+  show(location.hash.slice(1) || pref.get('tab', 'home'));
   const hello = sessionStorage.getItem('kiln.hello'); sessionStorage.removeItem('kiln.hello');      // after New game / Open game
   if (hello) toast(hello, 'ok');
   if (sessionStorage.getItem('kiln.play')) { sessionStorage.removeItem('kiln.play'); setTimeout(() => emit('play'), 800); }     // a demo just made: play it

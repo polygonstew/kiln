@@ -43,7 +43,7 @@ export const flow = {
   mount(el) {
     el.className = 'view ws'; mounted = true;
     V.left = h('aside', { class: 'l' }); V.right = h('aside', { class: 'r' });
-    view = flowView({ flow: () => F, sel: () => sel, select: pick, changed, outs, summary, enter, add });
+    view = flowView({ flow: () => F, sel: () => sel, select: pick, changed, outs, summary, enter, add, drop });
     el.append(V.left, h('section', { class: 'stage' },
       h('div', { class: 'bar' }, h('span', { class: 'lbl' }, 'The game, scene by scene'), h('span', { class: 'grow' }),
         h('button', { class: 'btn sm ghost', title: 'Show every scene (F)', onclick: () => view.fit() }, 'Show all'),
@@ -81,6 +81,13 @@ function add(kind, x, y, extra = {}) {
   F.nodes.push(n); if (!F.start) F.start = n.id;
   sel = n.id; changed(true);
   return n;
+}
+// an asset from the shelf dropped on the board: the scene that plays it
+function drop(a, x, y) {
+  const base = { name: a.name.replace(/\.\w+$/, '') };
+  const made = { room: ['room', { room: a.name, entry: 'start' }], level: ['level', { level: a.name }], dialogue: ['talk', { dialogue: a.name }], video: ['video', { video: a.path }] }[a.kind];
+  if (!made) return toast(`A ${a.kind} can't be a scene by itself: drop a room, a level, a conversation or a video`);
+  add(made[0], Math.round(x), Math.round(y), { ...base, ...made[1] });
 }
 function shape(key) {
   const [, , nodes, links] = SHAPES[key];

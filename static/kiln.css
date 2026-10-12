@@ -898,3 +898,30 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 body.simple .dk-panel[data-adv] { display: none !important; }
 @media (max-width: 1000px) { .ws.dk { grid-template-columns: var(--dkL, 260px) minmax(0, 1fr) 0; } .ws.dk .dk-r { display: none; } }
 .tb-sub { padding: 8px 10px 2px; font: 600 9px var(--cond); letter-spacing: .14em; text-transform: uppercase; color: var(--faint); } #tabs .tb-layout { margin-left: 6px; }
+/* asset shelf (assets.js) and preview (preview.js): panels any area can add */
+.as-top { display: flex; gap: 6px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; } .as-top input { width: 120px; margin-left: auto; }
+.as-chips { display: flex; gap: 2px; flex-wrap: wrap; } .as-chips button { background: none; border: 1px solid var(--line); color: var(--dim); font: 11px var(--sans); padding: 2px 7px; border-radius: 10px; cursor: pointer; } .as-chips button.on { border-color: var(--ember); color: var(--ink); }
+.as-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); gap: 6px; }
+.as-tile { display: flex; flex-direction: column; gap: 2px; padding: 4px; background: var(--p2); border: 1px solid var(--line); border-radius: 3px; cursor: grab; overflow: hidden; } .as-tile:hover { border-color: var(--ember); }
+.as-tile img, .as-tile > i { width: 100%; height: 56px; object-fit: contain; background: #0e0e0d; display: grid; place-items: center; font-style: normal; color: var(--faint); font-size: 20px; }
+.as-tile b { font-size: 11px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; } .as-tile small { color: var(--faint); font-size: 10px; }
+.dk-b .as-shelf { width: auto; flex: 1 1 auto; min-width: 420px; } .dk-b .as-grid { grid-template-columns: repeat(auto-fill, minmax(86px, 1fr)); }
+.pv-box { width: 100%; background: #000; border: 1px solid var(--line); } .pv-frame { width: 100%; height: 100%; border: 0; display: block; } .pv-state { display: block; color: var(--dim); margin-top: 6px; }
+/* Home (home.js): the game at a glance */
+.view.hm { overflow: auto; background: var(--bg); } .hm-page { max-width: 1200px; margin: 0 auto; padding: 34px 40px 60px; display: flex; flex-direction: column; gap: 28px; }
+.hm-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; border-bottom: 1px solid var(--line); padding-bottom: 18px; }
+.hm-head small { font: 600 10px var(--cond); letter-spacing: .16em; text-transform: uppercase; color: var(--ember2); } .hm-head h1 { margin: 4px 0 0; font: 600 40px var(--cond); letter-spacing: .02em; }
+.hm-doors { display: flex; gap: 8px; } .hm-doors .btn { padding: 8px 16px; }
+.hm-next { display: flex; align-items: center; gap: 12px; padding: 14px 18px; background: color-mix(in srgb, var(--ember) 8%, var(--p1)); border: 1px solid color-mix(in srgb, var(--ember) 40%, var(--line)); border-left: 3px solid var(--ember); border-radius: 3px; }
+.hm-next small { font: 600 10px var(--cond); letter-spacing: .16em; text-transform: uppercase; color: var(--ember2); } .hm-next b { font-size: 15px; } .hm-next span { color: var(--dim); flex: 1; }
+.hm-page h2 { display: flex; align-items: center; gap: 12px; margin: 0 0 10px; font: 600 12px var(--cond); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); } .hm-page h2 .btn { margin-left: auto; }
+.hm-flow { display: flex; align-items: center; gap: 10px; overflow-x: auto; padding: 6px 0 10px; } .hm-col { display: flex; flex-direction: column; gap: 6px; }
+.hm-scene { --k: #777; display: flex; flex-direction: column; align-items: flex-start; min-width: 130px; padding: 7px 10px; background: var(--p1); border: 1px solid var(--line); border-top: 3px solid var(--k); border-radius: 3px; color: var(--ink); cursor: pointer; font: inherit; text-align: left; }
+.hm-scene small { font: 600 9px var(--cond); letter-spacing: .12em; text-transform: uppercase; color: var(--k); } .hm-scene:hover { border-color: var(--k); } .hm-arrow { color: var(--faint); font-style: normal; }
+.hm-cols { display: grid; grid-template-columns: 2fr 1fr; gap: 28px; }
+.hm-recent { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; }
+.hm-recent button { display: flex; flex-direction: column; gap: 3px; padding: 0 0 8px; background: var(--p1); border: 1px solid var(--line); border-radius: 3px; color: var(--ink); cursor: pointer; overflow: hidden; text-align: left; font: inherit; }
+.hm-recent button:hover { border-color: var(--ember); } .hm-recent img, .hm-recent i { width: 100%; height: 84px; object-fit: contain; background: #0e0e0d; } .hm-recent b, .hm-recent small { padding: 0 8px; } .hm-recent small { color: var(--faint); font-size: 11px; }
+.hm-counts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; } .hm-counts button { display: flex; align-items: baseline; gap: 8px; padding: 10px 12px; background: var(--p1); border: 1px solid var(--line); border-radius: 3px; color: var(--dim); cursor: pointer; font: inherit; }
+.hm-counts b { font: 600 24px var(--cond); color: var(--ink); } .hm-counts button:hover { border-color: var(--ember); color: var(--ink); }
+@media (max-width: 900px) { .hm-cols { grid-template-columns: 1fr; } .hm-head { flex-direction: column; align-items: flex-start; } }

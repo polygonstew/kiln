@@ -9,7 +9,7 @@ import { h, api, emit, on, toast } from './core.js';
 // tint: [accent, lighter, dark background] (null = Kiln's own ember); level: [cols, rows] of a new level;
 // camera: follow (scrolls with the player), rooms (snaps screen by screen), fixed (one screen);
 // tabs: the path's own top bar, [area id, name it goes by on this path] (topbar.js puts every other area under More)
-const ACTION_TABS = [['gamedoc', 'Doc'], ['flow', 'Flow'], ['forge', 'Forge'], ['animate', 'Animate'], ['scenes', 'Scenes'], ['levels', 'Levels'], ['hud', 'HUD'], ['dialogue', 'Dialogue'], ['logic', 'Logic'], ['menus', 'Menus'], ['stage', 'Stage']];
+const ACTION_TABS = [['home', 'Home'], ['gamedoc', 'Doc'], ['flow', 'Flow'], ['forge', 'Forge'], ['animate', 'Animate'], ['scenes', 'Scenes'], ['levels', 'Levels'], ['hud', 'HUD'], ['dialogue', 'Dialogue'], ['logic', 'Logic'], ['menus', 'Menus'], ['stage', 'Stage']];
 export const PATHS = {
   scroller: { label: '2D side-scroller', like: 'Mario, Contra, Celeste', what: 'Run, jump and fight across wide levels.', tint: ['#f29a3a', '#ffbb6e', '#3a2610'],
     brains: { hero: 'player', enemy: 'patrol', flyer: 'flyer', boss: 'patrol' }, camera: 'follow', level: [60, 17], tabs: ACTION_TABS },
@@ -17,22 +17,22 @@ export const PATHS = {
     brains: { hero: 'topdown', enemy: 'chaser', flyer: 'flyer', boss: 'turret' }, camera: 'rooms', level: [60, 34], tabs: ACTION_TABS },
   puzzle: { label: 'One-screen puzzler', like: 'Tricky Towers, Unit 404, Baba Is You', what: 'Every level fits on one screen: work out how to reach the goal.', tint: ['#36c3ae', '#79dccc', '#0f302b'],
     brains: { hero: 'player', enemy: 'patrol', flyer: 'flyer', boss: 'patrol' }, camera: 'fixed', level: [30, 17],
-    tabs: [['gamedoc', 'Doc'], ['flow', 'Flow'], ['forge', 'Forge'], ['animate', 'Animate'], ['levels', 'Levels'], ['scenes', 'Scenes'], ['hud', 'HUD'], ['menus', 'Menus'], ['stage', 'Stage']] },
+    tabs: [['home', 'Home'], ['gamedoc', 'Doc'], ['flow', 'Flow'], ['forge', 'Forge'], ['animate', 'Animate'], ['levels', 'Levels'], ['scenes', 'Scenes'], ['hud', 'HUD'], ['menus', 'Menus'], ['stage', 'Stage']] },
   adventure: { label: 'Point & click adventure', like: 'Monkey Island, Broken Sword, Thimbleweed Park', what: 'Click to walk, look, pick things up, use them and talk your way from room to room.', tint: ['#b48cff', '#cfb6ff', '#251a3a'],
     brains: { hero: 'walker', enemy: '', flyer: '', boss: '' }, camera: 'follow', level: [30, 17],
-    tabs: [['gamedoc', 'Story'], ['flow', 'Flow'], ['rooms', 'Rooms'], ['animate', 'Characters'], ['forge', 'Art'], ['dialogue', 'Talk'], ['menus', 'Menus'], ['stage', 'Play test']] },
+    tabs: [['home', 'Home'], ['gamedoc', 'Story'], ['flow', 'Flow'], ['rooms', 'Rooms'], ['animate', 'Characters'], ['forge', 'Art'], ['dialogue', 'Talk'], ['menus', 'Menus'], ['stage', 'Play test']] },
   text: { label: 'Text adventure', like: 'Zork, Choose Your Own Adventure, 80 Days', what: 'Pages of words and pictures: the reader chooses (or types) what to do next. Written in Dialogue.', tint: ['#d9bf6a', '#ead79a', '#302812'],
     brains: { hero: '', enemy: '', flyer: '', boss: '' }, camera: 'fixed', level: [30, 17],
-    tabs: [['gamedoc', 'Story'], ['flow', 'Flow'], ['dialogue', 'Pages'], ['forge', 'Pictures'], ['menus', 'Menus'], ['stage', 'Read it']] },
+    tabs: [['home', 'Home'], ['gamedoc', 'Story'], ['flow', 'Flow'], ['dialogue', 'Pages'], ['forge', 'Pictures'], ['menus', 'Menus'], ['stage', 'Read it']] },
   fmv: { label: 'Interactive movie', like: 'Dragon\'s Lair, Night Trap, The Adventures of Willy Beamish', what: 'Video scenes joined by choices and split-second moves, on a flow from intro to ending (FMV).', tint: ['#5aa8ff', '#93c6ff', '#10223a'],
     brains: { hero: 'walker', enemy: '', flyer: '', boss: '' }, camera: 'fixed', level: [30, 17],
-    tabs: [['gamedoc', 'Story'], ['flow', 'Flow'], ['dialogue', 'Talk'], ['rooms', 'Rooms'], ['forge', 'Art'], ['menus', 'Menus'], ['stage', 'Watch it']] },
+    tabs: [['home', 'Home'], ['gamedoc', 'Story'], ['flow', 'Flow'], ['dialogue', 'Talk'], ['rooms', 'Rooms'], ['forge', 'Art'], ['menus', 'Menus'], ['stage', 'Watch it']] },
   match3: { label: 'Match-3 puzzler', like: 'Candy Crush, Bejeweled', what: 'Swap pieces to line up three of a kind; the Flow chains boards from easy to hard.', tint: ['#ff5d9e', '#ff94c0', '#3a1226'],
-    brains: { hero: '', enemy: '', flyer: '', boss: '' }, camera: 'fixed', level: [30, 17], tabs: [['gamedoc', 'Doc'], ['flow', 'Flow'], ['forge', 'Pieces'], ['menus', 'Menus'], ['stage', 'Play']] },
+    brains: { hero: '', enemy: '', flyer: '', boss: '' }, camera: 'fixed', level: [30, 17], tabs: [['home', 'Home'], ['gamedoc', 'Doc'], ['flow', 'Flow'], ['forge', 'Pieces'], ['menus', 'Menus'], ['stage', 'Play']] },
   cards: { label: 'Card battler', like: 'Slay the Spire, Inscryption', what: 'Build a deck and fight one enemy after another; the Flow is the road between fights.', tint: ['#e3b04b', '#f0cd7a', '#33270e'],
-    brains: { hero: '', enemy: '', flyer: '', boss: '' }, camera: 'fixed', level: [30, 17], tabs: [['gamedoc', 'Doc'], ['flow', 'Flow'], ['cards', 'Cards'], ['forge', 'Art'], ['menus', 'Menus'], ['stage', 'Play']] },
+    brains: { hero: '', enemy: '', flyer: '', boss: '' }, camera: 'fixed', level: [30, 17], tabs: [['home', 'Home'], ['gamedoc', 'Doc'], ['flow', 'Flow'], ['cards', 'Cards'], ['forge', 'Art'], ['menus', 'Menus'], ['stage', 'Play']] },
   vn: { label: 'Visual novel', like: 'Phoenix Wright, Doki Doki Literature Club', what: 'Talk scenes over backgrounds with characters, and choices that branch the story.', tint: ['#ff8fb1', '#ffb8cd', '#3a1a24'],
-    brains: { hero: '', enemy: '', flyer: '', boss: '' }, camera: 'fixed', level: [30, 17], tabs: [['gamedoc', 'Story'], ['flow', 'Flow'], ['dialogue', 'Script'], ['forge', 'Art'], ['menus', 'Menus'], ['stage', 'Play']] },
+    brains: { hero: '', enemy: '', flyer: '', boss: '' }, camera: 'fixed', level: [30, 17], tabs: [['home', 'Home'], ['gamedoc', 'Story'], ['flow', 'Flow'], ['dialogue', 'Script'], ['forge', 'Art'], ['menus', 'Menus'], ['stage', 'Play']] },
   runner: { label: 'Endless runner', like: 'Canabalt, Jetpack Joyride, Geometry Dash', what: 'The hero runs by itself, faster and faster; jump at the right moment.', tint: ['#7bd88f', '#a8e8b5', '#13301b'],
     brains: { hero: 'runner', enemy: 'patrol', flyer: 'flyer', boss: 'patrol' }, camera: 'follow', level: [150, 17], tabs: ACTION_TABS },
   wild: { label: 'Wild card', like: 'anything: mix it all', what: 'No path: every area and every tool, platforms, rooms, puzzles and point & click together.', tint: null,

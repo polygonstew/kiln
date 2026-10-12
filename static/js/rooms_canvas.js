@@ -91,6 +91,9 @@ export function roomCanvas(ctx) {
   }
 
   cv.addEventListener('contextmenu', e => e.preventDefault());
+  // from the asset shelf: a character or a picture becomes a hotspot that shows it, where it lands
+  cv.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('application/x-kiln-asset')) e.preventDefault(); });
+  cv.addEventListener('drop', e => { let a; try { a = JSON.parse(e.dataTransfer.getData('application/x-kiln-asset')); } catch { return; } e.preventDefault(); ctx.dropAsset?.(a, at(e)); });
   cv.addEventListener('pointerdown', e => {
     const R = ctx.room(); if (!R) return;
     const p = at(e), hit = pickAt(p), tool = ctx.tool();
