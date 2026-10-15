@@ -8,6 +8,7 @@ import { registerKeys } from './wheel.js';
 import { MENU_GD, SETTINGS_GD, menuScene } from './menus_godot.js';
 import { BUNDLED, gameFonts, useFont, fontFile, cssFamily } from './menu_fonts.js';
 import { pickPicture } from './pictures.js';
+import { itemStyle, hasStyle } from './menu_items.js';
 import { addVideo } from './video_add.js';
 
 const ACTIONS = [['start', 'Start the game'], ['rules', 'How to play (the rule book)'], ['open:options', 'Open options'], ['back', 'Back'], ['resume', 'Resume'], ['title', 'Quit to title'], ['quit', 'Quit the game'],
@@ -18,6 +19,7 @@ export const DEFAULTS = () => ({
     { label: 'Fullscreen', action: 'fullscreen' }, { label: 'Screen shake', action: 'toggle', key: 'screen_shake' }, { label: 'Controls', action: 'controls' }, { label: 'Back', action: 'back' }] },
   pause: { id: 'pause', on: true, title: 'Paused', dim: .7, items: [{ label: 'Resume', action: 'resume' }, { label: 'How to play', action: 'rules' }, { label: 'Options', action: 'open:options' }, { label: 'Quit to title', action: 'title' }] },
 });
+const openStyle = new WeakSet();     // items whose ⚙ look controls are showing
 let M = null, cur = 'title', V = {}, saveT, scenes = [], videos = [], myFonts = [];
 
 export const menus = {
@@ -57,13 +59,15 @@ function draw() { drawLeft(); drawRight(); drawPreview(); }
 
 function drawLeft() {
   const m = M[cur];
-  const items = h('div', { class: 'mn-items' }, ...m.items.map((it, i) => h('div', { class: 'mn-item' },
+  const items = h('div', { class: 'mn-items' }, ...m.items.map((it, i) => h('div', { class: 'mn-item-wrap' }, h('div', { class: 'mn-item' },
     h('input', { type: 'text', value: it.label, title: 'What the button says', oninput: e => { it.label = e.target.value; changed(); } }),
     Object.assign(select(ACTIONS, it.action, v => { it.action = v; if (v === 'volume') it.bus ||= 'Master'; if (v === 'toggle') it.key ||= it.label.toLowerCase().replace(/\W+/g, '_'); changed(); drawLeft(); }), { title: 'What pressing it does' }),
     it.action === 'volume' ? select([['Master', 'all sound'], ['Music', 'music'], ['SFX', 'effects']], it.bus, v => { it.bus = v; changed(); }) : '',
     it.action === 'toggle' ? h('input', { type: 'text', value: it.key, title: 'Name your code reads: KilnSettings.flag("…")', style: { width: '90px' }, onchange: e => { it.key = e.target.value.replace(/\W+/g, '_'); changed(); } }) : '',
+    h('button', { class: 'ibtn' + (hasStyle(it) ? ' on' : ''), title: 'This item\'s own size, colours and font', onclick: () => { openStyle.has(it) ? openStyle.delete(it) : openStyle.add(it); drawLeft(); } }, '⚙'),
     h('button', { class: 'ibtn', title: 'Up', onclick: () => { if (i) { [m.items[i - 1], m.items[i]] = [m.items[i], m.items[i - 1]]; changed(); drawLeft(); } } }, '↑'),
-    h('button', { class: 'ibtn', title: 'Remove', onclick: () => { m.items.splice(i, 1); changed(); drawLeft(); } }, '✕'))));
+    h('button', { class: 'ibtn', title: 'Remove', onclick: () => { m.items.splice(i, 1); changed(); drawLeft(); } }, '✕')),
+    openStyle.has(it) ? itemStyle(it, m, myFonts, redo => { changed(); if (redo) drawLeft(); }, useFont) : '')));
   V.left.replaceChildren(
     h('div', { class: 'sec' }, h('h3', {}, 'Screens'),
       h('div', { class: 'seg' }, ...Object.values(M).map(s => h('button', { class: s.id === cur ? 'on' : '', title: { title: 'The first screen: start, options, quit', options: 'Volumes, fullscreen and your own switches', pause: 'What Esc shows while playing' }[s.id] || 'Edit this screen', onclick: () => { cur = s.id; draw(); } }, s.id[0].toUpperCase() + s.id.slice(1) + (s.on ? '' : ' (off)')))),
@@ -112,15 +116,18 @@ async function drawPreview() {
   const vsrc = k === 'video' && m.bgVideo ? await videoSource(m.bgVideo) : null;
   if (me !== previewN) return;              // a newer edit is already drawing
   const bg = scene || pic;
-  const rows = m.items.map(it => it.action === 'volume' ? h('div', { class: 'mn-r' }, it.label, h('span', { class: 'mn-slider' }, h('i', { style: { width: '80%' } })))
-    : it.action === 'fullscreen' || it.action === 'toggle' ? h('div', { class: 'mn-r' }, it.label, h('span', { class: 'mn-check' }))
-      : it.action === 'controls' ? h('div', { class: 'mn-r mn-small' }, 'Left: ←  Right: →  Accept: Enter, Space  Attack: X  Shoot: C')
-        : h('div', { class: 'mn-r mn-btn' }, it.label));
-  if (rows[0]) rows[0].classList.add('focus');
+  const mine = (it, i) => ({ fontSize: (it.size || s) + 'px', color: i === 0 ? it.hover || m.accent || '#ff5b2e' : it.color || m.text || '#ebe3d0',
+    fontFamily: it.font ? cssFamily(it.font) : '', justifyContent: { left: 'flex-start', right: 'flex-end', center: 'center' }[it.align || (m.left ? 'left' : 'center')] });
+  for (const it of m.items) await useFont(it.font);
+  if (me !== previewN) return;
+  const rows = m.items.map((it, i) => it.action === 'volume' ? h('div', { class: 'mn-r', style: mine(it, i) }, it.label, h('span', { class: 'mn-slider', style: { width: (it.size || s) * 6 + 'px' } }, h('i', { style: { width: '80%', background: it.color || m.text || '#ebe3d0' } })))
+    : it.action === 'fullscreen' || it.action === 'toggle' ? h('div', { class: 'mn-r', style: mine(it, i) }, it.label, h('span', { class: 'mn-check', style: { width: (it.size || s) * 1.6 + 'px', height: (it.size || s) * .8 + 'px' } }))
+      : it.action === 'controls' ? h('div', { class: 'mn-r mn-small', style: mine(it, i) }, 'Left: ←  Right: →  Accept: Enter, Space  Attack: X  Shoot: C')
+        : h('div', { class: 'mn-r mn-btn', style: mine(it, i) }, it.label));
   const screen = h('div', { class: 'mn-screen', style: { '--a': m.accent || '#ff5b2e', '--t': m.text || '#ebe3d0', '--s': s + 'px', fontFamily: cssFamily(m.font), background: bg ? `url(${bg}) center / cover` : cur === 'pause' && !k ? '#3a3d48' : '#111' } },
     vsrc ? h('video', { class: 'mn-vid', src: vsrc, autoplay: true, loop: true, muted: true, playsinline: true }) : '',
     h('div', { class: 'mn-dim', style: { opacity: m.dim ?? .55 } }),
-    h('div', { class: 'mn-box' + (m.left ? ' left' : '') }, m.title ? h('div', { class: 'mn-title' }, m.title) : '', ...rows));
+    h('div', { class: 'mn-box' + (m.left ? ' left' : '') }, h('div', { class: 'mn-col' }, m.title ? h('div', { class: 'mn-title', style: { textAlign: m.left ? 'left' : 'center' } }, m.title) : '', ...rows)));
   const z = Math.max(1, Math.floor(Math.min((V.pv.parentElement.clientWidth - 30) / 480, (V.pv.parentElement.clientHeight - 30) / 270)));
   screen.style.transform = `scale(${z})`; V.pv.style.width = 480 * z + 'px'; V.pv.style.height = 270 * z + 'px';
   V.pv.replaceChildren(screen);
@@ -154,7 +161,7 @@ async function exportMenus(quiet) {
   const base = g.root ? 'res://' + (FS.root.slice(g.root.length + 1) ? FS.root.slice(g.root.length + 1) + '/' : '') : '';
   const files = Object.values(M).filter(m => m.on).map(m => ({ name: m.id + '.tscn', text: menuScene(m, base) }));
   try {
-    const fonts = await Promise.all([...new Set(Object.values(M).filter(m => m.on && m.font && !wroteFont.has(m.font)).map(m => m.font))].map(async f => ({ name: f, b64: await fontFile(f) })));
+    const fonts = await Promise.all([...new Set(Object.values(M).filter(m => m.on).flatMap(m => [m.font, ...m.items.map(it => it.font)]).filter(f => f && !wroteFont.has(f)))].map(async f => ({ name: f, b64: await fontFile(f) })));
     if (fonts.some(f => f.b64)) await saveFiles('fonts', fonts.filter(f => f.b64));
     fonts.forEach(f => wroteFont.add(f.name));
     await saveFiles('menus', files); await writeRuntime({ menu: MENU_GD, settings: SETTINGS_GD });

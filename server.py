@@ -3,7 +3,7 @@
 
 Stdlib only. ComfyUI is expected at COMFY (default 127.0.0.1:8188).
 """
-import base64, json, os, random, re, socket, struct, threading, time, urllib.request, urllib.parse, uuid
+import base64, json, os, shutil, random, re, socket, struct, threading, time, urllib.request, urllib.parse, uuid
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 import play
@@ -586,6 +586,23 @@ def fs_op(b):
         s = settings()
         s['root'] = scaffold(b['path']) if b.get('scaffold') else str(in_home(b['path']))
         save_settings(s)
+    elif op == 'delete_game':
+        # a game made in Kiln's games folder: moved to library/.deleted/<time>-name (or removed for good when asked).
+        # If it is the one open, another game (or a fresh empty one) is opened first. Folders elsewhere are never touched.
+        g, games = in_home(b['path']), (LIB / 'games').resolve()
+        if g.parent != games or not g.is_dir():
+            raise ValueError('only a game inside Kiln\'s games folder can be deleted here; remove other folders by hand')
+        s = settings()
+        if Path(s['root']).resolve() == g:
+            others = sorted((d for d in games.iterdir() if d.is_dir() and d != g and not d.name.startswith('.')), key=lambda d: d.stat().st_mtime, reverse=True)
+            s['root'] = str(others[0]) if others else scaffold(games / 'new_game')
+        s['bookmarks'] = [x for x in s['bookmarks'] if Path(x['path']).resolve() != g]
+        save_settings(s)
+        if b.get('forever'):
+            shutil.rmtree(g)
+        else:
+            (LIB / '.deleted').mkdir(exist_ok=True)
+            g.rename(LIB / '.deleted' / f"{time.strftime('%Y%m%d-%H%M%S')}-{g.name}")
     elif op == 'scaffold':
         scaffold(b.get('path') or settings()['root'])
     elif op == 'bookmark':

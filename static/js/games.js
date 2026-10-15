@@ -2,7 +2,8 @@
 // for Godot. New game makes an empty one in Kiln's games folder and switches to it, where the "Your game" steps take
 // over. New game also asks for the game's path (gametype.js: side-scroller, top-down shooter, one-screen puzzler,
 // point & click adventure or the Wild card). Open game lists the games there and the other folders you used
-// (bookmarks), newest first, and switches. Switching is safe at any time: every area keeps its work where it came from.
+// (bookmarks), newest first, and switches. Delete game moves the open game out of the way (kept in library/.deleted, or
+// removed for good on request), optionally starting a fresh one with the same name. Switching is safe at any time: every area keeps its work where it came from.
 import { h, api, toast, pref } from './core.js';
 import { S as FS } from './files.js';
 import { PATHS, pathCards, setPath } from './gametype.js';
@@ -90,4 +91,30 @@ export async function openGame() {
     return h('button', { class: 'pj-row gm-row' + (here ? ' on' : ''), title: g.path, onclick: async () => { m.remove(); if (!here) await switchTo(g.path, false, null, `Opened ${g.name}`); } },
       thumb, h('b', {}, g.name), kind, h('small', {}, here ? 'open now' : g.n ? `${g.n} thing${g.n > 1 ? 's' : ''} · ${ago(g.at)}` : 'empty'));
   }));
+}
+
+// File → Delete game…: only games in Kiln's games folder; the name must be typed; "Start over" makes a new empty one with the same name
+export function deleteGame() {
+  const name = FS.root.split('/').pop(), mine = FS.root.startsWith(FS.settings.games + '/');
+  if (!mine) return modal('Delete game', h('p', {}, `"${name}" is a folder outside Kiln's games folder (${FS.root}), so Kiln won't delete it. Remove it by hand, or open one of your own games first.`));
+  let pick = { path: 'scroller', puzzle: 'push', look: 'modern' };
+  const typed = h('input', { type: 'text', placeholder: name, oninput: () => { const ok = typed.value.trim() === name; over.disabled = del.disabled = !ok; } });
+  const forever = h('input', { type: 'checkbox' });
+  const over = h('button', { class: 'btn go', disabled: true, title: 'Delete it and begin again with an empty game of the same name', onclick: () => run(true) }, 'Start over');
+  const del = h('button', { class: 'btn', disabled: true, style: { color: '#ff6a5a' }, title: 'Delete it and open another game', onclick: () => run(false) }, 'Delete game');
+  const m = modal(`Delete "${name}"?`,
+    h('p', { class: 'note', style: { marginTop: 0 } }, 'Everything in this game goes: its actors, scenes, levels, menus, scripts and pictures. Unless you tick the box below, a copy is kept in Kiln\'s library/.deleted folder, so a mistake can be undone by hand.'),
+    h('label', { class: 'fld' }, h('span', { class: 'fl' }, `Type the game's name (${name}) to unlock the buttons`), typed),
+    h('label', { class: 'fld', style: { flexDirection: 'row', gap: '8px', alignItems: 'center' } }, forever, h('span', {}, 'Delete for good: no copy is kept, this cannot be undone')),
+    h('p', { class: 'fl', style: { margin: '14px 0 6px' } }, 'To start over, what kind of game?'),
+    pathCards(pick, p => { pick = p; }),
+    h('div', { style: { display: 'flex', gap: '8px', marginTop: '14px' } }, over, del, h('button', { class: 'btn ghost', onclick: () => m.remove() }, 'Cancel')));
+  async function run(again) {
+    const path = FS.root;
+    m.remove();
+    try { await api('/api/fs', { op: 'delete_game', path, forever: forever.checked }); } catch (e) { return toast('Could not delete it: ' + e.message, 'bad'); }
+    pref.set('games.recent', pref.get('games.recent', []).filter(p => p !== path));
+    if (again) await switchTo(path, true, () => setPath(pick.path, pick.puzzle, pick.look), `${name} started over (${PATHS[pick.path].label.toLowerCase()}): the "Your game" steps show where to begin`, (PATHS[pick.path].tabs || [['gamedoc']])[0][0]);
+    else restart(`${name} was deleted`);
+  }
 }

@@ -27,6 +27,7 @@ const MENUS = () => [
   ['File', [
     ['New game…', 'A new, empty game folder (the one open now stays as it is)', () => import('./games.js').then(m => m.newGame())],
     ['Open game…', 'Switch to another of your games', () => import('./games.js').then(m => m.openGame())],
+    ['Delete game…', 'Delete this game, or start over with an empty one (asks you to type its name; a copy is kept unless you say otherwise)', () => import('./games.js').then(m => m.deleteGame())],
     ['Kind of game…', 'The path of this game: side-scroller, top-down shooter, one-screen puzzler, point & click adventure or the Wild card', () => import('./gametype.js').then(m => m.choosePath())],
     null,
     fileItem('new'), fileItem('open'), fileItem('save'),

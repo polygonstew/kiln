@@ -79,9 +79,9 @@ func _row(it: Dictionary) -> Control:
 \tvar kind: String = it.get("action", "")
 \tif kind == "volume":
 \t\tvar row := HBoxContainer.new()
-\t\trow.add_child(_label(it.get("label", "Volume")))
+\t\trow.add_child(_label(it.get("label", "Volume"), it))
 \t\tvar s := HSlider.new()
-\t\ts.custom_minimum_size = Vector2(font_size * 6, font_size)
+\t\ts.custom_minimum_size = Vector2(_size(it) * 6, _size(it))
 \t\ts.min_value = 0.0
 \t\ts.max_value = 1.0
 \t\ts.step = 0.05
@@ -95,38 +95,53 @@ func _row(it: Dictionary) -> Control:
 \t\tc.text = it.get("label", key)
 \t\tc.button_pressed = KilnSettings.flag(key)
 \t\tc.toggled.connect(func(on): KilnSettings.set_flag(key, on))
-\t\t_style(c)
+\t\t_style(c, it)
 \t\treturn c
 \tif kind == "controls":
-\t\tvar l := _label(KilnSettings.controls_text())
-\t\tl.add_theme_font_size_override("font_size", max(8, font_size * 2 / 3))
+\t\tvar l := _label(KilnSettings.controls_text(), it)
+\t\tl.add_theme_font_size_override("font_size", max(8, _size(it) * 2 / 3))
 \t\treturn l
 \tvar b := Button.new()
 \tb.text = it.get("label", kind)
 \tb.flat = true
-\tb.alignment = HORIZONTAL_ALIGNMENT_LEFT if align_left else HORIZONTAL_ALIGNMENT_CENTER
-\t_style(b)
+\tb.alignment = _align(it)
+\t_style(b, it)
 \tb.pressed.connect(func(): _press(kind))
 \treturn b
 
-func _label(text: String) -> Label:
-\tvar l := Label.new()
-\tl.text = text
-\tl.add_theme_font_size_override("font_size", font_size)
-\tl.add_theme_color_override("font_color", text_color)
-\t_font(l)
-\treturn l
+func _size(it: Dictionary) -> int:
+	return int(it.get("size", font_size))
 
-func _font(c: Control) -> void:
-\tif font:
-\t\tc.add_theme_font_override("font", font)
+func _color(it: Dictionary, key: String, fallback: Color) -> Color:
+	return Color(it[key]) if it.has(key) else fallback
 
-func _style(b: BaseButton) -> void:
-\tb.add_theme_font_size_override("font_size", font_size)
-\tb.add_theme_color_override("font_color", text_color)
-\t_font(b)
-\tfor s in ["font_hover_color", "font_focus_color", "font_pressed_color"]:
-\t\tb.add_theme_color_override(s, accent)
+func _align(it: Dictionary) -> HorizontalAlignment:
+	match it.get("align", "left" if align_left else "center"):
+		"left":
+			return HORIZONTAL_ALIGNMENT_LEFT
+		"right":
+			return HORIZONTAL_ALIGNMENT_RIGHT
+	return HORIZONTAL_ALIGNMENT_CENTER
+
+func _label(text: String, it: Dictionary = {}) -> Label:
+	var l := Label.new()
+	l.text = text
+	l.add_theme_font_size_override("font_size", _size(it))
+	l.add_theme_color_override("font_color", _color(it, "color", text_color))
+	_font(l, it)
+	return l
+
+func _font(c: Control, it: Dictionary = {}) -> void:
+	var f: Font = it.get("font", font)
+	if f:
+		c.add_theme_font_override("font", f)
+
+func _style(b: BaseButton, it: Dictionary) -> void:
+	b.add_theme_font_size_override("font_size", _size(it))
+	b.add_theme_color_override("font_color", _color(it, "color", text_color))
+	_font(b, it)
+	for s in ["font_hover_color", "font_focus_color", "font_pressed_color"]:
+		b.add_theme_color_override(s, _color(it, "hover", accent))
 
 func _press(kind: String) -> void:
 \tif kind == "quit":
@@ -207,7 +222,10 @@ export function menuScene(m, base) {
   const vid = kind === 'video' && m.bgVideo ? add('VideoStream', base + m.bgVideo, 'vid') : '';
   const font = m.font ? add('FontFile', `${base}fonts/${m.font}`, 'font') : '';
   const c = h => { const n = parseInt(h.slice(1), 16); return `Color(${((n >> 16) & 255) / 255}, ${((n >> 8) & 255) / 255}, ${(n & 255) / 255}, 1)`; };
-  const items = '[' + m.items.map(it => '{' + Object.entries(it).filter(([, v]) => v !== '' && v != null).map(([k, v]) => `"${k}": ${JSON.stringify(v)}`).join(', ') + '}').join(', ') + ']';
+  const itemFonts = {};      // an item's own font is a resource inside its dictionary: "font": ExtResource("f1")
+  for (const it of m.items) if (it.font && !itemFonts[it.font]) itemFonts[it.font] = add('FontFile', `${base}fonts/${it.font}`, 'f' + (Object.keys(itemFonts).length + 1));
+  const val = (k, v, it) => k === 'font' ? `ExtResource("${itemFonts[v]}")` : JSON.stringify(v);
+  const items = '[' + m.items.map(it => '{' + Object.entries(it).filter(([, v]) => v !== '' && v != null).map(([k, v]) => `"${k}": ${val(k, v, it)}`).join(', ') + '}').join(', ') + ']';
   return `[gd_scene load_steps=${ext.length + 2} format=3]\n\n[ext_resource type="Script" path="${rtRes(base, 'menu')}" id="1"]\n${ext.join('\n')}\n\n`
     + `[node name="${m.id}" type="Control"]\nlayout_mode = 3\nanchors_preset = 15\nanchor_right = 1.0\nanchor_bottom = 1.0\nscript = ExtResource("1")\n`
     + `title = ${JSON.stringify(m.title || '')}\nitems = ${items}\naccent = ${c(m.accent || '#ff5b2e')}\ntext_color = ${c(m.text || '#ebe3d0')}\ndim = ${m.dim ?? .55}\nfont_size = ${m.fontSize || 16}\nalign_left = ${!!m.left}\n`
