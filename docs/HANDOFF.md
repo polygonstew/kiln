@@ -45,6 +45,36 @@ Verified in headless Godot: the adventure demo played through to its ending; flo
 check → end; story pages with a typed answer; top-down shooting + room camera; push crate + exit → next level.
 Also verified: the stacker (bricks fall, land, next spawns). FMV/text templates were tested through hand-made flows, not their template builds.
 
+## START HERE (session 7 → 8, written 2026-10-15)
+
+Done in session 7 (all committed, pushed, Kiln restarted): **Ask Gloop** (ask.js, helpsearch.py, helpbot.py), **Menus** fixes
+(preview colours/size: core.js `h()` custom properties; autosave of menus/*.tscn; 12 fonts; picture / video / scene behind a
+screen; per-item size, colour, highlight, font, align in menu_items.js), **File → Delete game…** (server op `delete_game`,
+games.js `deleteGame`; moved to library/.deleted, "Start over" re-creates the same name). Details: DEVELOPING "Menus (session 7)",
+"Delete game / item looks", "Ask Gloop".
+
+**The user's next asks (2026-10-15), not started. One job per session; do them in this order:**
+1. **Imported images get smoothed / pixelated in places that override the user's choice.** `grep -n "imageSmoothingEnabled" static/js/*.js`
+   (28 hits in ~18 files) and `image-rendering` in kiln.css (30 rules) + inline `pixelated` in animate.js, concepts.js, forge.js,
+   forge_sets.js, slicer.js, hud.js, gamedoc_pitch.js. The game already has a **Look** (Modern default / Pixel; gametype.js, cutout.js).
+   Make ONE helper (core.js, e.g. `crisp(el)` / `smoothFor(look)`) that reads the game's look and applies pixelated vs smooth, and use it
+   everywhere imported or painted art is drawn or scaled (previews, canvases, thumbnails, export/pitch). Imported pictures must never be
+   forced to pixel mode when the look is Modern. Also check what the Godot side writes (texture filter in project / scenes).
+2. **Speed: huge imported images (Concepts upload, concepts.js ~line 53 FileReader) slow Animate / Forge / Art work.** Likely whole
+   full-size data URLs are kept in prefs/state and re-decoded, drawn and sent to the server again and again. Fix at the door: on import
+   make a working copy (longest side ~1024-1536 px, canvas downscale or createImageBitmap resize) plus a small thumbnail; keep the
+   original untouched on disk (concepts/ folder) and only use it when exporting at full size. Profile first (Chromium trace or timing
+   around toCanvas/imgData/ref images in animate.js, forge.js) to find the real hot spots; also check `localStorage` sizes (pref.set of
+   data URLs) and `forge.results`.
+3. **Some areas can't remove / archive what you are working on to start over.** Audit every area for Open-dialog parity (projects.js
+   is the shared Open dialog with open / rename / copy / remove / restore): Concepts sessions, Forge results/tiles/icons/bg,
+   Animate actor, Scenes, HUD, Levels, Rooms, Flow, Cards, Camera, Dialogue, Logic, Menus (reset screen exists), Game doc, Style.
+   For each, add a visible "New / Archive / Remove (restorable)" next to the title. Never hard-delete: use the `trash` op (/.trash).
+
+Testing reminders: `tools/iso.sh <tmpdir>` starts the throwaway copy on :8521 (run it as `(tools/iso.sh DIR > log 2>&1 < /dev/null &)`,
+otherwise the shell hangs); Playwright from `.venv-test`; `python3 tools/map.py` for the 1000-line rule; the user's real folders
+(library/games/sara, untitled_demo, demo_game) must not be touched.
+
 ## START HERE (session 6, written 2026-10-12 late; the user's usage ran out mid-session)
 
 Backup made before the UI work: `~/.jcodes/kiln-backup-2026-10-12-before-ui/` (kiln.bundle = full git history,
