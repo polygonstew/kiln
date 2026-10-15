@@ -2,7 +2,7 @@
 // the middle. On the left: what goes in the build, the player's numbers tuned live while you play (nothing is saved
 // until "Keep in actor"), and buttons that jump to the thing to fix. Below the game: the build log and the game's
 // own output. The page talks to the game through the bridge play.py puts in it (postMessage both ways).
-import { h, api, toast, on, emit, pref, field, range, select, rawURL, download } from './core.js';
+import { h, api, toast, on, emit, pref, field, range, select, rawURL, download, artCtx } from './core.js';
 import { S as FS } from './files.js';
 import { BRAINS } from './brains.js';
 import { listScenes, gamePicks, buildGame, buildKey, controlsText } from './playbuild.js';
@@ -32,7 +32,7 @@ export const stage = {
     V.left = h('aside', { class: 'l' });
     V.status = h('span', { class: 'mono faint', style: { fontSize: '12px' } });
     V.bar = h('span', { style: { display: 'flex', gap: '6px', alignItems: 'center' } });
-    V.frame = h('iframe', { title: 'The game', allow: 'autoplay; fullscreen', style: { border: '0', background: '#000', display: 'none', imageRendering: 'pixelated' } });
+    V.frame = h('iframe', { title: 'The game', allow: 'autoplay; fullscreen', style: { border: '0', background: '#000', display: 'none', imageRendering: 'var(--ir)' } });
     V.empty = h('div', { class: 'empty' });
     V.vp = h('div', { class: 'viewport', style: { background: '#0b0b0a' } }, V.frame, V.empty);
     V.blog = h('div'); V.glog = h('div');
@@ -112,7 +112,7 @@ function saveShot(b64) {
   const img = new Image();
   img.onload = () => {
     const c = h('canvas', { width: img.width * 3, height: img.height * 3 }), x = c.getContext('2d');
-    x.imageSmoothingEnabled = false; x.drawImage(img, 0, 0, c.width, c.height);
+    artCtx(x, 3); x.drawImage(img, 0, 0, c.width, c.height);
     download(`playtest-${stamp()}.png`, c.toDataURL('image/png')); toast('Screenshot saved', 'ok');
   };
   img.src = 'data:image/png;base64,' + b64;

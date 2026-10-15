@@ -45,7 +45,7 @@ Verified in headless Godot: the adventure demo played through to its ending; flo
 check → end; story pages with a typed answer; top-down shooting + room camera; push crate + exit → next level.
 Also verified: the stacker (bricks fall, land, next spawns). FMV/text templates were tested through hand-made flows, not their template builds.
 
-## START HERE (session 7 → 8, written 2026-10-15)
+## START HERE (session 7 → 8, written 2026-10-15; item 1 done, next is item 2)
 
 Done in session 7 (all committed, pushed, Kiln restarted): **Ask Gloop** (ask.js, helpsearch.py, helpbot.py), **Menus** fixes
 (preview colours/size: core.js `h()` custom properties; autosave of menus/*.tscn; 12 fonts; picture / video / scene behind a
@@ -54,7 +54,7 @@ games.js `deleteGame`; moved to library/.deleted, "Start over" re-creates the sa
 "Delete game / item looks", "Ask Gloop".
 
 **The user's next asks (2026-10-15), not started. One job per session; do them in this order:**
-1. **Imported images get smoothed / pixelated in places that override the user's choice.** `grep -n "imageSmoothingEnabled" static/js/*.js`
+1. **DONE 2026-10-15 (session 8)** — see "Looks follow the Look" in RESUME.md. Original ask: **Imported images get smoothed / pixelated in places that override the user's choice.** `grep -n "imageSmoothingEnabled" static/js/*.js`
    (28 hits in ~18 files) and `image-rendering` in kiln.css (30 rules) + inline `pixelated` in animate.js, concepts.js, forge.js,
    forge_sets.js, slicer.js, hud.js, gamedoc_pitch.js. The game already has a **Look** (Modern default / Pixel; gametype.js, cutout.js).
    Make ONE helper (core.js, e.g. `crisp(el)` / `smoothFor(look)`) that reads the game's look and applies pixelated vs smooth, and use it

@@ -1,6 +1,6 @@
 // Animate: pixel editor + timeline + live previewer + motion generators; saving lives in actor_save.js (Godot files: actor_godot.js).
 import { $, h, api, toast, emit, on, pref, clamp, uid, field, range, select, check, seg, hex, rgb, luma,
-  newImg, cloneImg, toCanvas, toDataURL, imgData, blit, bbox, flipX, shift, colorsOf, pixelize, rawURL, checker, HARDWARE, PALETTES, fitZoom } from './core.js';
+  newImg, cloneImg, toCanvas, toDataURL, imgData, blit, bbox, flipX, shift, colorsOf, pixelize, rawURL, checker, HARDWARE, PALETTES, fitZoom, artCtx } from './core.js';
 import { icon } from './icons.js';
 import { Player, loadActor } from './player.js';
 import { MOTIONS } from './motion.js';
@@ -385,7 +385,7 @@ function drawEditor() {
   V.cv.width = cw; V.cv.height = ch;
   V.cv.style.width = cw + 'px'; V.cv.style.height = ch + 'px';
   const x = V.cv.getContext('2d');
-  x.imageSmoothingEnabled = false;
+  artCtx(x, zoomNow);
   checker(x, cw, ch, Math.max(4, zoomNow * 2), '#2a2a28', '#313130');
   const fr = anim().frames;
   if (A.onion && fr.length > 1) {
@@ -825,8 +825,8 @@ function applyMotion(m, p, name, replace) {
 function identityBox() {
   const a = A.actor, id = a.identity;
   const desc = h('textarea', { rows: 2, value: a.desc || '', placeholder: 'what this actor is, e.g. "hooded knight with a red cape and a broken sword"', oninput: e => { a.desc = e.target.value; changed(); } });
-  const refImg = id?.ref ? h('img', { src: id.ref, style: { width: '72px', height: '72px', objectFit: 'contain', background: '#fff', imageRendering: 'pixelated' } }) : null;
-  const sprite = id?.refSprite ? (() => { const c = h('canvas', { style: { height: '72px', imageRendering: 'pixelated', background: 'repeating-conic-gradient(#2a2a28 0 25%, #33322f 0 50%) 0 0/8px 8px' } }); imgData(id.refSprite).then(im => toCanvas(im, 1, c)); return c; })() : null;
+  const refImg = id?.ref ? h('img', { src: id.ref, style: { width: '72px', height: '72px', objectFit: 'contain', background: '#fff', imageRendering: 'var(--ir)' } }) : null;
+  const sprite = id?.refSprite ? (() => { const c = h('canvas', { style: { height: '72px', imageRendering: 'var(--ir)', background: 'repeating-conic-gradient(#2a2a28 0 25%, #33322f 0 50%) 0 0/8px 8px' } }); imgData(id.refSprite).then(im => toCanvas(im, 1, c)); return c; })() : null;
   return h('div', { class: 'sec' }, h('h3', {}, 'Identity', h('span', { class: 'grow' }), h('small', {}, id ? 'reference set' : 'no reference yet')),
     field('Actor is', desc),
     id ? h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', margin: '8px 0' } }, refImg, sprite,
@@ -842,7 +842,7 @@ function setReference() {
   // a clean upscaled card of the sprite: the generator redraws from it, colours and all
   const S = 512, z = Math.floor(S * 0.86 / Math.max(A.actor.w, A.actor.h));
   const card = document.createElement('canvas'); card.width = card.height = S;
-  const x = card.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, S, S); x.imageSmoothingEnabled = false;
+  const x = card.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, S, S); artCtx(x, z);
   const ox = Math.floor((S - A.actor.w * z) / 2), oy = S - A.actor.h * z - Math.floor(S * .05);
   x.drawImage(toCanvas(f), ox, oy, A.actor.w * z, A.actor.h * z);
   pushUndo();

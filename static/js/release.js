@@ -2,7 +2,7 @@
 // frame or an item icon, scaled up with square pixels), the window (size, fullscreen, sharp pixels), then which
 // targets: Web (itch.io), Windows, Linux, macOS, the Godot project. The server (release.py) exports each one into a
 // zip; they appear here to download. What goes in the game (level, player, HUD, menus) is the Stage's choice.
-import { h, api, pref, field, check, seg, toast, emit } from './core.js';
+import { h, api, pref, field, check, seg, toast, emit, artCtx } from './core.js';
 import { S as FS } from './files.js';
 import { gameFiles, gamePicks } from './playbuild.js';
 import { GAME, LOOK } from './gametype.js';
@@ -38,7 +38,7 @@ async function iconPNG(c) {
   if (x1 < 0) { x0 = y0 = 0; x1 = fw - 1; y1 = fh - 1; }
   const w = x1 - x0 + 1, hh = y1 - y0 + 1, k = Math.max(1, Math.floor(232 / Math.max(w, hh)));
   const o = h('canvas', { width: 256, height: 256 }), ox = o.getContext('2d');
-  ox.imageSmoothingEnabled = false;
+  artCtx(ox, k);
   ox.drawImage(cv, x0, y0, w, hh, Math.round((256 - w * k) / 2), Math.round((256 - hh * k) / 2), w * k, hh * k);
   return o.toDataURL('image/png');
 }

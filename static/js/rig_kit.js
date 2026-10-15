@@ -1,7 +1,7 @@
 // The kit screen: a sheet of body parts dropped into Puppet. Shows the sheet with every piece outlined in the colour
 // of what Kiln thinks it is; click a piece and press a label (or 1–0) to change it. The figure on the right is
 // assembled live (rig_import.js) and walks, so a wrong guess shows at once. "Use these parts" hands back the rig.
-import { h, toCanvas, checker, bbox, crop } from './core.js';
+import { h, toCanvas, checker, bbox, crop, artCtx } from './core.js';
 import { KINDS, assemble, darkArt } from './rig_import.js';
 import { prepare, render, motion } from './rig.js';
 
@@ -30,7 +30,7 @@ export function openKit(host, kit, frame, { done, whole }) {
   function drawSheet() {
     const box = cv.parentElement, Z = Math.max(1, Math.floor(Math.min((box.clientWidth - 30) / native.width, (box.clientHeight - 30) / native.height)));
     cv.width = native.width * Z; cv.height = native.height * Z;
-    const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
+    const x = cv.getContext('2d'); artCtx(x, Z);
     checker(x, cv.width, cv.height, Math.max(4, Z * 2), ...bg);
     x.drawImage(toCanvas(native), 0, 0, cv.width, cv.height);
     for (const p of shown) {
@@ -59,7 +59,7 @@ export function openKit(host, kit, frame, { done, whole }) {
     const frames = poses.map(q => toCanvas(render(P, built.rig, q, W, H)));
     const Z = Math.max(1, Math.min(4, Math.floor(260 / Math.max(W, H))));
     pv.width = W * Z; pv.height = H * Z;
-    const x = pv.getContext('2d'); x.imageSmoothingEnabled = false;
+    const x = pv.getContext('2d'); artCtx(x, Z);
     const tick = () => { checker(x, pv.width, pv.height, Z * 4, ...bg); x.drawImage(frames[wf++ % frames.length], 0, 0, pv.width, pv.height); };
     tick(); walk = setInterval(tick, 100);
   }

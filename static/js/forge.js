@@ -189,7 +189,7 @@ function drawLeft() {
     h('button', { class: 'btn go wide', style: { marginTop: '10px' }, onclick: generate }, ID ? `Generate for ${ID.name}` : 'Generate'),
     V.est);
   if (ID) {
-    const thumb = h('canvas', { style: { width: Math.min(96, ID.w * 2) + 'px', imageRendering: 'pixelated', background: 'repeating-conic-gradient(#2a2a28 0 25%, #33322f 0 50%) 0 0/8px 8px' } });
+    const thumb = h('canvas', { style: { width: Math.min(96, ID.w * 2) + 'px', imageRendering: 'var(--ir)', background: 'repeating-conic-gradient(#2a2a28 0 25%, #33322f 0 50%) 0 0/8px 8px' } });
     toCanvas(ID.refSprite, 1, thumb);
     const ta = h('textarea', { rows: 2, value: st.change, placeholder: 'what is different: a pose, an action, a held item, an expression', oninput: () => { st.change = ta.value; save(); } });
     V.left.replaceChildren(

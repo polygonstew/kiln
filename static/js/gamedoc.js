@@ -4,7 +4,7 @@
 // with questions, themes, genre checklists, an idea roll and names (gamedoc_stuck.js); ✦ next to a part asks for three
 // ideas that fit what is written. Kept as kiln/gamedoc-game.json (autosaved); Save writes docs/GAME.md, docs/pitch.html
 // and docs/game_doc.html into the asset folder; "Pitch page" shows the one-pager to send to people.
-import { h, api, toast, on, emit, download } from './core.js';
+import { h, api, toast, on, emit, download, artCtx } from './core.js';
 import { saveFiles, S as FS } from './files.js';
 import { drawText, measure } from './text.js';
 import { editStyle } from './style.js';
@@ -218,7 +218,7 @@ async function pack(mode) {
   facts = await gameFacts();
   const pics = { cast: {} }, ka = get('pitch.keyart') || keyArtChoices(facts)[0];
   const art = ka && (ka.kind === 'scene' ? await sceneShot(ka.name) : await actorShot(ka.name, 270));
-  if (art) { const c = h('canvas', { width: art.width * 2, height: art.height * 2 }), x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(art, 0, 0, c.width, c.height); pics.keyart = c.toDataURL('image/png'); }
+  if (art) { const c = h('canvas', { width: art.width * 2, height: art.height * 2 }), x = c.getContext('2d'); artCtx(x, 2); x.drawImage(art, 0, 0, c.width, c.height); pics.keyart = c.toDataURL('image/png'); }
   const title = String(get('pitch.title') || '').trim();
   if (title) {
     const m = measure(title, 'large', 1), s = 4, c = h('canvas', { width: (m.w + 2) * s, height: (m.h + 2) * s });

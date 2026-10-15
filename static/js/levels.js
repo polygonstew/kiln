@@ -1,6 +1,6 @@
 // Levels: paint a room from tiles (in the spirit of LDtk), mark which tiles are solid, export a Godot
 // TileSet + TileMapLayer scene with collision. Left click paints, right click erases, wheel rolls tiles.
-import { h, api, toast, on, emit, pref, clamp, field, range, select, seg, check, imgData, toCanvas, toDataURL, newImg, rawURL, checker, uid, fitZoom } from './core.js';
+import { h, api, toast, on, emit, pref, clamp, field, range, select, seg, check, imgData, toCanvas, toDataURL, newImg, rawURL, checker, uid, fitZoom, artCtx } from './core.js';
 import { saveFiles, S as FS } from './files.js';
 import { loadActor } from './player.js';
 import { openProjects } from './projects.js';
@@ -194,7 +194,7 @@ function draw() {
   const z = zoom || fitZoom(V.vp.clientWidth - 30, V.vp.clientHeight - 30, W, H);
   V.z = z;
   V.cv.width = W * z; V.cv.height = H * z;
-  const x = V.cv.getContext('2d'); x.imageSmoothingEnabled = false;
+  const x = V.cv.getContext('2d'); artCtx(x, z);
   checker(x, W * z, H * z, 8 * z, '#1a1a19', '#1f1f1e');
   if (bgLayers && shown('bg')) {
     // the scene is one screen tall; it sits at the bottom of the map and repeats across, each layer at its parallax rate

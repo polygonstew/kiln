@@ -16,7 +16,7 @@ const shell = (host, title, sub) => {
   host.append(ov);
   return { ov, left, mid, right };
 };
-const zoomed = (im, z) => { const c = toCanvas(im); c.style.width = im.width * z + 'px'; c.style.height = im.height * z + 'px'; c.style.imageRendering = 'pixelated'; return c; };
+const zoomed = (im, z) => { const c = toCanvas(im); c.style.width = im.width * z + 'px'; c.style.height = im.height * z + 'px'; c.style.imageRendering = 'var(--ir)'; return c; };
 const hw = () => STYLE.hw || 'snes';
 
 /* ------------------------------------------------------------ icon set ---- */

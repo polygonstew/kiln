@@ -63,6 +63,7 @@ function apply() {
   const t = P().tint, root = document.documentElement;
   for (const [i, v] of ['--ember', '--ember2', '--emberbg'].entries()) t ? root.style.setProperty(v, t[i]) : root.style.removeProperty(v);
   root.dataset.path = GAME.path;
+  root.dataset.look = GAME.look;           // core.js artCtx and the --ir variable in kiln.css follow it
   emit('path', { ...GAME });               // topbar.js redraws the tabs, journey.js the steps
 }
 async function load() {

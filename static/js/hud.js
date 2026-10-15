@@ -1,7 +1,7 @@
 // HUD: pixel-exact bars, gauges, pips, counters, text, panels, slots and portraits.
 // Everything is drawn at 1× with no anti-aliasing, then exported as engine-ready parts.
 import { $, h, api, toast, on, pref, clamp, uid, field, range, select, check, seg, hex, rgb, mix, luma,
-  newImg, toCanvas, toDataURL, imgData, rawURL, PALETTES } from './core.js';
+  newImg, toCanvas, toDataURL, imgData, rawURL, PALETTES, artCtx } from './core.js';
 import { drawText, measure, buildBMFont, FONTS } from './text.js';
 import { icon } from './icons.js';
 import { loadOwners, claim } from './owners.js';
@@ -382,7 +382,7 @@ function drawCanvas() {
   const zf = Math.min((V.vp.clientWidth - 24) / w, (V.vp.clientHeight - 24) / hh);
   zoom = zf >= 2 ? Math.floor(zf) : Math.max(.5, zf);
   V.cv.width = w; V.cv.height = hh; V.cv.style.width = Math.round(w * zoom) + 'px'; V.cv.style.height = Math.round(hh * zoom) + 'px';
-  const x = V.cv.getContext('2d'); x.imageSmoothingEnabled = false;
+  const x = V.cv.getContext('2d'); artCtx(x, zoom);
   if (HUD.bg === 'checker') { x.fillStyle = '#2a2a28'; x.fillRect(0, 0, w, hh); x.fillStyle = '#31302d'; for (let yy = 0; yy < hh; yy += 8) for (let xx = (yy / 8 & 1) * 8; xx < w; xx += 16) x.fillRect(xx, yy, 8, 8); }
   else if (HUD.bg === 'scene' && bgImg) x.drawImage(bgImg, 0, 0);
   else { x.fillStyle = HUD.bg === 'scene' ? '#000' : HUD.bg; x.fillRect(0, 0, w, hh); }
@@ -582,7 +582,7 @@ async function pickSprite(cb) {
   for (const set of ((await api('/api/fs?path=' + encodeURIComponent(FS.root + '/icons')).catch(() => ({ items: [] }))).items || []).filter(i => i.dir)) {
     const files = ((await api('/api/fs?path=' + encodeURIComponent(set.path)).catch(() => ({ items: [] }))).items || []).filter(i => /\.png$/.test(i.name) && i.name !== 'sheet.png');
     if (files.length) iconBox.append(h('div', { class: 'lbl', style: { margin: '6px 0 4px' } }, 'Icons: ' + set.name),
-      h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '4px' } }, ...files.map(f => h('img', { src: rawURL(f.path), title: f.name.replace('.png', ''), style: { width: '32px', height: '32px', imageRendering: 'pixelated', cursor: 'pointer', background: 'var(--p3)' }, onclick: () => { m.remove(); cb(f.path); } }))));
+      h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: '4px' } }, ...files.map(f => h('img', { src: rawURL(f.path), title: f.name.replace('.png', ''), style: { width: '32px', height: '32px', imageRendering: 'var(--ir)', cursor: 'pointer', background: 'var(--p3)' }, onclick: () => { m.remove(); cb(f.path); } }))));
   }
   const m = h('div', { class: 'modal', onclick: e => { if (e.target === m) m.remove(); } }, h('div', {},
     h('header', {}, h('span', { class: 'grow' }, 'Pick a sprite'), h('button', { class: 'ibtn', onclick: () => m.remove() }, '✕')),

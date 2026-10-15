@@ -182,3 +182,11 @@ Links open meta.ai and others in a tab on the user's own device; images come bac
 
 ## 2026-10-12 session 7: Ask Gloop
 Handoff item 5 built: ask.js, helpsearch.py (BM25), helpbot.py (key → local llama-server → passages), tools/godot_docs.py, Groq card in Services & keys. llama-cpp installed with pacman on this machine; help.gguf symlinks the Ollama qwen2.5:1.5b blob. Local answers take 10-40 s on the 4-core CPU (streaming would help perceived speed).
+
+## 2026-10-15 session 8: art follows the Look (handoff job 1)
+`<html data-look>` (gametype.js apply) + `--ir` in kiln.css + core.js `smooth()` / `artCtx(x, scale)`: every preview, thumbnail, export
+and pitch picture is smooth in Modern, sharp in Pixel (shrinking always smooth). 20 canvas sites moved to `artCtx`, 26 CSS rules to
+`var(--ir)`, inline `imageRendering` too. Kept sharp on purpose: Puppet pixel editors (.pp-cv, head/mouth views), Slicer, cutout.js /
+scenes.js area-average downscales. Concepts "Batch → sprites" keeps full colour (cutout) in Modern. Godot side was already right (SHARP(), play.py filter).
+Verified: smoke clean, `data-look` flips computed `image-rendering` on canvas/img (not `.pp-cv`), batch in Modern vs Pixel on a painted image.
+

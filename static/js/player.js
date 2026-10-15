@@ -1,5 +1,5 @@
 // Animation previewer: plays any set of animations, used by Files and Animate.
-import { h, $, api, rawURL, imgData, crop, checker, pref, clamp, toCanvas, fitZoom } from './core.js';
+import { h, $, api, rawURL, imgData, crop, checker, pref, clamp, toCanvas, fitZoom, artCtx } from './core.js';
 import { icon } from './icons.js';
 
 const BGS = [['checker', 'Checker'], ['#000000', 'Black'], ['#ffffff', 'White'], ['#5f6b5c', 'Field'], ['#2b3a55', 'Night']];
@@ -102,7 +102,7 @@ export class Player {
     const f0 = a.frames[0], fw = f0.width, fh = f0.height;
     const z = this.zoom || fitZoom(W - 16, H - 16, fw, fh);
     const ox = Math.floor((W - fw * z) / 2), oy = Math.floor((H - fh * z) / 2);
-    x.imageSmoothingEnabled = false;
+    artCtx(x, z);
     // effects: age (0..1) of each running one; finished ones are dropped
     const now = performance.now(), age = {}, DUR = { flash: 180, squash: 420, shake: 300 };
     for (const [k, t0] of Object.entries(this.fx)) { const a = (now - t0) / DUR[k]; if (a >= 1) delete this.fx[k]; else age[k] = a; }

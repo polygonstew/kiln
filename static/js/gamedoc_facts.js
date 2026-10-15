@@ -1,10 +1,11 @@
 // What the game itself says, for the Game doc: the cast (each actor's role, description and first frame), the levels,
 // scenes, HUDs, dialogues, Logic graphs, item icons, the controls and the style bible. Read from the asset folder when
 // the doc opens (actor projects are cached by their save time, they can be large).
-import { api } from './core.js';
+import { api, artCtx } from './core.js';
 import { S as FS } from './files.js';
 import { ACTIONS } from './input_godot.js';
 import { STYLE } from './style.js';
+import { GAME } from './gametype.js';
 
 const ENEMY = ['enemy', 'boss', 'flyer'];
 const cache = new Map();          // actor project id → { mtime, actor summary }
@@ -36,7 +37,7 @@ export async function gameFacts() {
   for (const set of (await ls(FS.root + '/icons')).filter(i => i.dir))
     for (const f of (await ls(set.path)).filter(i => /\.png$/.test(i.name) && i.name !== 'sheet.png')) icons.push({ name: f.name.replace('.png', ''), path: f.path });
   return {
-    cast, enemies: cast.filter(a => ENEMY.includes(a.role)),
+    look: GAME.look, cast, enemies: cast.filter(a => ENEMY.includes(a.role)),
     levels: names('level'), scenes: names('scene'), huds: names('hud'), dialogues: names('dialogue'), graphs: names('graph'), menus: names('menus').length > 0,
     icons, controls: ACTIONS.map(([id, what, keys, pad]) => ({ id, what, keys, pad })),
     style: { name: STYLE.name, words: STYLE.words, light: STYLE.light, hw: STYLE.hw, palette: STYLE.palette || [] },
@@ -51,7 +52,7 @@ export async function sceneShot(name) {
   const dir = `${FS.root}/backgrounds/${name}`, s = await fetch(raw(dir + '/scene.json')).then(r => r.ok ? r.json() : null).catch(() => null);
   if (!s?.layers) return null;
   const W = s.view?.w || 480, H = s.view?.h || 270, cv = document.createElement('canvas'); cv.width = W; cv.height = H;
-  const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
+  const x = cv.getContext('2d'); artCtx(x);
   for (const L of s.layers.filter(l => l.visible !== false && l.file)) {
     const img = await new Promise(ok => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = raw(`${dir}/${L.file}`); });
     if (!img) continue;
@@ -69,6 +70,6 @@ export async function actorShot(name, box = 256) {
   const img = await new Promise(ok => { const i = new Image(); i.onload = () => ok(i); i.onerror = () => ok(null); i.src = raw(`${FS.root}/sprites/${name}/${a.file}`); });
   if (!img) return null;
   const k = Math.max(1, Math.floor(box / Math.max(m.w, m.h))), cv = document.createElement('canvas'); cv.width = m.w * k; cv.height = m.h * k;
-  const x = cv.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(img, 0, 0, m.w, m.h, 0, 0, cv.width, cv.height);
+  const x = cv.getContext('2d'); artCtx(x, k); x.drawImage(img, 0, 0, m.w, m.h, 0, 0, cv.width, cv.height);
   return cv;
 }

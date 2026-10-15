@@ -1,7 +1,7 @@
 // Animation sets and sheet templates: what animations an actor needs, how many frames each, how wide,
 // and a template image with one box per frame to draw or generate into. A filled template comes back
 // in by exact boxes: nothing is guessed, nothing is cut off, and art that spills past a box is reported.
-import { h, crop, bbox, keyBackground, resizeNN } from './core.js';
+import { h, crop, bbox, keyBackground, resizeNN, artCtx } from './core.js';
 
 // [name, frames, boxes wide, fps, loops]
 export const SETS = {
@@ -41,7 +41,7 @@ export function makeTemplate(actor, { withArt = true, scale = 1 } = {}) {
   const L = layout(actor), cv = document.createElement('canvas');
   cv.width = L.w * scale; cv.height = L.h * scale;
   const x = cv.getContext('2d');
-  x.imageSmoothingEnabled = false;
+  artCtx(x, scale);
   x.fillStyle = '#d9d9d6'; x.fillRect(0, 0, cv.width, cv.height);
   x.font = `${9 * scale}px monospace`; x.textBaseline = 'top';
   L.rows.forEach((r, ri) => {
@@ -62,7 +62,7 @@ export function makeTemplate(actor, { withArt = true, scale = 1 } = {}) {
 }
 function scaleUp(f, k) {
   const c = document.createElement('canvas'); c.width = f.width * k; c.height = f.height * k;
-  const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+  const x = c.getContext('2d'); artCtx(x, k);
   const s = document.createElement('canvas'); s.width = f.width; s.height = f.height; s.getContext('2d').putImageData(f, 0, 0);
   x.drawImage(s, 0, 0, c.width, c.height); return c;
 }

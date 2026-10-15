@@ -3,7 +3,7 @@
 // shows them stacked and panning like the game will. Reroll any layer, rewrite its prompt, pick between tries; then
 // "Make the scene" hands them to Scenes, whose look (one palette, dither, haze) makes the layers one picture and which
 // writes the Godot parallax scene.
-import { h, api, toast, emit, pref, imgData, toCanvas, toDataURL, keyBackground, uid, checker } from './core.js';
+import { h, api, toast, emit, pref, imgData, toCanvas, toDataURL, keyBackground, uid, checker, artCtx } from './core.js';
 import { engineSeg, genOne, trimFrame } from './forge_kit.js';
 import { icon } from './icons.js';
 
@@ -89,7 +89,7 @@ export function openBackgroundMaker(host) {
   function paint() {
     const W = 480, H = 270, box = cv.parentElement, Z = Math.max(1, Math.floor(Math.min((box.clientWidth - 30) / W, (box.clientHeight - 30) / H)));
     cv.width = W; cv.height = H; cv.style.width = W * Z + 'px'; cv.style.height = H * Z + 'px';
-    const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
+    const x = cv.getContext('2d'); artCtx(x, Z);
     checker(x, W, H, 8, '#202020', '#262625');
     let any = false;
     for (const [id, , scroll] of LAYERS) {

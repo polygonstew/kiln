@@ -1,6 +1,6 @@
 // Files: the asset folder as engines see it. Tree on the left, folder in the middle,
 // preview + actions on the right. Every other tab saves into this folder.
-import { $, h, api, rawURL, toast, emit, on, pref, imgData, colorsOf, hex, rgb, checker, fitZoom } from './core.js';
+import { $, h, api, rawURL, toast, emit, on, pref, imgData, colorsOf, hex, rgb, checker, fitZoom, artCtx } from './core.js';
 import { icon } from './icons.js';
 import { Player, loadActor } from './player.js';
 
@@ -166,7 +166,7 @@ function thumb(it, th) {
       fetch(rawURL(it.path + '/scene.json')).then(r => r.json()).then(async sc => {
         const L = sc.layers || [];
         cv.width = sc.view?.w || 256; cv.height = sc.view?.h || 144;
-        const x = cv.getContext('2d'); x.imageSmoothingEnabled = false;
+        const x = cv.getContext('2d'); artCtx(x);
         for (const l of L) { try { const i = await imgFromPath(it.path + '/' + l.file); x.drawImage(i, 0, l.y || 0); } catch { } }
       }).catch(() => { });
       return;

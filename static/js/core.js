@@ -93,6 +93,11 @@ export function snapDepth(c, bits) {
 }
 
 /* -------------------------------------------------------------- images ---- */
+// The game's Look (gametype.js keeps <html data-look>): Modern art is drawn smooth, Pixel art sharp. CSS follows through the
+// --ir variable (kiln.css); canvases call artCtx. Pixel *editors* (Puppet painter, Slicer) stay sharp on purpose: you edit single pixels.
+export const smooth = () => document.documentElement.dataset.look === 'modern';
+// Set a 2D context up for drawing the game's art at another size; z = the scale (shrinking is always smoothed).
+export function artCtx(x, z = 1) { x.imageSmoothingEnabled = z < 1 || smooth(); x.imageSmoothingQuality = 'high'; return x; }
 export const newImg = (w, h) => new ImageData(w, h);
 export const cloneImg = im => new ImageData(new Uint8ClampedArray(im.data), im.width, im.height);
 export function toCanvas(im, scale = 1, cv) {
@@ -100,7 +105,7 @@ export function toCanvas(im, scale = 1, cv) {
   cv.width = im.width * scale; cv.height = im.height * scale;
   const x = cv.getContext('2d');
   if (scale === 1) x.putImageData(im, 0, 0);
-  else { x.imageSmoothingEnabled = false; x.drawImage(toCanvas(im), 0, 0, cv.width, cv.height); }
+  else { artCtx(x, scale); x.drawImage(toCanvas(im), 0, 0, cv.width, cv.height); }
   return cv;
 }
 export const toDataURL = im => toCanvas(im).toDataURL('image/png');

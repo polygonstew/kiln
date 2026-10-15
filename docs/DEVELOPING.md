@@ -102,6 +102,10 @@ Never press "Link here" in tests: it changes Kiln's asset folder.
   (`locked: true` on the layer) must also be refused by the area's canvas tools and inspector (`inert`).
 - **File → New / Open / Save** press the area's own buttons, marked `'data-file': 'new' | 'open' | 'save'` (optional
   `'data-noun'` names the thing when the button text doesn't). A new area marks its buttons and the File menu and Ctrl+S work.
+- **Art is drawn the way the game's Look says**: gametype.js `apply()` sets `<html data-look>`; CSS uses `image-rendering: var(--ir)`
+  (kiln.css; never a literal `pixelated` except the Puppet pixel editors), canvases call core.js `artCtx(x, scale)` instead of
+  setting `imageSmoothingEnabled` (Modern smooth, Pixel sharp, shrinking always smooth), and code that must know asks `smooth()`.
+  Imported pictures are never forced to pixels in Modern (Forge `pixelOn()`, Concepts batch use `cutout`). Godot's side: `SHARP()` + project filter (play.py).
 
 Plain-English UI text, a `title` tooltip on every control, no AI/model names in the UI, the dark theme with the
 ember accent (gold HUD look for wheel/menus). Commits end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.

@@ -9,11 +9,11 @@ const v = (doc, key) => doc.v[key];
 const has = x => Array.isArray(x) ? x.length > 0 : !!String(x || '').trim();
 
 const CSS = `
-:root { --bg: #151514; --p: #1e1e1c; --ink: #e9e5d9; --dim: #a29e92; --line: #34332f; --ember: #ff5b2e; }
-* { box-sizing: border-box; } body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 'IBM Plex Sans', system-ui, sans-serif; }
+:root { --ir: pixelated; --bg: #151514; --p: #1e1e1c; --ink: #e9e5d9; --dim: #a29e92; --line: #34332f; --ember: #ff5b2e; }
+* { box-sizing: border-box; } :root[data-look="modern"] { --ir: auto; } body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 'IBM Plex Sans', system-ui, sans-serif; }
 .page { max-width: 920px; margin: 0 auto; padding: 0 24px 60px; }
-.art { width: 100%; image-rendering: pixelated; display: block; border-bottom: 3px solid var(--ember); }
-.title { margin: 28px 0 6px; } .title img { image-rendering: pixelated; max-width: 100%; } .title h1 { font-size: 46px; margin: 0; letter-spacing: .02em; }
+.art { width: 100%; image-rendering: var(--ir); display: block; border-bottom: 3px solid var(--ember); }
+.title { margin: 28px 0 6px; } .title img { image-rendering: var(--ir); max-width: 100%; } .title h1 { font-size: 46px; margin: 0; letter-spacing: .02em; }
 .logline { font-size: 21px; color: var(--ink); margin: 6px 0 18px; max-width: 760px; }
 .facts { display: flex; flex-wrap: wrap; gap: 8px 26px; padding: 12px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 24px; }
 .facts div { font-size: 14px; } .facts b { display: block; font: 600 11px 'IBM Plex Sans Condensed', sans-serif; letter-spacing: .14em; text-transform: uppercase; color: var(--dim); }
@@ -23,7 +23,7 @@ h3 { font-size: 16px; margin: 16px 0 4px; }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
 .card { background: var(--p); border: 1px solid var(--line); padding: 12px 14px; } .card b { display: block; margin-bottom: 4px; } .card p { margin: 0; color: var(--dim); font-size: 14px; }
 .cast { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; }
-.cast .card img { width: 100%; height: 150px; object-fit: contain; image-rendering: pixelated; background: #0e0e0d; margin-bottom: 8px; }
+.cast .card img { width: 100%; height: 150px; object-fit: contain; image-rendering: var(--ir); background: #0e0e0d; margin-bottom: 8px; }
 .tags span { display: inline-block; border: 1px solid var(--line); padding: 2px 10px; margin: 0 6px 6px 0; font-size: 14px; }
 table { border-collapse: collapse; font-size: 14px; } td { padding: 3px 18px 3px 0; border-bottom: 1px solid var(--line); } td:first-child { color: var(--dim); }
 .done { text-decoration: line-through; color: var(--dim); }
@@ -83,7 +83,7 @@ export function pitchHTML(doc, facts, pics, mode = 'pitch') {
     if (world.length) body.push(`<h2>The world</h2>${world.join('')}`);
     if (has(v(doc, 'story.premise')) || has(v(doc, 'story.themes'))) body.push(`<h2>The story</h2>${paras(v(doc, 'story.premise'))}${has(v(doc, 'story.themes')) ? `<div class="tags">${v(doc, 'story.themes').map(t => `<span>${esc(t)}</span>`).join('')}</div>` : ''}`);
   } else for (const sec of SECTIONS) body.push(sectionHTML(sec, doc, facts, pics));
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(title)}</title>
+  return `<!doctype html><html lang="en"${facts.look === 'modern' ? ' data-look="modern"' : ''}><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${esc(title)}</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Sans+Condensed:wght@600&display=swap" rel="stylesheet"><style>${CSS}</style></head><body>
 ${pics.keyart ? `<img class="art" src="${pics.keyart}" alt="">` : ''}<div class="page">
 <div class="title">${pics.title ? `<img src="${pics.title}" alt="${esc(title)}">` : `<h1>${esc(title)}</h1>`}</div>

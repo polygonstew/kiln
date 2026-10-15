@@ -1,7 +1,7 @@
 // Dialogue preview: plays a conversation the way the game will (dialogue_godot.js runner): lines typed out in a box,
 // Space / click to go on, choices as buttons, conditions and effects on pretend items and flags (tick them to try
 // every branch), and each voice line played with the speaker's mouth moving (its baked "mouths" strip + the cues).
-import { h, rawURL, imgData, toCanvas } from './core.js';
+import { h, rawURL, imgData, toCanvas, artCtx } from './core.js';
 import { S as FS } from './files.js';
 import { gameJSON } from './dialogue_godot.js';
 import { shapeAt } from './lipsync.js';
@@ -54,7 +54,7 @@ export function dialoguePlayer() {
       if (strip && beat === b) {
         const fw = strip.width / 9, cv = toCanvas(strip), Z = Math.max(1, Math.floor(96 / Math.max(fw, strip.height)));
         face.width = fw * Z; face.height = strip.height * Z; face.style.display = '';
-        const x = face.getContext('2d'); x.imageSmoothingEnabled = false;
+        const x = face.getContext('2d'); artCtx(x, Z);
         const tick = () => { const i = Math.max(0, SHAPES.indexOf(shapeAt(cues.cues, audio?.currentTime || 0))); x.clearRect(0, 0, face.width, face.height); x.drawImage(cv, i * fw, 0, fw, strip.height, 0, 0, face.width, face.height); if (audio && !audio.ended) raf = requestAnimationFrame(tick); };
         tick();
       }

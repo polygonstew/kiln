@@ -1,7 +1,7 @@
 // Scenes: parallax backgrounds built from layers (generated, drawn by AI, or imported),
 // crushed into one of three looks, previewed scrolling, exported for engines.
 import { $, h, api, toast, emit, on, pref, clamp, uid, field, range, select, check, seg, hex, rgb, mix, luma,
-  newImg, cloneImg, toCanvas, toDataURL, imgData, keyBackground, buildPalette, applyPalette, PALETTES, HARDWARE, snapDepth, nearest, BAYER4, checker, rawURL, crop, blit, tracePolys } from './core.js';
+  newImg, cloneImg, toCanvas, toDataURL, imgData, keyBackground, buildPalette, applyPalette, PALETTES, HARDWARE, snapDepth, nearest, BAYER4, checker, rawURL, crop, blit, tracePolys, artCtx } from './core.js';
 import { GENS, PRESETS } from './procgen.js';
 import { enqueue, budgetTag } from './queue.js';
 import { icon } from './icons.js';
@@ -493,7 +493,7 @@ const groundLayer = () => SC.layers.filter(l => l.visible !== false && l.kind !=
 function nightColour(t) { const c = mix([255, 255, 255], [70, 84, 150], Math.min(1, t)); return `rgb(${c[0]},${c[1]},${c[2]})`; }
 function snapshot() {
   const k = 3, c = document.createElement('canvas'); c.width = V.cv.width * k; c.height = V.cv.height * k;
-  const x = c.getContext('2d'); x.imageSmoothingEnabled = false; x.drawImage(V.cv, 0, 0, c.width, c.height);
+  const x = c.getContext('2d'); artCtx(x, k); x.drawImage(V.cv, 0, 0, c.width, c.height);
   const a = h('a', { href: c.toDataURL('image/png'), download: `${SC.name}_snapshot.png` }); document.body.append(a); a.click(); a.remove();
   toast('Snapshot downloaded');
 }
@@ -501,7 +501,7 @@ function snapshot() {
 async function recordPan(secs = 4) {
   if (V.rec) return;
   const k = 3, c = document.createElement('canvas'); c.width = V.cv.width * k; c.height = V.cv.height * k;
-  const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+  const x = c.getContext('2d'); artCtx(x, k);
   let rec;
   // the recorder only gets frames from a canvas the page actually composites: keep it on screen at 1 css px (full resolution inside)
   c.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:.01;pointer-events:none'; document.body.append(c);
