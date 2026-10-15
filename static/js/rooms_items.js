@@ -21,7 +21,7 @@ export async function openItems(I, save) {
   const pic = it => h('button', { class: 'it-pic', title: 'Pick its picture (from icons/)', onclick: () => pickIcon(it) }, it.icon ? h('img', { src: rawURL(FS.root + '/' + it.icon) }) : '?');
   // your own picture, or one cut out of a sheet: its background removed, 96 px tall, saved as icons/items/<id>.png
   const own = (it, fromSheet) => import('./pictures.js').then(P => (fromSheet ? P.pickFromSheet : P.pickPicture)(`Picture for ${it.name}`, async url => {
-    const { cutout } = await import('./cutout.js'), im = cutout(await imgData(url), { height: 96 });
+    const { cutout } = await import('./cutout.js'), im = cutout(await imgData(url, true), { height: 96 });
     const c = document.createElement('canvas'); c.width = im.width; c.height = im.height; c.getContext('2d').putImageData(im, 0, 0);
     await saveFiles('icons/items', [{ name: it.id + '.png', b64: c.toDataURL('image/png') }]);
     it.icon = `icons/items/${it.id}.png`; keep(); draw();

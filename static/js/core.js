@@ -42,6 +42,8 @@ export async function api(path, body) {
   return j;
 }
 export const rawURL = p => '/api/fs/raw?path=' + encodeURIComponent(p) + '&t=' + Date.now();
+// a small cached preview of a picture file (thumbs.py) for grids and trays; t = the file's mtime so an edit refreshes it
+export const thumbURL = (p, w = 256, t = 0) => `/api/thumb?path=${encodeURIComponent(p)}&w=${w}&t=${Math.floor(t)}`;
 
 /* --------------------------------------------------------------- color ---- */
 export const hex = ([r, g, b]) => '#' + [r, g, b].map(v => v.toString(16).padStart(2, '0')).join('');
@@ -112,12 +114,30 @@ export const toDataURL = im => toCanvas(im).toDataURL('image/png');
 export function loadImage(src) {
   return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = () => rej(new Error('could not load image')); i.src = src; });
 }
-export async function imgData(src) {
+// Huge pictures (over HUGE pixels, about 2.4 megapixels) are worked on as a smaller copy (longest side WORK): every area stays quick, and
+// the original file is never touched. Pixel art and strips are far below HUGE, so they pass as they are.
+export const HUGE = 1536 * 1536, WORK = 1536;
+const workSize = (w, h) => w * h > HUGE ? [Math.max(1, Math.round(w * WORK / Math.max(w, h))), Math.max(1, Math.round(h * WORK / Math.max(w, h)))] : [w, h];
+// pixels of a picture (URL or element); work = true gives the working copy of a huge one
+export async function imgData(src, work = false) {
   const i = typeof src === 'string' ? await loadImage(src) : src;
+  const w = i.naturalWidth || i.width, hh = i.naturalHeight || i.height, [cw, ch] = work ? workSize(w, hh) : [w, hh];
   const c = document.createElement('canvas');
-  c.width = i.naturalWidth || i.width; c.height = i.naturalHeight || i.height;
-  const x = c.getContext('2d'); x.drawImage(i, 0, 0);
-  return x.getImageData(0, 0, c.width, c.height);
+  c.width = cw; c.height = ch;
+  const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(i, 0, 0, cw, ch);
+  return x.getImageData(0, 0, cw, ch);
+}
+// a picture the person brings in (a File): the same data URL as before, but a huge one comes back as its working copy
+export function readPicture(file) {
+  return new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = no; r.readAsDataURL(file); }).then(async url => {
+    const i = await loadImage(url).catch(() => null);
+    if (!i) return url;
+    const w = i.naturalWidth, hh = i.naturalHeight, [cw, ch] = workSize(w, hh);
+    if (cw === w && ch === hh) return url;
+    const c = document.createElement('canvas'); c.width = cw; c.height = ch;
+    const x = c.getContext('2d'); x.imageSmoothingQuality = 'high'; x.drawImage(i, 0, 0, cw, ch);
+    return c.toDataURL('image/png');
+  });
 }
 export function crop(im, x0, y0, w, h) {
   const o = newImg(w, h);

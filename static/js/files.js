@@ -1,6 +1,6 @@
 // Files: the asset folder as engines see it. Tree on the left, folder in the middle,
 // preview + actions on the right. Every other tab saves into this folder.
-import { $, h, api, rawURL, toast, emit, on, pref, imgData, colorsOf, hex, rgb, checker, fitZoom, artCtx } from './core.js';
+import { $, h, api, rawURL, toast, emit, on, pref, imgData, colorsOf, hex, rgb, checker, fitZoom, artCtx, thumbURL } from './core.js';
 import { icon } from './icons.js';
 import { Player, loadActor } from './player.js';
 
@@ -176,7 +176,7 @@ function thumb(it, th) {
     th.append(ic);
     return;
   }
-  if (IMG.test(it.name)) { th.append(h('img', { src: rawURL(it.path), loading: 'lazy' })); return; }
+  if (IMG.test(it.name)) { th.append(h('img', { src: thumbURL(it.path, 192, it.mtime), loading: 'lazy', decoding: 'async' })); return; }
   if (/\.hex$/i.test(it.name)) {
     fetch(rawURL(it.path)).then(r => r.text()).then(t => th.append(h('div', { class: 'sw' }, ...t.split(/\s+/).filter(Boolean).slice(0, 32).map(c => h('i', { style: { background: '#' + c.replace('#', '') } })))));
     return;

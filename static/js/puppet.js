@@ -3,7 +3,7 @@
 // keyframes on a Flash-style timeline with tweens and easing. Presets (walk, run, attack…) fill a motion in one click.
 // Bake renders every frame into an ordinary Animate animation; the rig is kept on the actor (a.rig) for later.
 // An image dropped in (or Import image…) is rigged too: one drawing as it is, a sheet of parts via the kit screen.
-import { h, toast, toCanvas, toDataURL, imgData, checker, rawURL } from './core.js';
+import { h, toast, toCanvas, toDataURL, imgData, checker, rawURL, readPicture } from './core.js';
 import { autoRig, skin, prepare, render, transforms, apply, motion as presetMotion, PRESETS, partsToB64, partsFromB64 } from './rig.js';
 import { drawTimeline, poseAt, valueAt, setKey, clearKey, keyFor, insertFrame, removeFrame } from './timeline.js';
 import { exportSkeleton } from './rig_godot.js';
@@ -56,14 +56,14 @@ export async function openPuppet(host, api) {
   }
   /* ------------------------------------------------- an image dropped in ---- */
   async function importImage(url) {
-    const r = readImage(await imgData(url));
+    const r = readImage(await imgData(url, true));
     if (r.err) return toast(r.err, 'bad');
     if (r.whole) return useFigure(r.whole);
     openKit(ov, r, [a.w, a.h], { done: () => useKit(r.pieces), whole: useFigure });
   }
-  const pickURL = (cb, accept = 'image/*') => { const i = h('input', { type: 'file', accept, onchange: () => { const fl = i.files[0]; if (!fl) return; const r = new FileReader(); r.onload = () => cb(r.result, fl); r.readAsDataURL(fl); } }); i.click(); };
+  const pickURL = (cb, accept = 'image/*') => { const i = h('input', { type: 'file', accept, onchange: () => { const fl = i.files[0]; if (!fl) return; readPicture(fl).then(url => cb(url, fl)); } }); i.click(); };
   const pickImage = () => { const i = h('input', { type: 'file', accept: 'image/*', onchange: () => readFile(i.files[0]) }); i.click(); };
-  const readFile = f => { if (!f?.type.startsWith('image/')) return toast('Drop an image (PNG, JPG, WebP, GIF)', 'bad'); const r = new FileReader(); r.onload = () => importImage(r.result); r.readAsDataURL(f); };
+  const readFile = f => { if (!f?.type.startsWith('image/')) return toast('Drop an image (PNG, JPG, WebP, GIF)', 'bad'); readPicture(f).then(importImage); };
   // the actor's frames must hold the figure: they grow (nothing is lost), after asking unless the actor is still empty
   function roomFor(w, hh) {
     if (w <= a.w && hh <= a.h) return true;

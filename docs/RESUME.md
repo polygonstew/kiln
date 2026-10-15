@@ -190,3 +190,12 @@ and pitch picture is smooth in Modern, sharp in Pixel (shrinking always smooth).
 scenes.js area-average downscales. Concepts "Batch → sprites" keeps full colour (cutout) in Modern. Godot side was already right (SHARP(), play.py filter).
 Verified: smoke clean, `data-look` flips computed `image-rendering` on canvas/img (not `.pp-cv`), batch in Modern vs Pixel on a painted image.
 
+## 2026-10-15 session 8: huge pictures (handoff job 2)
+Profiled a 4096×3072 import: Forge re-ran cutout/pixelize on the full picture at every tweak (1.4-1.7 s each), the Concepts grid decoded
+every original just for a 200 px card, Animate's cutter held the full sheet. Fix at the door: core.js `readPicture(file)` / `imgData(url, true)`
+give a working copy (longest side 1536) of anything over ~2.4 MP; Forge (file, drop, tray, Concepts), Animate sheet cutter + Slicer, Puppet import,
+pictures.js, Concepts batch and rooms_items use it. New `thumbs.py` + `GET /api/thumb` (WebP cache in ~/.cache/kiln/thumbs) feeds Concepts grid,
+Files grid, picture picker and the Forge inbox. After: Forge import longest task 250 ms (was ~1.5 s+), pixelize 1696 → 228 ms. Not changed on purpose:
+Concepts/Files uploads keep the original file; tilesets, rooms and saved rigs keep their size (coordinates depend on it). localStorage audit: no pref holds a
+picture except `level.cur` (L.ts, a tileset sheet, small); `forge.results` holds server URLs. Restart kiln.service for the new endpoint.
+

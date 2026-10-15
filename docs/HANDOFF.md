@@ -45,7 +45,7 @@ Verified in headless Godot: the adventure demo played through to its ending; flo
 check → end; story pages with a typed answer; top-down shooting + room camera; push crate + exit → next level.
 Also verified: the stacker (bricks fall, land, next spawns). FMV/text templates were tested through hand-made flows, not their template builds.
 
-## START HERE (session 7 → 8, written 2026-10-15; item 1 done, next is item 2)
+## START HERE (session 7 → 8, written 2026-10-15; items 1 and 2 done, next is item 3)
 
 Done in session 7 (all committed, pushed, Kiln restarted): **Ask Gloop** (ask.js, helpsearch.py, helpbot.py), **Menus** fixes
 (preview colours/size: core.js `h()` custom properties; autosave of menus/*.tscn; 12 fonts; picture / video / scene behind a
@@ -60,7 +60,7 @@ games.js `deleteGame`; moved to library/.deleted, "Start over" re-creates the sa
    Make ONE helper (core.js, e.g. `crisp(el)` / `smoothFor(look)`) that reads the game's look and applies pixelated vs smooth, and use it
    everywhere imported or painted art is drawn or scaled (previews, canvases, thumbnails, export/pitch). Imported pictures must never be
    forced to pixel mode when the look is Modern. Also check what the Godot side writes (texture filter in project / scenes).
-2. **Speed: huge imported images (Concepts upload, concepts.js ~line 53 FileReader) slow Animate / Forge / Art work.** Likely whole
+2. **DONE 2026-10-15 (session 8)**, see "Huge pictures" in RESUME.md. Original ask: **Speed: huge imported images (Concepts upload, concepts.js ~line 53 FileReader) slow Animate / Forge / Art work.** Likely whole
    full-size data URLs are kept in prefs/state and re-decoded, drawn and sent to the server again and again. Fix at the door: on import
    make a working copy (longest side ~1024-1536 px, canvas downscale or createImageBitmap resize) plus a small thumbnail; keep the
    original untouched on disk (concepts/ folder) and only use it when exporting at full size. Profile first (Chromium trace or timing

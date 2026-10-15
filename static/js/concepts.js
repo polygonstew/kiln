@@ -1,7 +1,7 @@
 // Concepts: a board per idea. Open an image site (meta.ai, Gemini…) in a tab on your own device, then drop,
 // paste or upload what you like here. Works from any browser that reaches Kiln (SSH/LAN/phone), unlike Kiln Studio.
 // Images live in <asset folder>/concepts/<session>/, notes in notes.md next to them; Forge's tray shows new ones.
-import { h, api, toast, emit, pref, rawURL, imgData, pixelize, buildPalette, newImg, blit, bbox, toCanvas, toDataURL, HARDWARE, field, range, seg, select, smooth } from './core.js';
+import { h, api, toast, emit, pref, rawURL, imgData, pixelize, buildPalette, newImg, blit, bbox, toCanvas, toDataURL, HARDWARE, field, range, seg, select, smooth, thumbURL } from './core.js';
 import { cutout } from './cutout.js';
 import { saveFiles, S as FS } from './files.js';
 import { registerWheel, registerKeys } from './wheel.js';
@@ -73,7 +73,7 @@ async function batch() {
   const fp = pref.get('forge', {}), o = { hw: fp.hw || 'snes', count: fp.count || 12, outline: fp.outline === 'none' ? false : (fp.outline || 'outer'), height: 0 };
   const full = smooth();                                // Modern look: keep every colour (cutout), no palette or hardware
   const srcs = [];
-  for (const it of items) { try { srcs.push({ it, im: await imgData(rawURL(it.path)) }); } catch { } }
+  for (const it of items) { try { srcs.push({ it, im: await imgData(rawURL(it.path), true) }); } catch { } }
   if (!srcs.length) return toast('No images to read', 'bad');
   const body = h('div', { class: 'bgrid' }), ctl = h('div'), info = h('p', { class: 'note' });
   const m = h('div', { class: 'modal' }, h('div', { style: { width: 'min(1200px, 96vw)' } },
@@ -134,7 +134,7 @@ async function batch() {
 function drawGrid() {
   V.grid.replaceChildren(...(items.length ? items.map(it => {
     const url = rawURL(it.path);
-    return h('div', { class: 'ccard' }, h('img', { src: url, loading: 'lazy', title: it.name, onclick: () => window.open(url, '_blank') }),
+    return h('div', { class: 'ccard' }, h('img', { src: thumbURL(it.path, 320, it.mtime), loading: 'lazy', decoding: 'async', title: it.name, onclick: () => window.open(url, '_blank') }),
       h('div', { class: 'cacts' },
         h('button', { class: 'btn sm', title: 'Open in Forge as the source: pixelize it into a sprite', onclick: () => emit('forge-image', it.path) }, 'Pixelize'),
         h('button', { class: 'btn sm ghost', title: 'Use as the guide image in Forge (shape and design reference for a new generation)', onclick: () => emit('forge-guide', url) }, 'Guide'),

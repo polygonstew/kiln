@@ -14,6 +14,7 @@ import audio
 import setup
 import writer
 import helpbot
+import thumbs
 from store import settings, save_settings
 from cloud import CF_FREE, has_cf, CLOUD_CAP, cf_used, cloud_image, cloud_spent, free_today, keys, openrouter_left, post_json
 from checks import GODOT, list_scripts, check_script, doctor, snapshot, history, restore_copy
@@ -672,7 +673,7 @@ class H(BaseHTTPRequestHandler):
     def log_message(self, *a):
         pass
 
-    def send(self, code, body, ctype='application/json'):
+    def send(self, code, body, ctype='application/json', cache='no-store'):
         if isinstance(body, (dict, list)):
             body = json.dumps(body).encode()
         elif isinstance(body, str):
@@ -680,7 +681,7 @@ class H(BaseHTTPRequestHandler):
         self.send_response(code)
         self.send_header('Content-Type', ctype)
         self.send_header('Content-Length', str(len(body)))
-        self.send_header('Cache-Control', 'no-store')
+        self.send_header('Cache-Control', cache)
         self.end_headers()
         self.wfile.write(body)
 
@@ -707,6 +708,15 @@ class H(BaseHTTPRequestHandler):
                     return self.send(404, {'err': 'no such file'})
                 raw, ct = fs_raw(q['path'])
                 return self.send(200, raw, ct)
+            if u.path == '/api/thumb':
+                f = in_home(q['path'])
+                if not f.is_file():
+                    return self.send(404, {'err': 'no such file'})
+                try:
+                    raw, ct = thumbs.thumb(f, q.get('w'))
+                except Exception:               # not a picture PIL reads: give the file itself
+                    raw, ct = fs_raw(q['path'])
+                return self.send(200, raw, ct, cache='private, max-age=86400')
             if u.path == '/api/scripts':
                 root = q.get('root') or settings()['root']
                 return self.send(200, {'root': str(in_home(root)), 'scripts': list_scripts(in_home(root)), 'godot': bool(GODOT)})

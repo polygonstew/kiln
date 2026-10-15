@@ -1,6 +1,6 @@
 // Animate: pixel editor + timeline + live previewer + motion generators; saving lives in actor_save.js (Godot files: actor_godot.js).
 import { $, h, api, toast, emit, on, pref, clamp, uid, field, range, select, check, seg, hex, rgb, luma,
-  newImg, cloneImg, toCanvas, toDataURL, imgData, blit, bbox, flipX, shift, colorsOf, pixelize, rawURL, checker, HARDWARE, PALETTES, fitZoom, artCtx } from './core.js';
+  newImg, cloneImg, toCanvas, toDataURL, imgData, blit, bbox, flipX, shift, colorsOf, pixelize, rawURL, checker, HARDWARE, PALETTES, fitZoom, artCtx, readPicture } from './core.js';
 import { icon } from './icons.js';
 import { Player, loadActor } from './player.js';
 import { MOTIONS } from './motion.js';
@@ -49,7 +49,7 @@ export const animate = {
       e.preventDefault(); el.classList.remove('dropping');
       const f = [...e.dataTransfer.files].find(f => f.type.startsWith('image/'));
       if (!f) return toast('Drop an image (PNG, GIF, WebP, JPG)', 'bad');
-      const r = new FileReader(); r.onload = () => sliceInto(r.result, f.name.replace(/\.\w+$/, '')); r.readAsDataURL(f);
+      readPicture(f).then(url => sliceInto(url, f.name.replace(/\.\w+$/, '')));
     });
     drain();
   },
@@ -806,7 +806,7 @@ async function templateIn(src) {
 }
 function pickFile(cb) {
   const i = h('input', { type: 'file', accept: 'image/*' });
-  i.onchange = () => { const f = i.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => cb(r.result, f.name.replace(/\.\w+$/, '')); r.readAsDataURL(f); };
+  i.onchange = () => { const f = i.files[0]; if (f) readPicture(f).then(url => cb(url, f.name.replace(/\.\w+$/, ''))); };
   i.click();
 }
 function applyMotion(m, p, name, replace) {

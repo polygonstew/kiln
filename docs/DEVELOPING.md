@@ -80,6 +80,7 @@ Rules for keeping Kiln readable are in CLAUDE.md ("Stay understandable"). Rough 
 | `GET /api/status` | generators, queue, cloud budget, Fast engine |
 | `POST /api/gen` · `GET /api/job?id=` · `POST /api/cancel` | generation |
 | `GET /api/fs?path=` · `POST /api/fs {op: mkdir/rename/trash/root}` · `GET /api/fs/raw?path=` (404 if missing) | files (home only) |
+| `GET /api/thumb?path=&w=` (64-1024, default 256) | a cached WebP preview of a picture (thumbs.py, cache in ~/.cache/kiln/thumbs; small pictures come back as they are); client: core.js `thumbURL(path, w, mtime)` |
 | `POST /api/export {dest, files: [{name, b64 or text}]}` | write files under the asset folder |
 | `GET/POST /api/project` · `GET /api/projects` (with `sid` owner ids) | editable projects |
 | `GET /api/godot?path=` | the Godot project containing a path, or null |
@@ -106,6 +107,10 @@ Never press "Link here" in tests: it changes Kiln's asset folder.
   (kiln.css; never a literal `pixelated` except the Puppet pixel editors), canvases call core.js `artCtx(x, scale)` instead of
   setting `imageSmoothingEnabled` (Modern smooth, Pixel sharp, shrinking always smooth), and code that must know asks `smooth()`.
   Imported pictures are never forced to pixels in Modern (Forge `pixelOn()`, Concepts batch use `cutout`). Godot's side: `SHARP()` + project filter (play.py).
+- **Huge pictures get a working copy at the door** (core.js `HUGE`/`WORK`): `readPicture(file)` for files people bring in,
+  `imgData(url, true)` for URLs; over ~2.4 MP the longest side becomes 1536, smaller pictures (all pixel art, strips) pass untouched.
+  Originals on disk (concepts/, Files uploads) are never changed. Grids and trays use `thumbURL`, not the original. Don't use it
+  where pixel coordinates are saved against the picture (rooms, tilesets, saved rigs).
 
 Plain-English UI text, a `title` tooltip on every control, no AI/model names in the UI, the dark theme with the
 ember accent (gold HUD look for wheel/menus). Commits end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.

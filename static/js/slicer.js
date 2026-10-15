@@ -198,7 +198,7 @@ export function analyzeSheet(keyed, name) {
 /* opts.onDone({anims:[{name, frames}], w, h, pal}) ; opts.target {w,h,hw,count} */
 export async function openSlicer(src, opts = {}) {
   let im;
-  try { im = await imgData(src); } catch { return toast('Could not open that image', 'bad'); }
+  try { im = await imgData(src, true); } catch { return toast('Could not open that image', 'bad'); }
   const ps = pixelScale(im), pixelArt = ps.k >= 2 || fewColours(im), bg = border(im);
   const st = {
     mode: 'auto', cols: 4, rows: 1, key: bg.key, tol: bg.tol, gap: Math.round(Math.max(im.width, im.height) / 120), minFrac: 0.08,

@@ -2,7 +2,7 @@
 // Two modes: a new thing (sets up an actor's identity), or more of an existing actor,
 // where the reference, palette, frame size and pixel scale are locked so it stays on-model.
 import { $, h, api, toast, emit, on, pref, clamp, field, range, select, check, seg, imgData, toCanvas, toDataURL, hex, rgb, luma,
-  PALETTES, HARDWARE, pixelize, rawURL, bbox, newImg, resizeNN, fitZoom, keyBackground } from './core.js';
+  PALETTES, HARDWARE, pixelize, rawURL, bbox, newImg, resizeNN, fitZoom, keyBackground, readPicture } from './core.js';
 import { enqueue, estimate, fmtSecs, Q, budgetTag } from './queue.js';
 import { icon } from './icons.js';
 import { saveFiles } from './files.js';
@@ -57,7 +57,7 @@ on('make-actor', async d => {
   if (d.name) st.prompt = st.prompt.trim() || d.name.replace(/_/g, ' ');
   sendToAnimate('new', d.set || 'hero', d.name);
 });
-on('forge-guide', async url => { const im = await imgData(url).catch(() => null); if (!im) return toast('Could not read that image', 'bad'); guide = flatSmall(im); if (mounted) drawLeft(); toast('Guide image set'); });
+on('forge-guide', async url => { const im = await imgData(url, true).catch(() => null); if (!im) return toast('Could not read that image', 'bad'); guide = flatSmall(im); if (mounted) drawLeft(); toast('Guide image set'); });
 on('use-palette', p => { customPal = p; st.palMode = 'custom'; if (mounted) { drawRight(); run(); } });
 on('job-done', j => { if (j.forge) addResults(j); });
 on('forge-for', id => { ID = id; if (id.poses) { st.poses = id.poses; save(); } if (mounted) { drawLeft(); drawRight(); drawResults(); run(); } });
@@ -235,13 +235,13 @@ function makingSec() {
 }
 function guideSec() {
   const q = encodeURIComponent((st.prompt.trim() || KINDS.find(k => k[0] === st.kind)?.[1] || 'sprite').split(/[,.]/)[0]);
-  const take = async url => { const im = await imgData(url).catch(() => null); if (!im) return toast('Could not read that image', 'bad'); guide = flatSmall(im); drawLeft(); };
-  const pick = h('input', { type: 'file', accept: 'image/*', style: { display: 'none' }, onchange: e => { const f = e.target.files[0]; if (f) { const r = new FileReader(); r.onload = () => take(r.result); r.readAsDataURL(f); } } });
+  const take = async url => { const im = await imgData(url, true).catch(() => null); if (!im) return toast('Could not read that image', 'bad'); guide = flatSmall(im); drawLeft(); };
+  const pick = h('input', { type: 'file', accept: 'image/*', style: { display: 'none' }, onchange: e => { const f = e.target.files[0]; if (f) readPicture(f).then(take); } });
   const zone = h('div', { class: 'guide' + (guide ? ' on' : ''), title: 'Drop an image here', onclick: () => pick.click() },
     guide ? h('img', { src: guide }) : h('span', {}, 'Drop, or click to pick, an image whose shape or design the new thing should follow (a crate, a chest, a texture, a pose)'));
   zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('hot'); });
   zone.addEventListener('dragleave', () => zone.classList.remove('hot'));
-  zone.addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); const f = [...e.dataTransfer.files].find(f => f.type.startsWith('image/')); if (f) { const r = new FileReader(); r.onload = () => take(r.result); r.readAsDataURL(f); } });
+  zone.addEventListener('drop', e => { e.preventDefault(); e.stopPropagation(); const f = [...e.dataTransfer.files].find(f => f.type.startsWith('image/')); if (f) readPicture(f).then(take); });
   const link = (label, url) => h('a', { href: url, target: '_blank', rel: 'noopener', class: 'reflink' }, label);
   return h('div', { class: 'sec' }, h('h3', {}, 'Guide image', h('span', { class: 'grow' }),
       h('button', { class: 'btn sm ghost', title: 'Use the image in the Source pane as the guide', onclick: () => { if (!src) return toast('Nothing in the Source pane yet'); guide = flatSmall(src); drawLeft(); } }, 'Use source'),
@@ -314,7 +314,7 @@ function drawResults() {
       tiles.push(h('div', { class: 'r' }, h('div', { class: 'pend' }, j.state === 'running' ? (j.req.engine === 'cloud' ? 'drawing' : `${j.step}/${j.steps}`) : 'queued', bar)));
     }
   }
-  if (!ID) tiles.push(...inbox.slice(0, 6).map(it => h('div', { class: 'r inbox' + (srcURL === it.url ? ' on' : ''), title: `${it.name} (just saved to Downloads)`, onclick: () => { setSource(it.url, it.name); drawResults(); } }, h('img', { src: it.url, loading: 'lazy' }), h('b', {}, 'new'))));
+  if (!ID) tiles.push(...inbox.slice(0, 6).map(it => h('div', { class: 'r inbox' + (srcURL === it.url ? ' on' : ''), title: `${it.name} (just saved to Downloads)`, onclick: () => { setSource(it.url, it.name); drawResults(); } }, h('img', { src: it.url.replace('/api/fs/raw', '/api/thumb') + '&w=192', loading: 'lazy', decoding: 'async' }), h('b', {}, 'new'))));
   tiles.push(...results.filter(mine).map(r => h('div', { class: 'r' + (srcURL === r.url ? ' on' : ''), title: r.prompt, onclick: () => useResult(r) }, h('img', { src: r.url, loading: 'lazy' }))));
   if (!tiles.length) tiles.push(h('div', { class: 'faint', style: { gridColumn: '1/-1', fontSize: '12px' } },
     ID ? `Nothing for ${ID.name} yet. Pick poses on the left and generate.` : 'Nothing generated yet. Describe a thing on the left and press Generate, or open / paste an existing image.'));
@@ -339,9 +339,9 @@ function countPoses(im) {
   return components(im2, 3, .15).flat().length;
 }
 async function setSource(url, label) {
-  try { src = await imgData(url); srcURL = url; srcLabel = (label || '').replace(/\.\w+$/, '').slice(0, 24); keyAt = null; mask = null; run(); } catch { toast('Could not load that image', 'bad'); }
+  try { src = await imgData(url, true); srcURL = url; srcLabel = (label || '').replace(/\.\w+$/, '').slice(0, 24); keyAt = null; mask = null; run(); } catch { toast('Could not load that image', 'bad'); }
 }
-function loadLocal(f) { const r = new FileReader(); r.onload = () => setSource(r.result, f.name); r.readAsDataURL(f); }
+function loadLocal(f) { readPicture(f).then(url => setSource(url, f.name)); }
 let keyAt = null;
 // the painted mask over the source: 1 keep (never background), 2 remove (always background); brush tool or null
 let mask = null, maskTool = null, maskR = 8, maskDown = false;
