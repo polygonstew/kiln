@@ -10,6 +10,7 @@ import { BUNDLED, gameFonts, useFont, fontFile, cssFamily } from './menu_fonts.j
 import { pickPicture } from './pictures.js';
 import { itemStyle, hasStyle } from './menu_items.js';
 import { addVideo } from './video_add.js';
+import { projectBar } from './startover.js';
 
 const ACTIONS = [['start', 'Start the game'], ['rules', 'How to play (the rule book)'], ['open:options', 'Open options'], ['back', 'Back'], ['resume', 'Resume'], ['title', 'Quit to title'], ['quit', 'Quit the game'],
   ['volume', 'Volume slider'], ['fullscreen', 'Fullscreen on/off'], ['toggle', 'On/off option'], ['controls', 'Show the controls']];
@@ -29,6 +30,7 @@ export const menus = {
     V.left = h('aside', { class: 'l' }); V.right = h('aside', { class: 'r' });
     V.pv = h('div', { class: 'mn-pv' });
     el.append(V.left, h('section', { class: 'stage' }, h('div', { class: 'bar' }, h('span', { class: 'lbl' }, 'Preview at game size (480×270)'), h('span', { class: 'grow' }),
+      projectBar('menus-game', 'menus', { flush: () => { clearTimeout(saveT); return M ? api('/api/project', { id: 'menus-game', data: { meta: { kind: 'menus', name: 'game' }, menus: M } }) : null; }, reload: reloadMenus }),
       h('span', { class: 'note', style: { margin: 0 } }, 'Arrow keys and Enter work in the game; the mouse too')), h('div', { class: 'viewport', style: { background: '#0c0c0b' } }, V.pv)), V.right);
     const r = await fetch('/api/project?id=menus-game').then(r => r.ok ? r.json() : null).catch(() => null);
     M = r?.menus || DEFAULTS();
@@ -44,6 +46,11 @@ export const menus = {
   // Save all / the demo game: the saved menus, written for Godot
   async saveProject(id) { const d = await fetch('/api/project?id=' + encodeURIComponent(id)).then(r => r.json()); M = d.menus; draw(); await exportMenus(); },
 };
+// Start over / Put back: read the kept menus again (blank defaults when none), write them for Godot
+async function reloadMenus() {
+  const r = await fetch('/api/project?id=menus-game').then(r => r.ok ? r.json() : null).catch(() => null);
+  M = r?.menus || DEFAULTS(); draw(); exportMenus(true);
+}
 async function loadMedia() {
   const v = await api('/api/fs?path=' + encodeURIComponent(FS.root + '/videos')).catch(() => ({ items: [] }));
   videos = (v.items || []).filter(i => /\.ogv$/i.test(i.name)).map(i => 'videos/' + i.name);

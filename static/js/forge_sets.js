@@ -9,9 +9,12 @@ import { STYLE } from './style.js';
 import { engineSeg, genOne } from './forge_kit.js';
 
 const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 32) || 'set';
-const shell = (host, title, sub) => {
+// onNew: the maker's own "start a new one" (settings and pictures in hand go; what was already saved to the game stays)
+const shell = (host, title, sub, onNew) => {
   const ov = h('div', { class: 'workshop fm' }), left = h('div', { class: 'pp-side' }), mid = h('div', { class: 'pp-stage fm-grid' }), right = h('div', { class: 'pp-side' });
-  ov.append(h('div', { class: 'pp-bar' }, h('b', {}, title), h('span', {}, sub), h('span', { class: 'grow' }), h('button', { class: 'btn sm go', onclick: () => ov.remove() }, 'Back to Forge')),
+  ov.append(h('div', { class: 'pp-bar' }, h('b', {}, title), h('span', {}, sub), h('span', { class: 'grow' }),
+    h('button', { class: 'btn sm ghost', title: `Start a new one: clears what is here (pictures already saved to the game stay)`, onclick: () => confirm(`Start a new ${title.toLowerCase()}?\n\nWhat is on this page is cleared; anything already saved into the game stays.`) && onNew() }, 'New'),
+    h('button', { class: 'btn sm go', onclick: () => ov.remove() }, 'Back to Forge')),
     h('div', { class: 'fm-body' }, left, mid, right));
   host.append(ov);
   return { ov, left, mid, right };
@@ -21,9 +24,11 @@ const hw = () => STYLE.hw || 'snes';
 
 /* ------------------------------------------------------------ icon set ---- */
 export function openIconSet(host) {
-  const S = Object.assign({ set: 'items', names: 'healing potion, iron key, short sword, round shield, gold coin, bomb', look: '', size: 16, colours: 16, outline: true, engine: 'cloud' }, pref.get('forge.icons', {}));
+  const DEF = () => ({ set: 'items', names: 'healing potion, iron key, short sword, round shield, gold coin, bomb', look: '', size: 16, colours: 16, outline: true, engine: 'cloud' });
+  const S = Object.assign(DEF(), pref.get('forge.icons', {}));
   const keep = () => pref.set('forge.icons', S), src = {}, out = {};      // name → source picture, name → icon
-  const { left, mid, right } = shell(host, 'Icon set', 'a list of items, one look');
+  const fresh = () => { Object.assign(S, DEF()); for (const k of Object.keys(src)) delete src[k]; for (const k of Object.keys(out)) delete out[k]; keep(); drawLeft(); draw(); };
+  const { left, mid, right } = shell(host, 'Icon set', 'a list of items, one look', fresh);
   const names = () => S.names.split(/[,\n]/).map(s => s.trim()).filter(Boolean);
   function drawLeft() {
     left.replaceChildren(h('div', { class: 'wk-card' }, h('h3', {}, 'The items'),
@@ -89,10 +94,12 @@ function seamless(src, n) {
   return o;
 }
 export function openTileset(host) {
-  const S = Object.assign({ material: 'mossy cathedral stone blocks', tile: 16, colours: 12, engine: 'cloud', name: 'stone' }, pref.get('forge.tiles', {}));
+  const DEF = () => ({ material: 'mossy cathedral stone blocks', tile: 16, colours: 12, engine: 'cloud', name: 'stone' });
+  const S = Object.assign(DEF(), pref.get('forge.tiles', {}));
   const keep = () => pref.set('forge.tiles', S);
   let src = null, sheet = null;
-  const { left, mid, right } = shell(host, 'Tileset', 'one material, tiles that join up');
+  const fresh = () => { Object.assign(S, DEF()); src = null; sheet = null; keep(); mid.replaceChildren(); drawLeft(); };
+  const { left, mid, right } = shell(host, 'Tileset', 'one material, tiles that join up', fresh);
   function drawLeft() {
     left.replaceChildren(h('div', { class: 'wk-card' }, h('h3', {}, 'The material'),
       h('textarea', { rows: 3, title: 'What the ground, walls or platforms are made of', oninput: e => { S.material = e.target.value; keep(); } }, S.material),

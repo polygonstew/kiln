@@ -5,6 +5,7 @@
 // One setting for the game, and any level can have its own. Save writes camera/camera.json, which main.gd reads.
 import { h, api, toast, on, field, range, select, check } from './core.js';
 import { saveFiles } from './files.js';
+import { projectBar } from './startover.js';
 import { P, LOOK } from './gametype.js';
 import { listScenes } from './playbuild.js';
 
@@ -19,6 +20,7 @@ export const camera = {
     V.left = h('aside', { class: 'l' }); V.right = h('aside', { class: 'r' });
     V.cv = h('canvas', { class: 'cam-cv' });
     el.append(V.left, h('section', { class: 'stage' }, h('div', { class: 'bar' }, h('span', { class: 'lbl' }, 'How the camera follows (a live sketch)'), h('span', { class: 'grow' }),
+      projectBar('camera-game', 'camera setup', { flush: flush, reload: load }),
       h('button', { 'data-file': 'save', 'data-noun': 'camera', class: 'btn sm go', title: 'Write camera/camera.json for the game', onclick: save }, 'Save')), h('div', { class: 'viewport' }, V.cv)), V.right);
     load();
   },
@@ -33,6 +35,7 @@ async function load() {
   draw(); loop();
 }
 const cur = () => which ? (C.levels[which] ||= { ...C.game }) : C.game;
+const flush = () => { clearTimeout(keepT); return C ? api('/api/project', { id: 'camera-game', data: { meta: { kind: 'camera', name: 'game' }, camera: C } }) : null; };
 const keep = () => { clearTimeout(keepT); keepT = setTimeout(() => api('/api/project', { id: 'camera-game', data: { meta: { kind: 'camera', name: 'game' }, camera: C } }), 400); };
 
 function draw() {

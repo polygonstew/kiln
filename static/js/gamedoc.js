@@ -12,6 +12,7 @@ import { SECTIONS, filled } from './gamedoc_shape.js';
 import { gameFacts, thumb, keyArtChoices, sceneShot, actorShot } from './gamedoc_facts.js';
 import { pitchHTML, docMarkdown } from './gamedoc_pitch.js';
 import { stuckPanel } from './gamedoc_stuck.js';
+import { projectBar } from './startover.js';
 
 const ID = 'gamedoc-game';
 const uid = () => 'e' + Date.now().toString(36) + Math.floor(Math.random() * 999);
@@ -49,7 +50,7 @@ const area = (val, ph, rows, onInput) => { const t = h('textarea', { rows: rows 
 function drawLeft() {
   V.meters = {};
   V.left.replaceChildren(
-    h('div', { class: 'sec' }, h('h3', {}, 'Game doc'),
+    h('div', { class: 'sec' }, h('h3', {}, 'Game doc', h('span', { class: 'grow' }), projectBar(ID, 'game doc', { flush: () => { clearTimeout(keepT); return api('/api/project', { id: ID, data: { meta: { kind: 'gamedoc', name: 'game' }, doc } }); }, reload: async () => { loaded = ''; await load(); } })),
       h('p', { class: 'note', style: { marginTop: 0 } }, 'Everything about your game in one place: to pitch it to people, and to keep it straight for yourself. It keeps itself as you type.'),
       h('div', { class: 'gd-toc' }, ...SECTIONS.map(s => h('button', { class: 'gd-tocrow' + (s.id === here ? ' on' : ''), 'data-sec': s.id, title: s.blurb, onclick: () => V.page.querySelector(`#gd-${s.id}`)?.scrollIntoView({ behavior: 'smooth' }) },
         h('span', {}, s.title), V.meters[s.id] = h('i', { class: 'gd-meter' }))))),

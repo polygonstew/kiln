@@ -10,6 +10,7 @@ import { STYLE, stylePrompt, styleAvoid } from './style.js';
 import { registerWheel, registerMenu } from './wheel.js';
 import { components } from './slicer.js';
 import { cutout } from './cutout.js';
+import { projectBar } from './startover.js';
 import { GAME } from './gametype.js';
 
 const KINDS = [
@@ -88,6 +89,7 @@ export const forge = {
       h('section', { class: 'stage' },
         h('div', { class: 'bar' }, V.fits, h('span', { class: 'grow' }),
           h('span', { class: 'lbl' }, 'Zoom'), Object.assign(select([[0, 'Fit'], [2, '2×'], [4, '4×'], [6, '6×'], [8, '8×'], [12, '12×']], st.zoom, v => { st.zoom = +v; save(); paint(); }), { title: 'How big the source and the sprite show (Fit fills the space)' }),
+          projectBar('forge-work', 'piece', { label: 'New', ask: 'Start a new piece?\n\nThe prompt, source image and guide go to .trash ("Put back…" brings them back). Pictures already generated stay in the list.', flush: workFlush, reload: workReload }),
           h('button', { 'data-file': 'open', class: 'btn sm', title: 'Open an image from your computer as the source (or paste with Ctrl+V)', onclick: () => V.file.click() }, 'Open image'),
           V.file = h('input', { type: 'file', accept: 'image/*', style: { display: 'none' }, onchange: e => e.target.files[0] && loadLocal(e.target.files[0]) })),
         h('div', { class: 'split' }, srcBox, outBox),
@@ -340,6 +342,15 @@ function countPoses(im) {
 }
 async function setSource(url, label) {
   try { src = await imgData(url, true); srcURL = url; srcLabel = (label || '').replace(/\.\w+$/, '').slice(0, 24); keyAt = null; mask = null; run(); } catch { toast('Could not load that image', 'bad'); }
+}
+// New / Put back: the piece in hand (prompt, source, guide) is kept as kiln/forge-work.json only to be archived; blank when none
+const workFlush = () => api('/api/project', { id: 'forge-work', data: { meta: { kind: 'forge', name: 'work' }, st: { ...st }, label: srcLabel, src: src ? toCanvas(src).toDataURL('image/png') : null, guide } });
+async function workReload() {
+  const d = await fetch('/api/project?id=forge-work').then(r => r.ok ? r.json() : null).catch(() => null);
+  Object.assign(st, { prompt: '', neg: '', moods: [], change: '', poses: [] }, d?.st || {}); save();
+  guide = d?.guide || null; ID = null; mask = null; keyAt = null; out = null; src = null; srcURL = null;
+  if (d?.src) await setSource(d.src, d.label); else run();
+  drawLeft(); drawRight(); drawResults();
 }
 function loadLocal(f) { readPicture(f).then(url => setSource(url, f.name)); }
 let keyAt = null;

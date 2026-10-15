@@ -75,5 +75,7 @@ export function editStyle() {
     h('footer', {}, h('button', { class: 'btn ghost', onclick: () => m.remove() }, 'Cancel'),
       h('button', { class: 'btn go', onclick: async () => { Object.assign(STYLE, s); await saveStyle(); m.remove(); toast('Style saved for this asset folder', 'ok'); } }, 'Save style'))));
   document.body.append(m);
+  // Start over / Put back: the kept style goes to .trash and the default comes back (loaded when asked, startover.js reads files.js)
+  import('./startover.js').then(({ projectBar }) => m.querySelector('footer').prepend(projectBar('style', 'style bible', { reload: async () => { m.remove(); await loadStyle(); } })));
 }
 on('root', () => loadStyle());

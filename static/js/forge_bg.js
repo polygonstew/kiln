@@ -27,15 +27,18 @@ function unMagenta(im) {
 const slug = s => String(s || '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 32) || 'background';
 
 export function openBackgroundMaker(host) {
-  const S = Object.assign({ place: '', time: 'dusk', engine: 'cloud', on: { sky: true, far: true, mid: true, near: true, ground: true, front: false }, prompts: {} }, pref.get('forge.bg', {}));
+  const DEF = () => ({ place: '', time: 'dusk', engine: 'cloud', on: { sky: true, far: true, mid: true, near: true, ground: true, front: false }, prompts: {} });
+  const S = Object.assign(DEF(), pref.get('forge.bg', {}));
   const tries = {};          // layer id → [{ url, im (keyed) }], newest first; picked: layer id → index
   const picked = {};
   let pan = 0, busy = 0, solo = null;      // solo: the one layer shown in the preview (Alt+click an eye)
   const keep = () => pref.set('forge.bg', S);
+  const fresh = () => { Object.assign(S, DEF()); for (const k of Object.keys(tries)) delete tries[k]; for (const k of Object.keys(picked)) delete picked[k]; solo = null; keep(); drawLeft(); };
   const ov = h('div', { class: 'workshop fm' }), cv = h('canvas', { class: 'pp-cv', title: 'The layers stacked and panning, as the game shows them' });
   const left = h('div', { class: 'pp-side' }), right = h('div', { class: 'pp-side' });
   const close = () => { cancelAnimationFrame(raf); ov.remove(); };
   ov.append(h('div', { class: 'pp-bar' }, h('b', {}, 'Background'), h('span', {}, 'one place, in depth layers'), h('span', { class: 'grow' }),
+    h('button', { class: 'btn sm ghost', title: 'Start a new background: clears the place, prompts and tries (scenes already made stay)', onclick: () => confirm('Start a new background?\n\nWhat is on this page is cleared; scenes already made stay.') && fresh() }, 'New'),
     h('button', { class: 'btn sm go', onclick: close }, 'Back to Forge')),
     h('div', { class: 'fm-body' }, left, h('div', { class: 'pp-stage' }, cv), right));
   host.append(ov);

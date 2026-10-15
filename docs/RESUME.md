@@ -199,3 +199,12 @@ Files grid, picture picker and the Forge inbox. After: Forge import longest task
 Concepts/Files uploads keep the original file; tilesets, rooms and saved rigs keep their size (coordinates depend on it). localStorage audit: no pref holds a
 picture except `level.cur` (L.ts, a tileset sheet, small); `forge.results` holds server URLs. Restart kiln.service for the new endpoint.
 
+## 2026-10-15 session 8: start over everywhere (handoff job 3)
+Audit: Animate, Scenes, Levels, HUD, Rooms, Dialogue and Logic graphs already had Open + New + restorable Remove (projects.js). Added `startover.js`:
+`projectBar` for the one-per-game projects (Camera, Cards, Flow, Menus, Game doc, Style bible, Forge's piece in hand: prompt, source, guide as `forge-work`)
+and `startOverBar` for Concepts sessions (folder → `.trash/<stamp>-concepts__<name>`). Start over/New/Remove archives to `.trash`, the area reloads blank;
+"Put back…" lists the archive (newest first) and restores, archiving the current one first. Forge's Background / Tileset / Icon set makers got a New (clears
+their settings and tries; saved scenes/tiles stay). Menus also rewrites menus/*.tscn after start over/put back so ▶ Play matches. Not changed: Puppet rigs
+live inside the actor (Animate Open/Remove covers them), single concept images have no remove yet. File → New presses Start over in these areas.
+Verified in the throwaway copy: Camera, Cards, Flow, Game doc, Style (modal), Menus, Concepts, Forge (prompt + source restored) all archive and restore; smoke clean.
+

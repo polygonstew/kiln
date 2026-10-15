@@ -45,7 +45,7 @@ Verified in headless Godot: the adventure demo played through to its ending; flo
 check → end; story pages with a typed answer; top-down shooting + room camera; push crate + exit → next level.
 Also verified: the stacker (bricks fall, land, next spawns). FMV/text templates were tested through hand-made flows, not their template builds.
 
-## START HERE (session 7 → 8, written 2026-10-15; items 1 and 2 done, next is item 3)
+## START HERE (session 7 → 8, written 2026-10-15; all three asks done; next: sleek pass, built-in help follow-ups, see START HERE (session 6) below)
 
 Done in session 7 (all committed, pushed, Kiln restarted): **Ask Gloop** (ask.js, helpsearch.py, helpbot.py), **Menus** fixes
 (preview colours/size: core.js `h()` custom properties; autosave of menus/*.tscn; 12 fonts; picture / video / scene behind a
@@ -66,7 +66,7 @@ games.js `deleteGame`; moved to library/.deleted, "Start over" re-creates the sa
    original untouched on disk (concepts/ folder) and only use it when exporting at full size. Profile first (Chromium trace or timing
    around toCanvas/imgData/ref images in animate.js, forge.js) to find the real hot spots; also check `localStorage` sizes (pref.set of
    data URLs) and `forge.results`.
-3. **Some areas can't remove / archive what you are working on to start over.** Audit every area for Open-dialog parity (projects.js
+3. **DONE 2026-10-15 (session 8)**, see "Start over" in RESUME.md. Original ask: **Some areas can't remove / archive what you are working on to start over.** Audit every area for Open-dialog parity (projects.js
    is the shared Open dialog with open / rename / copy / remove / restore): Concepts sessions, Forge results/tiles/icons/bg,
    Animate actor, Scenes, HUD, Levels, Rooms, Flow, Cards, Camera, Dialogue, Logic, Menus (reset screen exists), Game doc, Style.
    For each, add a visible "New / Archive / Remove (restorable)" next to the title. Never hard-delete: use the `trash` op (/.trash).

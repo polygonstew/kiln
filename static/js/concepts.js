@@ -4,6 +4,7 @@
 import { h, api, toast, emit, pref, rawURL, imgData, pixelize, buildPalette, newImg, blit, bbox, toCanvas, toDataURL, HARDWARE, field, range, seg, select, smooth, thumbURL } from './core.js';
 import { cutout } from './cutout.js';
 import { saveFiles, S as FS } from './files.js';
+import { startOverBar } from './startover.js';
 import { registerWheel, registerKeys } from './wheel.js';
 
 const SITES = [['meta.ai', 'https://www.meta.ai/'], ['Gemini', 'https://gemini.google.com/'], ['ChatGPT', 'https://chatgpt.com/'],
@@ -61,7 +62,9 @@ function drawLeft() {
   sessions().then(list => { const all = [...new Set([session, ...list])].sort(); sel.replaceChildren(...all.map(n => h('option', { value: n }, n))); sel.value = session; });
   V.left.replaceChildren(
     h('div', { class: 'sec' }, h('h3', {}, 'Session', h('span', { class: 'grow' }),
-        h('button', { 'data-file': 'new', class: 'btn sm ghost', title: 'Start a new concept session (a new folder)', onclick: () => { const n = prompt('Name for the session, e.g. "sewer level" or "bell-ringer boss"'); if (!n) return; session = slug(n); pref.set('concepts.session', session); api('/api/fs', { op: 'mkdir', path: dir() }).catch(() => {}).then(load); } }, 'New')),
+        h('button', { 'data-file': 'new', class: 'btn sm ghost', title: 'Start a new concept session (a new folder)', onclick: () => { const n = prompt('Name for the session, e.g. "sewer level" or "bell-ringer boss"'); if (!n) return; session = slug(n); pref.set('concepts.session', session); api('/api/fs', { op: 'mkdir', path: dir() }).catch(() => {}).then(load); } }, 'New'),
+        startOverBar({ noun: 'concept session', label: 'Remove', fileNew: false, ask: 'Remove this concept session and its pictures?\n\nThey go to .trash: "Put back…" brings them back.', tag: 'concepts', many: true, suffix: '', name: () => session, path: dir, pathOf: n => `${FS.root}/concepts/${n}`,
+          taken: async n => (await sessions()).includes(n), reload: async back => { const all = await sessions(); if (back) session = back; else if (!all.includes(session)) session = all[0] || 'ideas'; pref.set('concepts.session', session); await load(); } })),
       sel, h('p', { class: 'note' }, `${items.length} image${items.length === 1 ? '' : 's'} in concepts/${session}/`),
       items.length ? h('button', { class: 'btn go wide', title: 'Turn every image here into a sprite with ONE shared height (and, in the Pixel look, palette and outline), so they belong together', onclick: batch }, 'Batch → sprites') : null),
     h('div', { class: 'sec' }, h('h3', {}, 'Make images on'),

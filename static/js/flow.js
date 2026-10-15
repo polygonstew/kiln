@@ -5,6 +5,7 @@
 // flow when it has scenes (playbuild.js writes flow/game.json; flow_godot.js plays it).
 import { h, api, toast, on, emit, pref, uid, field, select, check } from './core.js';
 import { saveFiles, S as FS } from './files.js';
+import { projectBar } from './startover.js';
 import { registerKeys } from './wheel.js';
 import { flowView, KINDS } from './flow_view.js';
 import { flowJSON, FLOW_GD, FLOW } from './flow_godot.js';
@@ -47,6 +48,7 @@ export const flow = {
     view = flowView({ flow: () => F, sel: () => sel, select: pick, changed, outs, summary, enter, add, drop });
     el.append(V.left, h('section', { class: 'stage' },
       h('div', { class: 'bar' }, h('span', { class: 'lbl' }, 'The game, scene by scene'), h('span', { class: 'grow' }),
+        projectBar('flow-game', 'flow', { flush: async () => { clearTimeout(saveT); if (F) await keep(); }, reload: async () => { await (ready = start()); } }),
         h('button', { class: 'btn sm ghost', title: 'Show every scene (F)', onclick: () => view.fit() }, 'Show all'),
         h('button', { class: 'btn sm ghost', title: 'Build the game and play it from the picked scene', onclick: () => play(true) }, '▶ From here'),
         h('button', { class: 'btn sm go', title: 'Build the game and play it from the start', onclick: () => play(false) }, '▶ Play')),

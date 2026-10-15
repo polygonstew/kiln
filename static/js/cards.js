@@ -4,6 +4,7 @@
 // Enemies are Card battle scenes in the Flow (their health, picture and moves).
 import { h, api, toast, emit, on, field } from './core.js';
 import { saveFiles, S as FS } from './files.js';
+import { projectBar } from './startover.js';
 import { cardsJSON } from './cards_godot.js';
 import { pickPicture, pickFromSheet } from './pictures.js';
 
@@ -19,7 +20,7 @@ export const cards = {
     el.className = 'view ws'; mounted = true;
     V.left = h('aside', { class: 'l' }); V.right = h('aside', { class: 'r' }); V.grid = h('div', { class: 'cd-grid' });
     el.append(V.left, h('section', { class: 'stage' }, h('div', { class: 'bar' }, h('span', { class: 'lbl' }, 'Your deck'), h('span', { class: 'grow' }),
-      h('button', { class: 'btn sm', title: 'A new card', onclick: add }, '+ Card'), h('button', { 'data-file': 'save', 'data-noun': 'cards', class: 'btn sm go', title: 'Write cards/cards.json for the game', onclick: save }, 'Save')),
+      projectBar('cards-game', 'deck', { flush, reload: load }), h('button', { class: 'btn sm', title: 'A new card', onclick: add }, '+ Card'), h('button', { 'data-file': 'save', 'data-noun': 'cards', class: 'btn sm go', title: 'Write cards/cards.json for the game', onclick: save }, 'Save')),
       h('div', { class: 'viewport cd-view' }, V.grid)), V.right);
     load();
   },
@@ -31,6 +32,7 @@ async function load() {
   sel = C.cards[0]?.id || null; draw();
 }
 on('root', () => { if (mounted) load(); });
+const flush = () => { clearTimeout(keepT); return C ? api('/api/project', { id: 'cards-game', data: { meta: { kind: 'cards', name: 'game' }, cards: C } }) : null; };
 const keep = () => { clearTimeout(keepT); keepT = setTimeout(() => api('/api/project', { id: 'cards-game', data: { meta: { kind: 'cards', name: 'game' }, cards: C } }), 500); };
 function changed() { keep(); draw(); }
 function add() { const n = prompt('Name of the card', 'Fireball'); if (!n) return; let id = slug(n); while (C.cards.some(c => c.id === id)) id += '_2'; C.cards.push({ id, name: n, cost: 1, attack: 0, block: 0, heal: 0, draw: 0, copies: 1 }); sel = id; changed(); }
