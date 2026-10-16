@@ -129,8 +129,13 @@ function resize(A, z, e) {
 function pin(A, z) { A.layout.pinned[z] = !A.layout.pinned[z]; keep(A.id); apply(A); }
 
 // sizes, pinned docks, empty docks out of the way
+// a slot with no name and nothing in it yet (CSS hides it) does not make a dock; it counts once it gets content
+const emptySlot = n => n.children.length === 1 && n.firstElementChild.classList.contains('dk-mini');
 function apply(A) {
-  const L = A.layout, has = z => A.zones[z].querySelector('.dk-list').children.length > 0;
+  const L = A.layout, has = z => [...A.zones[z].querySelector('.dk-list').children].some(n => {
+    if (emptySlot(n) && !n.dataset.watch) { n.dataset.watch = '1'; new MutationObserver(() => apply(A)).observe(n, { childList: true }); }
+    return !emptySlot(n);
+  });
   const w = z => !has(z) ? 0 : L.pinned[z] ? 30 : L.size[z];
   A.el.style.setProperty('--dkL', w('l') + 'px'); A.el.style.setProperty('--dkR', w('r') + 'px'); A.el.style.setProperty('--dkB', w('b') + 'px');
   for (const z of ['l', 'r', 'b']) { A.zones[z].classList.toggle('pinned', !!L.pinned[z]); A.zones[z].classList.toggle('empty', !has(z)); A.zones[z].style.setProperty('--full', L.size[z] + 'px'); }

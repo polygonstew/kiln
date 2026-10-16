@@ -719,7 +719,8 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .gd-genre small { color: var(--dim); }
 /* Layer panels (layers.js): Scenes, HUD widgets, Levels, Puppet parts, Forge background */
 .lp { outline: none; }
-.lp-top { display: flex; gap: 8px; align-items: center; padding: 2px 0 8px; } .lp-top.off { opacity: .5; }
+.lp-top { display: flex; gap: 8px; align-items: center; padding: 2px 0 8px; } .lp-top.off { opacity: .5; } .lp-top select { min-width: 86px; flex: none; }
+.ibtn.juice { width: 24px; font: 600 11px var(--cond); } .juice-g { display: inline-flex; flex-wrap: nowrap; }
 .lp-op { display: flex; align-items: center; gap: 6px; flex: 1; font-size: 11px; color: var(--dim); } .lp-op input { flex: 1; min-width: 40px; }
 .lp-op output { font: 11px var(--mono); width: 34px; text-align: right; }
 .lp-list { display: grid; gap: 1px; }
@@ -807,6 +808,7 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .fw-node { --k: #777; position: absolute; width: 190px; background: var(--p1); border: 1px solid var(--line2); border-top: 3px solid var(--k); border-radius: 3px; cursor: move; box-shadow: 0 6px 18px #0008; user-select: none; }
 .fw-node.on { border-color: var(--k); box-shadow: 0 0 0 1px var(--k), 0 6px 18px #0008; }
 .fw-node header { display: flex; align-items: center; justify-content: space-between; padding: 5px 9px 0; } .fw-node header small { font: 600 9px var(--cond); letter-spacing: .14em; text-transform: uppercase; color: var(--k); }
+.fw-pic { display: block; width: 100%; height: 88px; object-fit: cover; background: var(--p2); margin-top: 3px; pointer-events: none; }
 .fw-start { font: 700 9px var(--cond); letter-spacing: .14em; color: #000; background: var(--ember); padding: 1px 5px; border-radius: 2px; }
 .fw-name { padding: 1px 9px; font-weight: 600; font-size: 13px; } .fw-sum { padding: 0 9px 6px; color: var(--dim); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fw-in { position: absolute; left: -6px; top: 14px; width: 10px; height: 10px; border-radius: 50%; background: var(--p3); border: 2px solid var(--k); }
@@ -924,6 +926,7 @@ body.simple .dk-panel[data-adv] { display: none !important; }
 .hm-next small { font: 600 10px var(--cond); letter-spacing: .16em; text-transform: uppercase; color: var(--ember2); } .hm-next b { font-size: 15px; } .hm-next span { color: var(--dim); flex: 1; }
 .hm-page h2 { display: flex; align-items: center; gap: 12px; margin: 0 0 10px; font: 600 12px var(--cond); letter-spacing: .14em; text-transform: uppercase; color: var(--dim); } .hm-page h2 .btn { margin-left: auto; }
 .hm-flow { display: flex; align-items: center; gap: 10px; overflow-x: auto; padding: 6px 0 10px; } .hm-col { display: flex; flex-direction: column; gap: 6px; }
+.hm-pic { width: 100%; height: 64px; object-fit: cover; background: var(--p2); margin-bottom: 5px; }
 .hm-scene { --k: #777; display: flex; flex-direction: column; align-items: flex-start; min-width: 130px; padding: 7px 10px; background: var(--p1); border: 1px solid var(--line); border-top: 3px solid var(--k); border-radius: 3px; color: var(--ink); cursor: pointer; font: inherit; text-align: left; }
 .hm-scene small { font: 600 9px var(--cond); letter-spacing: .12em; text-transform: uppercase; color: var(--k); } .hm-scene:hover { border-color: var(--k); } .hm-arrow { color: var(--faint); font-style: normal; }
 .hm-cols { display: grid; grid-template-columns: 2fr 1fr; gap: 28px; }

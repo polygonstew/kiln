@@ -1,7 +1,7 @@
 // Home: the game at a glance, the first tab of every path. Its name, kind and look; what to do next (the "Your game"
 // steps); the flow of scenes as a small map (click → Flow); what was worked on last (click → open it); how much of each
 // thing it has (click → that area); and the big doors: play it, export it, the rule book.
-import { h, api, emit, on } from './core.js';
+import { h, api, emit, on, thumbURL } from './core.js';
 import { S as FS } from './files.js';
 import { GAME, P, LOOK } from './gametype.js';
 import { KINDS } from './flow_view.js';
@@ -51,5 +51,6 @@ function flowMap(F) {
   for (const n of F.nodes) (cols[depth[n.id] ?? cols.length] ||= []).push(n);
   const list = cols.filter(Boolean);
   return h('div', { class: 'hm-flow' }, ...list.flatMap((c, i) => [h('div', { class: 'hm-col' }, ...c.map(n => h('button', { class: 'hm-scene', style: { '--k': (KINDS[n.kind] || [])[1] || '#777' }, title: `${(KINDS[n.kind] || [''])[0]}: double click in Flow to go into it`, onclick: () => emit('tab', 'flow') },
+    n.video || n.picture ? h('img', { class: 'hm-pic', src: thumbURL(FS.root + '/' + (n.video || n.picture), 160, 0), loading: 'lazy', onerror: e => { e.target.style.visibility = 'hidden'; } }) : '',
     h('small', {}, (KINDS[n.kind] || ['?'])[0]), h('b', {}, n.name || n.kind)))), i < list.length - 1 ? h('i', { class: 'hm-arrow' }, '→') : '']));
 }

@@ -21,7 +21,7 @@ export const KINDS = {
 };
 const NS = 'http://www.w3.org/2000/svg';
 
-// ctx: { flow(), sel(), select(id | {link}), changed(full), outs(node), summary(node), enter(node), add(kind, x, y) → node }
+// ctx: { flow(), sel(), select(id | {link}), changed(full), outs(node), summary(node), poster(node) → url, enter(node), add(kind, x, y) → node }
 export function flowView(ctx) {
   const surf = h('div', { class: 'fw-surf' }), svg = document.createElementNS(NS, 'svg'), board = h('div', { class: 'fw-board', tabindex: 0 }, surf);
   svg.setAttribute('class', 'fw-links'); surf.append(svg);
@@ -41,6 +41,7 @@ export function flowView(ctx) {
       const card = h('div', { class: 'fw-node' + (sel === n.id ? ' on' : ''), 'data-id': n.id, title: `${what}. Double click to go into it.`, style: { left: n.x + 'px', top: n.y + 'px', '--k': colour } },
         h('i', { class: 'fw-in' }),
         h('header', {}, h('small', {}, label), F.start === n.id ? h('b', { class: 'fw-start' }, 'START') : ''),
+        ctx.poster(n) ? h('img', { class: 'fw-pic', src: ctx.poster(n), loading: 'lazy', draggable: false, onerror: e => { e.target.style.visibility = 'hidden'; } }) : '',
         h('div', { class: 'fw-name' }, n.name || label),
         h('div', { class: 'fw-sum' }, ctx.summary(n)),
         ...outs.map(o => h('div', { class: 'fw-out', 'data-out': o }, h('span', {}, o), h('i', { class: 'fw-dot', title: `When it ends with "${o}": drag to the next scene` }))));

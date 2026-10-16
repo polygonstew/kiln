@@ -3,7 +3,7 @@
 // and quick-time moments. Each scene is a card (flow_view.js); each way it can end is a dot wired to what comes next.
 // Double click a card to go into it: its level, room, conversation or menu opens in its own area. ▶ Play follows the
 // flow when it has scenes (playbuild.js writes flow/game.json; flow_godot.js plays it).
-import { h, api, toast, on, emit, pref, uid, field, select, check } from './core.js';
+import { h, api, toast, on, emit, pref, uid, field, select, check, thumbURL } from './core.js';
 import { saveFiles, S as FS } from './files.js';
 import { projectBar } from './startover.js';
 import { registerKeys } from './wheel.js';
@@ -45,7 +45,7 @@ export const flow = {
   mount(el) {
     el.className = 'view ws'; mounted = true;
     V.left = h('aside', { class: 'l' }); V.right = h('aside', { class: 'r' });
-    view = flowView({ flow: () => F, sel: () => sel, select: pick, changed, outs, summary, enter, add, drop });
+    view = flowView({ flow: () => F, sel: () => sel, select: pick, changed, outs, summary, poster, enter, add, drop });
     el.append(V.left, h('section', { class: 'stage' },
       h('div', { class: 'bar' }, h('span', { class: 'lbl' }, 'The game, scene by scene'), h('span', { class: 'grow' }),
         projectBar('flow-game', 'flow', { flush: async () => { clearTimeout(saveT); if (F) await keep(); }, reload: async () => { await (ready = start()); } }),
@@ -128,6 +128,11 @@ function outs(n) {
     case 'end': return [];
     default: return ['done'];
   }
+}
+// a small picture for a scene's card: a frame of its video, or its picture
+function poster(n) {
+  const rel = n.video || n.picture;
+  return rel ? thumbURL(FS.root + '/' + rel, 192, 0) : '';
 }
 function summary(n) {
   const v = p => (p || '').split('/').pop();
