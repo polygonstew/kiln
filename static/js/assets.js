@@ -2,7 +2,7 @@
 // characters, rooms, levels, backdrops, conversations, items, pictures, sounds and videos, with a picture each. Filter by
 // kind or name; click one to open it where it is edited; drag it onto a canvas that takes it (Flow makes a scene of
 // it, Levels places a character, Rooms places a character or a picture as a hotspot).
-import { h, api, emit } from './core.js';
+import { h, api, emit, thumbURL } from './core.js';
 import { S as FS } from './files.js';
 
 export const DRAG = 'application/x-kiln-asset';
@@ -16,7 +16,7 @@ async function gather() {
   for (const p of ps) if (['actor', 'room', 'level', 'scene', 'dialogue'].includes(p.kind)) out.push({ kind: p.kind, name: p.name, thumb: p.thumb, at: p.mtime });
   const I = (await fetch('/api/project?id=items-adventure').then(r => r.ok ? r.json() : null).catch(() => null))?.items;
   for (const it of I?.items || []) out.push({ kind: 'item', name: it.name, id: it.id, thumb: it.icon ? raw(FS.root + '/' + it.icon) : '' });
-  const files = async (dir, kind, re) => { for (const f of await ls(dir)) if (!f.dir && re.test(f.name)) out.push({ kind, name: f.name, path: `${dir}/${f.name}`, thumb: kind === 'picture' ? raw(f.path) : '', at: f.mtime }); };
+  const files = async (dir, kind, re) => { for (const f of await ls(dir)) if (!f.dir && re.test(f.name)) out.push({ kind, name: f.name, path: `${dir}/${f.name}`, thumb: kind === 'picture' ? raw(f.path) : kind === 'video' ? thumbURL(f.path, 160, f.mtime) : '', at: f.mtime }); };
   await files('pictures', 'picture', /\.(png|webp|jpe?g)$/i);
   for (const d of (await ls('icons')).filter(f => f.dir)) await files('icons/' + d.name, 'picture', /\.(png|webp)$/i);
   await files('sfx', 'sound', /\.(wav|ogg|mp3)$/i); await files('music', 'sound', /\.(wav|ogg|mp3)$/i);

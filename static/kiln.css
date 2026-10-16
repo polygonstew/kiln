@@ -190,8 +190,8 @@ input[type=color] { width: 28px; height: 22px; padding: 0; border: 1px solid var
 .grid.list .it .mt { margin-left: auto; }
 .dropzone { position: absolute; inset: 0; border: 2px dashed var(--ember); background: #ff5b2e14; display: none; place-items: center; font: 600 13px var(--cond); letter-spacing: .1em; text-transform: uppercase; color: var(--ember2); z-index: 5; pointer-events: none; }
 .dropzone.on { display: grid; }
-.detail .pv { background: var(--p1); display: grid; place-items: center; min-height: 220px; position: relative; border-bottom: 1px solid var(--line); }
-.detail pre { margin: 0; padding: 12px 14px; font: 11px/1.5 var(--mono); color: var(--dim); white-space: pre-wrap; word-break: break-all; max-height: 50vh; overflow: auto; }
+.fm .pv { background: var(--p1); display: grid; place-items: center; min-height: 220px; position: relative; border-bottom: 1px solid var(--line); }
+.fm pre { margin: 0; padding: 12px 14px; font: 11px/1.5 var(--mono); color: var(--dim); white-space: pre-wrap; word-break: break-all; max-height: 50vh; overflow: auto; }
 .kv { display: grid; grid-template-columns: 90px 1fr; gap: 4px 10px; font-size: 12px; }
 .kv dt { color: var(--faint); font-family: var(--cond); }
 .kv dd { margin: 0; font-family: var(--mono); color: var(--dim); word-break: break-all; }
@@ -888,7 +888,7 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .dk-x { margin-left: auto; order: 99; background: none; border: 0; color: var(--faint); cursor: pointer; font-size: 11px; opacity: 0; } .dk-head:hover .dk-x { opacity: 1; } .dk-x:hover { color: var(--bad); }
 .dk-head .grow + .dk-x, .dk-head > .grow ~ .dk-x { margin-left: 4px; }
 .dk-panel.dk-folded > :not(h3) { display: none !important; } .dk-panel.dk-folded { padding-bottom: 8px; } .dk-panel.dk-folded .dk-head::after { content: '▸'; color: var(--faint); margin-left: 4px; }
-.dk-mini { margin: 0 0 6px; }
+.dk-mini { margin: 0 0 6px; } .dk-panel:has(> .dk-mini:only-child) { display: none; }   /* an unnamed, still empty slot shows nothing until it has content */
 /* dragging: a ghost, a drop line, and empty docks as drop strips */
 .dk-ghost { position: fixed; z-index: 999; pointer-events: none; padding: 4px 10px; background: var(--ember); color: #000; font: 600 11px var(--cond); letter-spacing: .08em; text-transform: uppercase; border-radius: 3px; box-shadow: 0 6px 20px #000a; }
 .dk-mark { height: 3px; background: var(--ember); margin: 2px 8px; border-radius: 2px; } .dk-b .dk-mark { width: 3px; height: auto; margin: 8px 2px; }
@@ -944,4 +944,3 @@ body.simple .dk-panel[data-adv] { display: none !important; }
 .su-field { display: flex; align-items: center; gap: 8px; margin: 4px 0; } .su-field span { width: 90px; color: var(--dim); font-size: 12px; } .su-field input { flex: 1; }
 .su-state { font-size: 11px; color: var(--dim); } .su-state.ok { color: #6fcf8a; }
 .su-card h3 .grow { flex: 1; }
-.dk-panel pre { white-space: pre-wrap; overflow-wrap: anywhere; }

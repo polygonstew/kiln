@@ -45,6 +45,11 @@ Verified in headless Godot: the adventure demo played through to its ending; flo
 check → end; story pages with a typed answer; top-down shooting + room camera; push crate + exit → next level.
 Also verified: the stacker (bricks fall, land, next spawns). FMV/text templates were tested through hand-made flows, not their template builds.
 
+## START HERE (session 9 → 10, written 2026-10-16)
+
+Done: sleek pass (calm Gloop, no colour emoji; the gold wheel / menus / Ctrl+K were **reverted at the user's request: they like that look, leave it**), **Files fixed** (view needs class `ws`; smoke.py now checks the middle column), Files plays video/sound and shows poster frames (thumbs.py), FMV + text templates verified in headless Godot. Details: RESUME "session 9".
+Ideas not started: poster frames on Flow's video nodes; Android export / butler upload; 2D lighting; cutscenes; a lore bible and writing help for Dialogue; named workspaces across areas; collapsible sections everywhere.
+
 ## START HERE (session 7 → 8, written 2026-10-15; all three asks done; sleek pass done in session 9 (2026-10-16); next: built-in help follow-ups, see START HERE (session 6) below)
 
 Done in session 7 (all committed, pushed, Kiln restarted): **Ask Gloop** (ask.js, helpsearch.py, helpbot.py), **Menus** fixes

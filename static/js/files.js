@@ -7,7 +7,7 @@ import { Player, loadActor } from './player.js';
 export const S = { settings: null, root: '', home: '', path: '', items: [], here: {}, sel: null, expanded: new Set(pref.get('fm.open', [])), mode: pref.get('fm.mode', 'grid') };
 const ROLE_NAMES = { sprites: 'Sprites', backgrounds: 'Backgrounds', tiles: 'Tiles', hud: 'HUD', fonts: 'Fonts', palettes: 'Palettes', kiln: 'Kiln projects', actor: 'Actor', scene: 'Scene', root: 'Asset folder' };
 const BLURB = { sprites: 'One folder per character or object, animations inside', backgrounds: 'One folder per scene, a PNG per parallax layer', tiles: 'Tilesets for level geometry', hud: 'Bars, gauges, panels and icons', fonts: 'Bitmap fonts your engine can load', palettes: 'Colour palettes (.hex)', kiln: 'Editable Kiln projects' };
-const IMG = /\.(png|gif|jpe?g|webp)$/i, TXT = /\.(json|md|txt|fnt|hex|tscn|tres|gd|csv)$/i;
+const IMG = /\.(png|gif|jpe?g|webp)$/i, TXT = /\.(json|md|txt|fnt|hex|tscn|tres|gd|csv)$/i, VID = /\.(ogv|mp4|webm|mov|mkv)$/i, AUD = /\.(ogg|mp3|wav|opus|flac)$/i;
 const short = p => p && S.home ? p.replace(S.home, '~') : p;
 const fmtSize = n => n < 1024 ? n + ' B' : n < 1048576 ? (n / 1024).toFixed(1) + ' KB' : (n / 1048576).toFixed(1) + ' MB';
 const ago = t => { const s = Date.now() / 1000 - t; return s < 90 ? 'just now' : s < 5400 ? Math.round(s / 60) + ' min ago' : s < 129600 ? Math.round(s / 3600) + ' h ago' : new Date(t * 1000).toLocaleDateString(); };
@@ -177,6 +177,10 @@ function thumb(it, th) {
     return;
   }
   if (IMG.test(it.name)) { th.append(h('img', { src: thumbURL(it.path, 192, it.mtime), loading: 'lazy', decoding: 'async' })); return; }
+  if (VID.test(it.name)) {      // a frame of the clip; a clip ffmpeg cannot read keeps its label
+    const label = h('span', { class: 'glyph faint mono' }, it.name.split('.').pop().toUpperCase());
+    th.append(h('img', { src: thumbURL(it.path, 192, it.mtime), loading: 'lazy', decoding: 'async', onerror: e => e.target.replaceWith(label) })); return;
+  }
   if (/\.hex$/i.test(it.name)) {
     fetch(rawURL(it.path)).then(r => r.text()).then(t => th.append(h('div', { class: 'sw' }, ...t.split(/\s+/).filter(Boolean).slice(0, 32).map(c => h('i', { style: { background: '#' + c.replace('#', '') } })))));
     return;
@@ -196,9 +200,10 @@ let lastT = 0;
 })(0);
 
 /* ------------------------------------------------------------- detail ---- */
-let detailPlayer;
+let detailPlayer, detailMedia;
 async function drawDetail() {
   detailPlayer?.destroy(); detailPlayer = null;
+  detailMedia?.pause(); detailMedia = null;      // a removed <audio> would keep playing
   const it = S.sel;
   const d = V.detail;
   if (!it) {
@@ -263,11 +268,29 @@ async function drawDetail() {
       acts.append(h('button', { class: 'btn go', onclick: () => emit('use-palette', { name: it.name.replace(/\.hex$/, ''), colors: cols }) }, 'Use this palette'));
     } else pv.replaceChildren(h('span', { class: 'glyph faint mono' }, it.name.split('.').pop().toUpperCase()));
     more(h('div', { class: 'sec' }, h('h3', {}, 'Contents'), h('pre', {}, t.slice(0, 20000))));
+  } else if (VID.test(it.name) || AUD.test(it.name)) {
+    // play it right here (browsers do not play Theora, so a game video's original in videos/.src/ stands in); Cutroom is one click away
+    const src = VID.test(it.name) ? await playable(it) : it.path;
+    if (src) {
+      const m = detailMedia = h(VID.test(it.name) ? 'video' : 'audio', { src: rawURL(src), controls: true, preload: 'metadata', style: { width: '100%', maxHeight: '240px', background: '#000' } });
+      m.onerror = () => pv.replaceChildren(h('span', { class: 'faint' }, 'This browser cannot play this file here.'));
+      pv.replaceChildren(m); pv.style.display = 'block';
+    } else {      // no original to play: show a frame and say where it plays
+      const note = h('span', { class: 'faint', style: { padding: '14px', textAlign: 'center' } }, 'Plays in the game. Its original is not in videos/.src/, so only a frame is shown here.');
+      pv.replaceChildren(h('div', {}, h('img', { src: thumbURL(it.path, 480, it.mtime), style: { width: '100%', display: 'block' }, onerror: e => e.target.remove() }), note)); pv.style.display = 'block';
+    }
+    acts.append(h('button', { class: 'btn', title: 'Your Cutroom editor: it opens its own window', onclick: () => api('/api/audio/open', { path: it.path, app: 'cutroom' }).then(() => toast('Opening Cutroom')).catch(e => toast(e.message)) }, 'Open in Cutroom'));
   } else pv.replaceChildren(icon('file'));
   acts.append(
     h('button', { class: 'btn ghost', title: 'Rename (F2)', onclick: () => rename(it) }, 'Rename'),
     h('button', { class: 'btn ghost danger', title: 'Move to the trash folder (Delete)', onclick: () => trash(it) }, 'Trash'),
     h('button', { class: 'btn ghost', title: 'Copy the full path', onclick: () => navigator.clipboard?.writeText(it.path).then(() => toast('Path copied')) }, 'Copy path'));
+}
+// the file a browser can play for a video: the file itself, or for a game's .ogv the original Kiln kept in videos/.src/
+async function playable(it) {
+  if (!/\.ogv$/i.test(it.name)) return it.path;
+  const r = await api('/api/fs?path=' + encodeURIComponent(it.path.replace(/\/[^/]*$/, '/.src'))).catch(() => null);
+  return r?.items?.find(i => i.name.replace(/\.\w+$/, '') === it.name.replace(/\.\w+$/, ''))?.path || null;
 }
 function openFile(it) {
   if (IMG.test(it.name)) emit('slice-sheet', it.path);
