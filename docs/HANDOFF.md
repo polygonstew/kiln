@@ -48,7 +48,7 @@ Also verified: the stacker (bricks fall, land, next spawns). FMV/text templates 
 ## START HERE (session 9 → 10, written 2026-10-16)
 
 Done: sleek pass (calm Gloop, no colour emoji; the gold wheel / menus / Ctrl+K were **reverted at the user's request: they like that look, leave it**), **Files fixed** (view needs class `ws`; smoke.py now checks the middle column), Files plays video/sound and shows poster frames (thumbs.py), FMV + text templates verified in headless Godot. Details: RESUME "session 9".
-Round 2 also did: posters on Flow cards and Home's map, dock fix for empty slots. Ideas not started: Android export / butler upload; 2D lighting; cutscenes; a lore bible and writing help for Dialogue; named workspaces across areas; collapsible sections everywhere.
+Round 2 also did: posters on Flow cards and Home's map, dock fix for empty slots. Round 3: the Stage / templates no longer auto-start the game (▶ Play button), Logic's variables fixed (dock wrappers), Forge/Logic cosmetics. Ideas not started: Android export / butler upload; 2D lighting; cutscenes; a lore bible and writing help for Dialogue; named workspaces across areas; collapsible sections everywhere.
 
 ## START HERE (session 7 → 8, written 2026-10-15; all three asks done; sleek pass done in session 9 (2026-10-16); next: built-in help follow-ups, see START HERE (session 6) below)
 

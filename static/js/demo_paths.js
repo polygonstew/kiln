@@ -44,9 +44,8 @@ export async function newGameFolder(suggested, what, pick) {
       const r = await saveAll(t => step('  ' + t));
       if (r.failed.length) step('Some parts failed: ' + r.failed.join('; '));
       pref.set(buildKey(), { start: 'none', ...buildPick });
-      step('Done. Starting it in the Stage…');
-      sessionStorage.setItem('kiln.play', '1');
-      setTimeout(() => restart(`Your game from ${what} is ready: look inside Flow and each area, then make it yours`, 'stage'), 800);
+      step('Done.');
+      setTimeout(() => restart(`Your game from ${what} is ready: look inside Flow and each area, and press Play it when you want to try it`, 'home'), 800);
     },
   };
 }

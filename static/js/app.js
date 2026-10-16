@@ -75,6 +75,5 @@ async function boot() {
   show(location.hash.slice(1) || pref.get('tab', 'home'));
   const hello = sessionStorage.getItem('kiln.hello'); sessionStorage.removeItem('kiln.hello');      // after New game / Open game
   if (hello) toast(hello, 'ok');
-  if (sessionStorage.getItem('kiln.play')) { sessionStorage.removeItem('kiln.play'); setTimeout(() => emit('play'), 800); }     // a demo just made: play it
 }
 boot();

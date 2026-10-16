@@ -583,7 +583,7 @@ table.wk-anims tr.done .st { color: var(--ok); } table.wk-anims tr.unposed .st {
 .lg-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 6px; } .lg-dot.cat-event { background: #c4502a; } .lg-dot.cat-flow { background: #c49a2a; } .lg-dot.cat-act { background: #3d72c4; } .lg-dot.cat-val { background: #3a9a63; }
 .lg-pal { display: flex; flex-wrap: wrap; gap: 4px; padding: 6px 0 4px; } .lg-pi { background: #1c1b19; border: 1px solid var(--line); color: var(--ink); font-size: 11px; padding: 3px 7px; border-radius: 2px; cursor: pointer; } .lg-pi:hover { border-color: var(--ember); }
 .lg-code { position: static; margin: 8px 0 0; padding: 8px 10px; background: #10100f; border: 1px solid var(--line); font: 11px/16px var(--mono); max-height: 46vh; overflow: auto; white-space: pre; color: #d8d4c8; tab-size: 3; }
-.lg-vars { display: flex; flex-direction: column; gap: 4px; } .lg-var { display: grid; grid-template-columns: 1fr 96px 62px 24px; gap: 4px; align-items: center; } .lg-var input, .lg-var select { min-width: 0; font-size: 12px; padding: 2px 4px; }
+.lg-vars { display: flex; flex-direction: column; gap: 4px; } .lg-var { display: grid; grid-template-columns: 1fr 120px 62px 24px; gap: 4px; align-items: center; } .lg-var input, .lg-var select { min-width: 0; font-size: 12px; padding: 2px 4px; }
 .lg-outline { display: flex; flex-direction: column; max-height: 220px; overflow: auto; }
 /* Puppet: Head & mouth card (puppet_face.js) */
 .pp-heads { display: flex; flex-wrap: wrap; gap: 6px; align-items: flex-end; }

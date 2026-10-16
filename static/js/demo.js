@@ -152,6 +152,5 @@ export async function makeDemo(pick = { path: 'scroller' }) {
   if (r.failed.length) step('Some parts failed: ' + r.failed.join('; '));
   pref.set(buildKey(), { level: 'res://levels/demo/demo.tscn', player: 'res://sprites/hero/hero.tscn', hud: 'res://hud/hud/hud.tscn', start: 'menu' });
   step('Done. Building it in the Stage…');
-  sessionStorage.setItem('kiln.play', '1');
-  setTimeout(() => restart('Your game from the template is ready: open any area to see how its part was made', 'stage'), 900);
+  setTimeout(() => restart('Your game from the template is ready: open any area to see how its part was made, and press Play it when you want to try it', 'home'), 900);
 }

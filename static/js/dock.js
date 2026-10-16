@@ -48,12 +48,20 @@ export function dockArea(id, el) {
 
 // a column was (re)built: move its panels to their docks, in their order; the ones it had before go
 function place(A, side, src) {
-  // a wrapper holding several sections (an inspector) gives each of them as a panel
-  const kids = [...src.children].flatMap(k => !k.classList.contains('sec') && k.querySelector(':scope > .sec') ? [...k.children] : [k]);
+  // a wrapper holding several sections (an inspector) gives each of them as a panel. It is watched too: its owner may
+  // rebuild it later (Logic's graph side does, on every variable) and the new sections must land in the docks as well
+  const kids = [...src.children].flatMap(k => { if (!k.classList.contains('sec') && k.querySelector(':scope > .sec')) { watch(A, side, k); k._placed = [...k.children]; return k._placed; } return [k]; });
+  const own = !!src.dataset.dkw;
+  if (own ? src._fresh : A.fresh?.[side]) {       // rebuilt: what it put in the docks before goes
+    const old = own ? src._placed || [] : A.placed[side];
+    for (const n of old) n.remove();
+    A.placed[side] = A.placed[side].filter(n => !old.includes(n));
+    if (own) { src._fresh = false; src._placed = []; } else A.fresh[side] = false;
+    if (!kids.length) apply(A);
+  }
   if (!kids.length) return;
-  if (A.fresh?.[side]) { for (const old of A.placed[side]) old.remove(); A.placed[side] = []; A.fresh[side] = false; }
   const base = A.placed[side].length;
-  A.placed[side].push(...kids);
+  A.placed[side].push(...kids); if (own) (src._placed ||= []).push(...kids);
   kids.forEach((node, j) => { const i = base + j;
     const k = keyOf(node, side, i);
     node.dataset.dk = k; node.classList.add('dk-panel');
@@ -62,6 +70,12 @@ function place(A, side, src) {
     put(A, node, k, A.layout.where[k] || side);
   });
   apply(A);
+}
+function watch(A, side, w) {
+  if (w.dataset.dkw) return;
+  w.dataset.dkw = '1';
+  w.replaceChildren = (...n) => { w._fresh = true; return Element.prototype.replaceChildren.apply(w, n); };
+  new MutationObserver(() => place(A, side, w)).observe(w, { childList: true });
 }
 // an added panel (the asset shelf, the preview): bottom dock unless moved
 async function addExtra(A, k) {

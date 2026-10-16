@@ -53,7 +53,6 @@ export const stage = {
     const st = await api('/api/play/status').catch(() => ({}));
     built = !!st.built; secureURL = st.secure || '';
     if (st.running && !busy) follow();      // a build started elsewhere (or before a reload)
-    else if (built && !live && !busy) load();
     drawBar(); drawEmpty();
   },
   hide() { unload(); rec?.stop(); },
@@ -78,7 +77,7 @@ function drawEmpty() {
       here ? h('a', { class: 'btn go', href: here, title: 'Kiln over https (only your own devices on Tailscale can reach it)' }, 'Open ' + secureURL.replace('https://', '')) : '',
       built ? h('p', { class: 'note' }, 'The last build is ready there.') : '');
   }
-  V.empty.replaceChildren(busy ? h('h2', {}, 'Building…') : h('h2', {}, built ? 'The game is paused' : 'Nothing built yet'),
+  V.empty.replaceChildren(busy ? h('h2', {}, 'Building…') : h('h2', {}, built ? 'Ready to play' : 'Nothing built yet'),
     h('p', {}, busy ? 'Godot is exporting your asset folder for the web. Watch the log below.' : built ? 'It stops while you are in another area.' : 'Build a small game from your asset folder (the level, player and HUD on the left) and play it right here. It takes 10 s to a minute; your files are only read.'),
     busy ? '' : h('button', { class: 'btn go', title: built ? 'Start the last build again' : 'Build the game with Godot and play it here', onclick: () => built ? load() : build() }, built ? '▶ Play' : '▶ Build and play'));
 }
