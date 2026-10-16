@@ -139,7 +139,7 @@ function openPath() {
 function nudge(step) {
   document.querySelector('.jr-nudge')?.remove();
   const n = next();
-  const card = h('div', { class: 'jr-nudge' }, h('b', {}, `✓ ${step[1]}!`), n ? h('span', {}, ` Next: ${n[1].toLowerCase()}. `) : h('span', {}, ' Every step done: it is a game.'),
+  const card = h('div', { class: 'jr-nudge' }, h('b', {}, `✓ ${step[1]}`), n ? h('span', {}, ` Next: ${n[1].toLowerCase()}. `) : h('span', {}, ' Every step done: it is a game.'),
     n ? h('button', { class: 'btn sm go', onclick: () => { card.remove(); go(n[3]); } }, 'Go') : '', h('button', { class: 'ibtn', title: 'Close', onclick: () => card.remove() }, '✕'));
   document.body.append(card);
   setTimeout(() => card.remove(), 12000);

@@ -27,7 +27,7 @@ export class Player {
       h('button', { class: 'ibtn juice', title: 'Hit flash: the sprite flashes white, as when it takes a hit (F)', onclick: () => this.juice('flash') }, 'F'),
       h('button', { class: 'ibtn juice', title: 'Squash and stretch: a landing squash that springs back (S)', onclick: () => this.juice('squash') }, 'S'),
       h('button', { class: 'ibtn juice', title: 'Screen shake: a heavy impact (K)', onclick: () => this.juice('shake') }, 'K'),
-      h('button', { class: 'ibtn juice', title: 'All three: a big hit', onclick: () => { this.juice('flash'); this.juice('squash'); this.juice('shake'); } }, '✸'),
+      h('button', { class: 'ibtn juice', title: 'All three: a big hit', onclick: () => { this.juice('flash'); this.juice('squash'); this.juice('shake'); } }, 'All'),
     ];
     this.speedSel = h('select', { style: { width: '64px' }, title: 'Playback speed', onchange: () => this.speed = +this.speedSel.value },
       ...[[.25, '¼×'], [.5, '½×'], [1, '1×'], [2, '2×']].map(([v, l]) => h('option', { value: v }, l)));

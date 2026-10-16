@@ -208,3 +208,13 @@ their settings and tries; saved scenes/tiles stay). Menus also rewrites menus/*.
 live inside the actor (Animate Open/Remove covers them), single concept images have no remove yet. File → New presses Start over in these areas.
 Verified in the throwaway copy: Camera, Cards, Flow, Game doc, Style (modal), Menus, Concepts, Forge (prompt + source restored) all archive and restore; smoke clean.
 
+
+## 2026-10-16 session 9: the sleek pass (handoff job 6)
+Goal: calmer, less corny defaults. **Wheel / right-click menu / Ctrl+K / Controls sheet** were a black-and-gold "augmentation HUD" (hex honeycomb, dotted rings,
+scanlines, glow, chamfered segments, letterspaced capitals, rotating pop-in). Now plain panels in Kiln's own tokens (`--p1/--p2/--line2/--ember`): round
+sectors, round centre, mixed-case labels, quiet veil, 0.97-scale fade. The right-click menu shares the `.mb-panel` rules (kiln.css). The wheel's centre
+caption class is `dx-cap` (was `dx-sub`, which clashed with the sub-menu). **Gloop**: smaller (44 px), sage-green, eyes only (no smile, highlights, shadow or
+jiggle; one slow blink), fades in 8 px instead of bouncing, neutral bubble border; calmer copy (no "Hi, I'm Gloop!", no exclamation marks). **Emoji out**:
+🎲 🔑 🎙 🔒 🖼 ⚡ ✸ replaced by plain text or the dice glyph ⚂; the ✦ next to every Game doc part is a small "Ideas" button; the Wild card tile lost its rainbow
+stripe; step nudge lost its "!" and its 20 px slide. Kept: ✕ ✓ ⚑ ⚙ ▶ and the other typographic glyphs (monochrome). Game content (demo dialogue) is untouched.
+Verified with Playwright screenshots in the throwaway copy and smoke.py (clean). No server change, so no restart needed.

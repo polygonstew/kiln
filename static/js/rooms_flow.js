@@ -83,7 +83,7 @@ export async function openFlow() {
   // cards in columns by step; arrows from what gave each need
   const W = 210, HC = 58, GX = 56, GY = 12, cols = {}, pos = new Map();
   const cards = [{ key: 'start', step: 0, room: data.start.name, title: `Start in ${data.start.name}`, sub: '', kind: 'start' }];
-  for (const a of S.acts) if (S.done.has(a.key)) cards.push({ key: a.key, step: S.done.get(a.key), room: a.room, title: a.q.title || a.q.name, sub: verb(a.q, I), needs: [a.q.needs && '🔑 ' + ((I.items.find(i => i.id === a.q.needs) || {}).name || a.q.needs), a.q.needsFlag && '⚑ ' + a.q.needsFlag, a.q.when && '⚑ ' + a.q.when].filter(Boolean), kind: a.q.does, act: a });
+  for (const a of S.acts) if (S.done.has(a.key)) cards.push({ key: a.key, step: S.done.get(a.key), room: a.room, title: a.q.title || a.q.name, sub: verb(a.q, I), needs: [a.q.needs && 'needs ' + ((I.items.find(i => i.id === a.q.needs) || {}).name || a.q.needs), a.q.needsFlag && '⚑ ' + a.q.needsFlag, a.q.when && '⚑ ' + a.q.when].filter(Boolean), kind: a.q.does, act: a });
   for (const [it, by] of S.have) if (by.combo) cards.push({ key: 'combo:' + it, step: by.step, room: '', title: `Combine → ${(I.items.find(i => i.id === it) || {}).name || it}`, sub: `${by.combo.a} + ${by.combo.b}`, kind: 'combo', combo: by.combo });
   for (const c of cards) { const i = (cols[c.step] ||= []).length; cols[c.step].push(c); pos.set(c.key, [c.step * (W + GX), i * (HC + GY)]); }
   const maxRows = Math.max(...Object.values(cols).map(c => c.length)), width = (Math.max(...Object.keys(cols).map(Number)) + 1) * (W + GX), height = maxRows * (HC + GY);

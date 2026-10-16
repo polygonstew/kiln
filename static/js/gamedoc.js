@@ -1,7 +1,7 @@
 // Game doc: the game's design document in one long page. Pitch, story, world and lore, characters, mechanics, levels,
 // look and sound, plan, notes (the sections are in gamedoc_shape.js). Parts that the game already knows (the cast,
 // enemies, controls, levels, the style) come in by themselves. Stuck? The right panel follows the section you are in
-// with questions, themes, genre checklists, an idea roll and names (gamedoc_stuck.js); ✦ next to a part asks for three
+// with questions, themes, genre checklists, an idea roll and names (gamedoc_stuck.js); an Ideas button next to a part asks for three
 // ideas that fit what is written. Kept as kiln/gamedoc-game.json (autosaved); Save writes docs/GAME.md, docs/pitch.html
 // and docs/game_doc.html into the asset folder; "Pitch page" shows the one-pager to send to people.
 import { h, api, toast, on, emit, download, artCtx } from './core.js';
@@ -189,7 +189,7 @@ function ideasBtn(sec, label, current, use) {
     if (r.err || !r.ideas?.length) return box.replaceChildren(h('p', { class: 'note' }, r.err || 'No ideas came back: try again.'), h('button', { class: 'ibtn', onclick: () => box.remove() }, '✕'));
     box.replaceChildren(h('div', { class: 'gd-head' }, h('small', {}, 'Ideas: use one, or let them start you off'), h('span', { class: 'grow' }), h('button', { class: 'ibtn', title: 'Close', onclick: () => box.remove() }, '✕')),
       ...r.ideas.map(t => h('div', { class: 'gd-idea' }, h('p', {}, t), h('button', { class: 'btn sm ghost', onclick: ev => { use(t); ev.currentTarget.textContent = 'Used'; ev.currentTarget.disabled = true; } }, 'Use'))));
-  } }, '✦');
+  } }, 'Ideas');
 }
 
 /* ------------------------------------------------- the panel that follows ---- */

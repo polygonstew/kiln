@@ -7,7 +7,7 @@ import { h, pref } from './core.js';
 const T = {
   gamedoc: [['tab', 'Game doc', 'Your game\'s design document: everything about it in one place, to pitch it and to keep it straight for yourself.'],
     ['h3:Game doc', 'Sections', 'Jump to a section. The bars show how much of each is written; it all keeps itself as you type.'],
-    ['stage', 'The document', 'Write in any part. Actors, enemies, controls and levels from your game come in by themselves. ✦ next to a part gives three ideas.'],
+    ['stage', 'The document', 'Write in any part. Actors, enemies, controls and levels from your game come in by themselves. Ideas next to a part gives three ideas.'],
     ['h3:Stuck?', 'Stuck?', 'This panel follows the section you are reading: questions to think about, themes, names, an idea roll, what your genre usually has.'],
     ['btn:Pitch page', 'Pitch page', 'The one-pager to send people: key art, title, hook, characters with their sprites. Print it to PDF from there.']],
   files: [['tab', 'Files', 'Your asset folder, laid out the way Godot reads it. Everything Kiln makes lands here.'],

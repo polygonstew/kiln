@@ -1,16 +1,11 @@
-// Gloop, the helper: a little green slime who pops up once in a new game to ask what you'd like to do (instead of a
-// big welcome window), then goes away. Help → Gloop brings him back with the next step for your game, a tour of the
+// Gloop, the helper: a small, quiet sage-green blob who shows up once in a new game to ask what you'd like to do
+// (instead of a big welcome window), then goes away. Help → Gloop brings him back with the next step for your game, a tour of the
 // area you are in, and the guides. He never blocks anything: click elsewhere and he slides off.
 import { h, pref, emit } from './core.js';
 
-export const SLIME = `<svg viewBox="0 0 64 56" width="64" height="56" aria-hidden="true">
-  <ellipse cx="32" cy="52" rx="22" ry="3" fill="#0006"/>
-  <g class="gl-body"><path d="M8 50 C4 50 4 40 8 32 C12 14 22 6 32 6 C44 6 52 16 56 32 C60 42 60 50 54 50 Z" fill="#5fd36b"/>
-  <path d="M12 46 C10 40 12 32 16 26" stroke="#9ff0a5" stroke-width="3" fill="none" stroke-linecap="round"/>
-  <ellipse cx="22" cy="17" rx="5" ry="3" fill="#c8ffd0" opacity=".7"/>
-  <g class="gl-eyes"><ellipse cx="24" cy="30" rx="4" ry="5" fill="#13261a"/><ellipse cx="40" cy="30" rx="4" ry="5" fill="#13261a"/>
-  <circle cx="25.5" cy="28" r="1.5" fill="#fff"/><circle cx="41.5" cy="28" r="1.5" fill="#fff"/></g>
-  <path d="M27 39 Q32 43 37 39" stroke="#13261a" stroke-width="2.4" fill="none" stroke-linecap="round"/></g></svg>`;
+export const SLIME = `<svg viewBox="0 0 64 56" width="44" height="38" aria-hidden="true">
+  <path class="gl-b" d="M8 50 C4 50 4 40 8 32 C12 14 22 6 32 6 C44 6 52 16 56 32 C60 42 60 50 54 50 Z"/>
+  <g class="gl-eyes"><ellipse class="gl-e" cx="24" cy="31" rx="3.5" ry="4.5"/><ellipse class="gl-e" cx="40" cy="31" rx="3.5" ry="4.5"/></g></svg>`;
 
 // show Gloop with words and buttons: [[label, run, primary?]]
 export function showHelper(words, buttons = []) {
@@ -31,7 +26,7 @@ export function helloOnce(root) {
   const seen = pref.get('gloop.seen', []);
   if (seen.includes(root)) return;
   pref.set('gloop.seen', [...seen, root].slice(-40));
-  setTimeout(() => showHelper('Hi, I\'m Gloop! A fresh game. Want me to show you where to start? (I\'ll be in Help → Gloop if you need me.)', [
+  setTimeout(() => showHelper('Gloop here. This is a new game: want the steps, or a tour of this area? You can find me again under Help → Gloop.', [
     ['Show me the steps', () => import('./journey.js').then(m => m.openSteps()), true],
     ['Tour this area', () => import('./tour.js').then(m => m.tour(document.querySelector('#tabs .on')?.dataset.id || 'files'))],
   ]), 1200);
@@ -40,7 +35,7 @@ export function helloOnce(root) {
 // Help → Gloop: the next step for this game, and the guides
 export async function callGloop() {
   const n = await import('./journey.js').then(m => m.nextStep()).catch(() => null);
-  showHelper(n ? `Next for your game: ${n[1].toLowerCase()}. ${n[2]}` : 'Every step is done: it\'s a game! Export it from the game chip and share it.', [
+  showHelper(n ? `Next for your game: ${n[1].toLowerCase()}. ${n[2]}` : 'Every step is done. Export it from the game chip when you want to share it.', [
     ['Ask me…', () => import('./ask.js').then(m => m.openAsk())],
     ...(n ? [['Do it', () => import('./journey.js').then(m => m.doStep(n)), true]] : []),
     ['All the steps', () => import('./journey.js').then(m => m.openSteps())],

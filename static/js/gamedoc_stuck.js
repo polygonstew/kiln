@@ -19,14 +19,14 @@ export function stuckPanel(sec, ctx) {
     h('div', { class: 'sec' }, h('h3', {}, 'Stuck?', h('span', { class: 'grow' }), h('button', { class: 'ibtn', title: 'Other questions', onclick: drawQs }, '↻')),
       h('p', { class: 'note', style: { marginTop: 0 } }, 'Questions for this section. Answer one in a sentence and the rest often follows.'), qbox),
     spark(sec, ctx) || '',
-    h('div', { class: 'sec' }, h('p', { class: 'note', style: { margin: 0 } }, '✦ next to a part gives three ideas that fit what you have written so far.')));
+    h('div', { class: 'sec' }, h('p', { class: 'note', style: { margin: 0 } }, 'Ideas next to a part gives three ideas that fit what you have written so far.')));
 }
 
 function spark(sec, ctx) {
   if (sec === 'pitch') {
     const out = h('p', { class: 'gd-roll' }, rollIdea());
     return h('div', { class: 'sec' }, h('h3', {}, 'Roll an idea'), out,
-      h('div', { class: 'pp-row' }, h('button', { class: 'btn sm', onclick: () => out.textContent = rollIdea() }, '🎲 Roll again'),
+      h('div', { class: 'pp-row' }, h('button', { class: 'btn sm', onclick: () => out.textContent = rollIdea() }, 'Roll again'),
         h('button', { class: 'btn sm ghost', title: 'Make this the logline (you can change it there)', onclick: () => { ctx.useLogline(out.textContent); toast('It is your logline now: make it yours', 'ok'); } }, 'Use as logline')));
   }
   if (sec === 'story') {

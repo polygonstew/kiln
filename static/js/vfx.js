@@ -111,13 +111,13 @@ export function vfxPreview(v, scale = 3) {
   const tick = () => { if (!cv.isConnected && i > 0) return; x.clearRect(0, 0, s, s); x.drawImage(toCanvas(fr[i % fr.length]), 0, 0); i++; setTimeout(tick, i % fr.length ? 70 : 400); };
   tick(); return cv;
 }
-// kind / colours / size pickers + 🎲 for one effect slot
+// kind / colours / size pickers + ⚂ for one effect slot
 export function vfxRow(label, v, set, remove) {
   const sel = (opts, val, f) => h('select', { onchange: e => f(e.target.value) }, ...opts.map(o => h('option', { value: o, selected: String(o) === String(val) }, o)));
   return h('div', { class: 'vfx-row' }, vfxPreview(v),
     h('div', { class: 'vfx-c' }, h('b', {}, label),
       h('div', { class: 'vfx-s' }, sel(VFX_KINDS, v.kind, k => set({ ...v, kind: k })), sel(Object.keys(COLOURS), v.colours, c => set({ ...v, colours: c })), sel([16, 24, 32, 48], v.size, z => set({ ...v, size: +z })),
-        h('button', { class: 'btn sm ghost', title: 'Another variation', onclick: () => set({ ...v, seed: Math.floor(Math.random() * 1e9) }) }, '🎲'),
+        h('button', { class: 'btn sm ghost', title: 'Another variation', onclick: () => set({ ...v, seed: Math.floor(Math.random() * 1e9) }) }, '⚂'),
         remove ? h('button', { class: 'ibtn', title: 'No effect', onclick: remove }, '✕') : '')));
 }
 

@@ -1,6 +1,6 @@
 // Command wheel (Shift+A) and Kiln's own right-click menu.
 // Three rings around the cursor: AREA (inner, the workspaces), TOOL (middle) and GUIDE (outer), filled by
-// whichever workspace is showing. Black and gold, angular, in the spirit of an augmentation HUD.
+// whichever workspace is showing. Plain panels in Kiln's own colours.
 // Tap Shift+A and click, or hold A, flick toward a segment and let go.
 import { h, emit } from './core.js';
 
@@ -53,22 +53,16 @@ function open(x, y, held) {
   x = Math.max(S / 2, Math.min(innerWidth - S / 2, x)); y = Math.max(S / 2, Math.min(innerHeight - S / 2, y));
   const ns = 'http://www.w3.org/2000/svg', el = (t, a = {}, ...k) => { const n = document.createElementNS(ns, t); for (const [q, v] of Object.entries(a)) n.setAttribute(q, v); n.append(...k); return n; };
   const svg = el('svg', { width: S, height: S, viewBox: `0 0 ${S} ${S}`, class: 'dx-svg' });
-  svg.append(el('defs', {}, el('pattern', { id: 'dxhex', width: 14, height: 24, patternUnits: 'userSpaceOnUse' },
-    el('path', { d: 'M7 0 L14 4 L14 12 L7 16 L0 12 L0 4 Z M7 16 L7 24', fill: 'none', stroke: 'rgba(232,165,54,.07)', 'stroke-width': 1 }))));
-  svg.append(el('circle', { cx, cy: cx, r: R.g1 + 14, fill: 'url(#dxhex)' }));
   const segs = [];
   for (const ring of rings) {
     const n = ring.items.length;
-    // ring guide: a thin broken circle with the ring's name
-    svg.append(el('circle', { cx, cy: cx, r: ring.r1 + 3, fill: 'none', stroke: 'rgba(232,165,54,.25)', 'stroke-width': 1, 'stroke-dasharray': '2 6' }));
     if (!n) { svg.append(el('text', { x: cx, y: cx - (ring.r0 + ring.r1) / 2 + 4, class: 'dx-empty', 'text-anchor': 'middle' }, `no ${ring.name.toLowerCase()}s here`)); continue; }
     const span = (Math.PI * 2) / n, gap = Math.min(0.06, span * 0.08);
     ring.items.forEach((it, i) => {
       const a0 = -Math.PI / 2 + i * span - span / 2 + gap, a1 = a0 + span - gap * 2;
       const p = (r, a) => `${(cx + r * Math.cos(a)).toFixed(1)} ${(cx + r * Math.sin(a)).toFixed(1)}`;
-      // chamfered segment: the outer corners are cut, which gives the angular look
-      const ch = Math.min(0.05, (a1 - a0) * 0.18);
-      const d = `M ${p(ring.r0, a0)} L ${p(ring.r1 - 8, a0)} L ${p(ring.r1, a0 + ch)} A ${ring.r1} ${ring.r1} 0 ${a1 - a0 - 2 * ch > Math.PI ? 1 : 0} 1 ${p(ring.r1, a1 - ch)} L ${p(ring.r1 - 8, a1)} L ${p(ring.r0, a1)} A ${ring.r0} ${ring.r0} 0 ${a1 - a0 > Math.PI ? 1 : 0} 0 ${p(ring.r0, a0)} Z`;
+      const big = a1 - a0 > Math.PI ? 1 : 0;
+      const d = `M ${p(ring.r0, a0)} L ${p(ring.r1, a0)} A ${ring.r1} ${ring.r1} 0 ${big} 1 ${p(ring.r1, a1)} L ${p(ring.r0, a1)} A ${ring.r0} ${ring.r0} 0 ${big} 0 ${p(ring.r0, a0)} Z`;
       const g = el('g', { class: 'dx-seg' + (it.on ? ' on' : '') });
       g.append(el('path', { d }));
       const am = (a0 + a1) / 2, rm = (ring.r0 + ring.r1) / 2;
@@ -80,24 +74,23 @@ function open(x, y, held) {
       svg.append(g); segs.push(g);
     });
   }
-  // centre: hexagon readout
-  const hx = Array.from({ length: 6 }, (_, i) => { const a = Math.PI / 6 + i * Math.PI / 3; return `${cx + R.c * Math.cos(a)},${cx + R.c * Math.sin(a)}`; }).join(' ');
-  svg.append(el('polygon', { points: hx, class: 'dx-core' }));
-  const t1 = el('text', { x: cx, y: cx - 4, 'text-anchor': 'middle', class: 'dx-title' }, 'KILN');
-  const t2 = el('text', { x: cx, y: cx + 12, 'text-anchor': 'middle', class: 'dx-sub' }, 'SELECT');
+  // centre: what you are pointing at
+  svg.append(el('circle', { cx, cy: cx, r: R.c, class: 'dx-core' }));
+  const t1 = el('text', { x: cx, y: cx - 4, 'text-anchor': 'middle', class: 'dx-title' }, 'Kiln');
+  const t2 = el('text', { x: cx, y: cx + 12, 'text-anchor': 'middle', class: 'dx-cap' }, 'Choose');
   svg.append(t1, t2);
   const box = h('div', { class: 'dx-wheel', style: { left: x - S / 2 + 'px', top: y - S / 2 + 'px', width: S + 'px', height: S + 'px' } }, svg);
   const veil = h('div', { class: 'dx-veil', onpointerdown: e => { if (e.target === veil) close(); }, oncontextmenu: e => { e.preventDefault(); close(); } }, box,
-    h('div', { class: 'dx-help' }, 'SHIFT+A  ·  CLICK A SEGMENT  ·  OR HOLD A, FLICK, RELEASE  ·  ESC CLOSES'));
+    h('div', { class: 'dx-help' }, 'Click a segment, or hold A, flick and let go. Esc closes.'));
   document.body.append(veil);
   W = { veil, t1, t2, held, moved: false, hot: null, x, y };
   const esc = e => { if (e.key === 'Escape' && W) { e.stopPropagation(); close(); } };
   window.addEventListener('keydown', esc, true); W.esc = esc;
   veil.addEventListener('pointermove', e => { if (Math.hypot(e.clientX - x, e.clientY - y) > R.a0) W.moved = true; });
 }
-// "Rectangle (Shift: filled)" -> "RECTANGLE", "Move the whole frame" -> "MOVE THE WHOLE" fitted by words
+// "Rectangle (Shift: filled)" -> "Rectangle", "Move the whole frame" -> "Move the" fitted by words
 function short(t, max) {
-  t = t.replace(/\s*\(.*?\)\s*/g, ' ').trim().toUpperCase();
+  t = t.replace(/\s*\(.*?\)\s*/g, ' ').trim();
   if (t.length <= max) return t;
   let out = ''; for (const w of t.split(/\s+/)) { if ((out + ' ' + w).trim().length > max) break; out = (out + ' ' + w).trim(); }
   return out || t.slice(0, max);
@@ -105,7 +98,7 @@ function short(t, max) {
 function hot(s) {
   if (!W) return;
   W.hot?.g.classList.remove('hot'); W.hot = s; s.g.classList.add('hot');
-  W.t1.textContent = s.it.label.toUpperCase().slice(0, 12); W.t2.textContent = s.ring + (s.it.hint ? ' · ' + s.it.hint.toUpperCase().slice(0, 18) : '');
+  W.t1.textContent = s.it.label.slice(0, 12); W.t2.textContent = s.ring.toLowerCase() + (s.it.hint ? ' · ' + s.it.hint.slice(0, 18) : '');
 }
 function choose(s) { close(); try { s.it.run(); } catch (e) { console.error(e); } }
 function close() {
@@ -180,7 +173,7 @@ function showKeys() {
   const area = current(), name = areas().find(a => a.id === area)?.label || '';
   const col = (title, list) => h('div', { class: 'dx-kcol' }, h('div', { class: 'dx-head' }, title), ...list.map(([k, d]) => h('div', { class: 'dx-krow' }, h('kbd', {}, k), h('span', {}, d))));
   K = h('div', { class: 'dx-veil dx-keys', onpointerdown: e => { if (e.target === K) closeKeys(); } },
-    h('div', { class: 'dx-kbox' }, h('div', { class: 'dx-ktitle' }, 'CONTROLS', h('small', {}, name.toUpperCase())),
+    h('div', { class: 'dx-kbox' }, h('div', { class: 'dx-ktitle' }, 'Controls', h('small', {}, name)),
       h('div', { class: 'dx-kcols' }, KEYS[area] ? col(name, KEYS[area]) : null, col('Everywhere', KEYS['*']))));
   document.body.append(K);
 }

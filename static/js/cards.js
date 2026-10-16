@@ -41,7 +41,7 @@ const kindColour = c => c.attack ? '#e05d5d' : c.block ? '#4cc9f0' : '#06d6a0';
 
 function card(c) {
   return h('button', { class: 'cd-card' + (sel === c.id ? ' on' : ''), style: { '--k': kindColour(c) }, onclick: () => { sel = c.id; draw(); } },
-    h('b', {}, `${c.cost} ⚡`), h('div', { class: 'cd-pic' }, c.picture ? h('img', { src: '/api/fs/raw?path=' + encodeURIComponent(FS.root + '/' + c.picture) }) : ''),
+    h('b', {}, `Cost ${c.cost}`), h('div', { class: 'cd-pic' }, c.picture ? h('img', { src: '/api/fs/raw?path=' + encodeURIComponent(FS.root + '/' + c.picture) }) : ''),
     h('strong', {}, c.name), h('small', {}, does(c)), h('i', {}, `×${c.copies || 0} in the deck`));
 }
 function draw() {

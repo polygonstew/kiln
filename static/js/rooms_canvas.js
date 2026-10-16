@@ -60,7 +60,7 @@ export function roomCanvas(ctx) {
       const on = q.id === sel, c = q.does === 'go' ? '#6fb3d9' : q.does === 'pick' ? '#9cc76b' : q.does === 'talk' ? '#c06bd6' : '#e3b04b';
       poly(q.poly, c + (on ? '40' : hover === q.id ? '30' : '1c'), c, on ? 2 : 1);
       const top = q.poly.reduce((a, p) => p[1] < a[1] ? p : a, q.poly[0]);
-      x.fillStyle = '#000a'; const t = (q.title || q.name) + (q.needs ? ' 🔒' : '') + (q.when || q.unless ? ' ⚑' : ''), tw = x.measureText(t).width;
+      x.fillStyle = '#000a'; const t = (q.title || q.name) + (q.needs ? ' (locked)' : '') + (q.when || q.unless ? ' ⚑' : ''), tw = x.measureText(t).width;
       x.fillRect(top[0] * z - tw / 2 - 3, top[1] * z - 16, tw + 6, 14); x.fillStyle = c; x.fillText(t, top[0] * z - tw / 2, top[1] * z - 5);
       if (on) {
         dots(q.poly, c);

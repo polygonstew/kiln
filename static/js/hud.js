@@ -538,7 +538,7 @@ function drawRight() {
         } }, 'Game\'s items'),
         h('button', { class: 'btn sm', title: 'Add an item to the next free slot', onclick: () => { (w.items = w.items || []).push({ id: 'item' + (w.items.length + 1), name: 'New item', desc: '', icon: '', count: 1 }); w.sel = w.items.length - 1; r(); drawRight(); } }, '+ Item')),
         ...(w.items || []).map((it, i) => h('div', { class: 'invitem' + (i === w.sel ? ' on' : ''), onclick: () => { w.sel = i; r(); drawRight(); } },
-          h('button', { class: 'btn sm ghost', title: 'Pick an icon (first frame of a saved actor or sprite)', onclick: e => { e.stopPropagation(); pickSprite(p => { it.icon = p; loadImg(p); r(); drawRight(); }); } }, it.icon ? '🖼' : 'Icon…'),
+          h('button', { class: 'btn sm ghost', title: 'Pick an icon (first frame of a saved actor or sprite)', onclick: e => { e.stopPropagation(); pickSprite(p => { it.icon = p; loadImg(p); r(); drawRight(); }); } }, it.icon ? 'Icon: change' : 'Icon…'),
           h('input', { type: 'text', value: it.name, title: 'Item name', oninput: e => { it.name = e.target.value; it.id = e.target.value.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || it.id; r(); } }),
           h('input', { type: 'number', value: it.count, min: 0, max: 999, title: 'How many', style: { width: '46px' }, oninput: e => { it.count = +e.target.value; r(); } }),
           h('button', { class: 'ibtn', title: 'Remove this item', onclick: e => { e.stopPropagation(); w.items.splice(i, 1); r(); drawRight(); } }, '✕'),

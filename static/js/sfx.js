@@ -68,7 +68,7 @@ export function sfxRow(label, p, set, remove) {
     h('div', { class: 'sfx-h' }, h('b', {}, label),
       h('select', { title: 'Kind of sound', onchange: e => { set(roll(e.target.value), true); } }, ...Object.keys(PRESETS).map(k => h('option', { value: k, selected: k === p.kind }, k))),
       h('button', { class: 'btn sm', title: 'Play', onclick: () => play(p) }, '▶'),
-      h('button', { class: 'btn sm ghost', title: 'Roll a new variation of this kind', onclick: () => { const n = roll(p.kind || 'blip'); set(n, true); play(n); } }, '🎲'),
+      h('button', { class: 'btn sm ghost', title: 'Roll a new variation of this kind', onclick: () => { const n = roll(p.kind || 'blip'); set(n, true); play(n); } }, '⚂'),
       remove ? h('button', { class: 'ibtn', title: 'No sound for this', onclick: remove }, '✕') : ''),
     h('div', { class: 'sfx-ks' }, knob('f0', 'Pitch', 40, 2400, 10), knob('f1', 'Sweep to', 0, 2400, 10), knob('decay', 'Length', .03, 1.2, .01), knob('lowpass', 'Bright', .1, 1, .01),
       h('label', { class: 'sfx-k', title: 'Wave' }, h('span', {}, 'Wave'), h('select', { onchange: e => { p.wave = e.target.value; set(p, false); play(p); } }, ...['square', 'saw', 'sine', 'noise'].map(w => h('option', { value: w, selected: w === p.wave }, w))))));
@@ -86,6 +86,6 @@ export function openSfxDesigner() {
     sfxRow('Sound', p, (n, redraw) => { p = n; if (redraw) draw(); }),
     h('div', { style: { display: 'flex', gap: '8px', alignItems: 'center', marginTop: '12px' } }, h('span', { class: 'faint' }, 'sfx/'), name, h('span', { class: 'faint' }, '.wav'), h('span', { class: 'grow' }),
       h('button', { class: 'btn go', onclick: async () => { const n = name.value.toLowerCase().replace(/[^a-z0-9_]+/g, '_') || 'sound'; await saveFiles('sfx', [{ name: n + '.wav', b64: wav(synth(p)) }]); toast(`Saved sfx/${n}.wav`, 'ok'); } }, 'Save')),
-    h('p', { class: 'note' }, 'Click a kind to roll a new one, 🎲 for another variation of it. In Godot: an AudioStreamPlayer with this file, or $Sound.play().'));
+    h('p', { class: 'note' }, 'Click a kind to roll a new one, ⚂ for another variation of it. In Godot: an AudioStreamPlayer with this file, or $Sound.play().'));
   draw(); document.body.append(m); play(p);
 }

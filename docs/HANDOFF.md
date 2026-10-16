@@ -45,7 +45,7 @@ Verified in headless Godot: the adventure demo played through to its ending; flo
 check → end; story pages with a typed answer; top-down shooting + room camera; push crate + exit → next level.
 Also verified: the stacker (bricks fall, land, next spawns). FMV/text templates were tested through hand-made flows, not their template builds.
 
-## START HERE (session 7 → 8, written 2026-10-15; all three asks done; next: sleek pass, built-in help follow-ups, see START HERE (session 6) below)
+## START HERE (session 7 → 8, written 2026-10-15; all three asks done; sleek pass done in session 9 (2026-10-16); next: built-in help follow-ups, see START HERE (session 6) below)
 
 Done in session 7 (all committed, pushed, Kiln restarted): **Ask Gloop** (ask.js, helpsearch.py, helpbot.py), **Menus** fixes
 (preview colours/size: core.js `h()` custom properties; autosave of menus/*.tscn; 12 fonts; picture / video / scene behind a
@@ -118,7 +118,7 @@ library.tar.zst = all the user's games, plus a copy of the code). Everything bel
    embedding model), put them in the prompt and link the source section. Godot: index the class reference for the
    nodes Kiln writes (CharacterBody2D, Camera2D, AnimatedSprite2D…), not all docs. Settings → "Use your own key"
    (OpenRouter / Gemini / Groq) for better answers. Never call it AI in the UI (it's Gloop).
-6. A "sleek pass": the user finds some things corny; review Gloop's look, emoji in UI, make defaults calm.
+6. DONE 2026-10-16 (session 9), see "the sleek pass" in RESUME.md. Original ask: A "sleek pass": the user finds some things corny; review Gloop's look, emoji in UI, make defaults calm.
 4. Ideas from research to offer: Blender-style named workspaces across areas, Construct's pin-to-edge (done), Bitsy-like
    constraints for first games.
 

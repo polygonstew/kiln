@@ -50,6 +50,6 @@ export async function openScript() {
     h('div', { class: 'body sc-page' },
       h('p', { class: 'note', style: { marginTop: 0 } }, `${all.length} lines, ${words} words, ${all.filter(l => l.voice).length} recorded. Change a line where it lives: Rooms (looks and uses), Items, Dialogue.`),
       ...parts.map(p => h('section', {}, h('h3', {}, p.title), p.lines.length ? '' : h('p', { class: 'note' }, 'Nothing said here yet.'),
-        ...p.lines.map(l => l.who ? h('div', { class: 'sc-line' }, h('b', {}, l.who), h('small', {}, l.note, l.voice ? ' · 🎙' : ''), h('p', {}, l.text)) : h('div', { class: 'sc-choice' }, l.text)))))));
+        ...p.lines.map(l => l.who ? h('div', { class: 'sc-line' }, h('b', {}, l.who), h('small', {}, l.note, l.voice ? ' · voiced' : ''), h('p', {}, l.text)) : h('div', { class: 'sc-choice' }, l.text)))))));
   document.body.append(m);
 }
