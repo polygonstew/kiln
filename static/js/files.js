@@ -36,7 +36,7 @@ let V;   // view elements
 export const files = {
   id: 'files', title: 'Files', key: '1',
   mount(el) {
-    el.className = 'view fm';
+    el.className = 'view ws fm';
     V = {
       tree: h('div', { class: 'tree' }),
       crumbs: h('div', { class: 'crumbs' }),
@@ -208,8 +208,9 @@ async function drawDetail() {
   const pv = h('div', { class: 'pv' });
   const info = h('dl', { class: 'kv' });
   const acts = h('div', { class: 'btns' });
-  const extra = h('div');
-  d.replaceChildren(pv, h('div', { class: 'sec' }, h('h3', {}, it.name), info, acts), extra);
+  // every piece is its own panel so the dock (dock.js) can place it; later pieces are appended, and dropped if the selection moved on
+  const more = n => { if (S.sel === it) d.append(n); };
+  d.replaceChildren(h('div', { class: 'sec' }, h('h3', {}, 'Preview'), pv), h('div', { class: 'sec' }, h('h3', {}, it.name), info, acts));
   const kv = (k, v) => info.append(h('dt', {}, k), h('dd', {}, v));
   kv('Path', short(it.path));
   kv(it.dir ? 'Items' : 'Size', it.dir ? String(it.count) : fmtSize(it.size));
@@ -231,7 +232,7 @@ async function drawDetail() {
       pv.replaceChildren(h('span', { class: 'faint' }, 'Scene'));
       acts.append(h('button', { class: 'btn go', onclick: () => emit('open-scene', it.path) }, 'Open in Scenes'));
     } else pv.replaceChildren(icon('folder'));
-    if (it.help) extra.append(h('div', { class: 'sec' }, h('p', { class: 'note' }, it.help)));
+    if (it.help) more(h('div', { class: 'sec' }, h('h3', {}, 'What goes here'), h('p', { class: 'note' }, it.help)));
     acts.append(h('button', { class: 'btn', onclick: () => go(it.path) }, 'Open folder'));
     if (it.path !== S.root) acts.append(h('button', { class: 'btn', onclick: () => setRoot(it.path) }, 'Use as asset folder'));
   } else if (IMG.test(it.name)) {
@@ -247,7 +248,7 @@ async function drawDetail() {
       const cols = colorsOf(im);
       kv('Pixels', `${im.width}×${im.height}`);
       kv('Colours', cols.length > 256 ? '256+ (not paletted)' : String(cols.length));
-      if (cols.length <= 64) extra.append(h('div', { class: 'sec' }, h('h3', {}, 'Palette'), h('div', { class: 'sw' }, ...cols.map(c => h('i', { title: hex(c), style: { background: hex(c) } })))));
+      if (cols.length <= 64) more(h('div', { class: 'sec' }, h('h3', {}, 'Palette'), h('div', { class: 'sw' }, ...cols.map(c => h('i', { title: hex(c), style: { background: hex(c) } })))));
       if (im.width > im.height * 1.5) kv('As strip', `${Math.round(im.width / im.height)} frames of ${im.height}×${im.height}?`);
     }
     acts.append(
@@ -261,7 +262,7 @@ async function drawDetail() {
       pv.replaceChildren(h('div', { class: 'sw big', style: { padding: '14px' } }, ...cols.map(c => h('i', { style: { background: hex(c) } }))));
       acts.append(h('button', { class: 'btn go', onclick: () => emit('use-palette', { name: it.name.replace(/\.hex$/, ''), colors: cols }) }, 'Use this palette'));
     } else pv.replaceChildren(h('span', { class: 'glyph faint mono' }, it.name.split('.').pop().toUpperCase()));
-    extra.append(h('pre', {}, t.slice(0, 20000)));
+    more(h('div', { class: 'sec' }, h('h3', {}, 'Contents'), h('pre', {}, t.slice(0, 20000))));
   } else pv.replaceChildren(icon('file'));
   acts.append(
     h('button', { class: 'btn ghost', title: 'Rename (F2)', onclick: () => rename(it) }, 'Rename'),

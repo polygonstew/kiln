@@ -45,7 +45,7 @@ async function sources() {
 async function open() {
   const input = h('input', { type: 'text', placeholder: 'Find an area, action, actor, scene or file…', spellcheck: false });
   const list = h('div', { class: 'qk-list' });
-  const box = h('div', { class: 'qk-box' }, h('div', { class: 'qk-top' }, h('span', { class: 'qk-k' }, 'Find'), input), list,
+  const box = h('div', { class: 'qk-box' }, h('div', { class: 'qk-top' }, h('span', { class: 'qk-k' }, 'FIND'), input), list,
     h('div', { class: 'qk-foot' }, '↑ ↓ choose  ·  Enter go  ·  Esc close'));
   Q = { veil: h('div', { class: 'dx-veil qk', onpointerdown: e => { if (e.target === Q.veil) close(); } }, box), all: [], shown: [], sel: 0 };
   document.body.append(Q.veil); input.focus();

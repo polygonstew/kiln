@@ -210,11 +210,10 @@ Verified in the throwaway copy: Camera, Cards, Flow, Game doc, Style (modal), Me
 
 
 ## 2026-10-16 session 9: the sleek pass (handoff job 6)
-Goal: calmer, less corny defaults. **Wheel / right-click menu / Ctrl+K / Controls sheet** were a black-and-gold "augmentation HUD" (hex honeycomb, dotted rings,
-scanlines, glow, chamfered segments, letterspaced capitals, rotating pop-in). Now plain panels in Kiln's own tokens (`--p1/--p2/--line2/--ember`): round
-sectors, round centre, mixed-case labels, quiet veil, 0.97-scale fade. The right-click menu shares the `.mb-panel` rules (kiln.css). The wheel's centre
-caption class is `dx-cap` (was `dx-sub`, which clashed with the sub-menu). **Gloop**: smaller (44 px), sage-green, eyes only (no smile, highlights, shadow or
+Goal: calmer, less corny defaults. (The wheel / right-click menu / Ctrl+K restyle was reverted the same day: the user prefers the black-and-gold look. Do not restyle them.) **Gloop**: smaller (44 px), sage-green, eyes only (no smile, highlights, shadow or
 jiggle; one slow blink), fades in 8 px instead of bouncing, neutral bubble border; calmer copy (no "Hi, I'm Gloop!", no exclamation marks). **Emoji out**:
 🎲 🔑 🎙 🔒 🖼 ⚡ ✸ replaced by plain text or the dice glyph ⚂; the ✦ next to every Game doc part is a small "Ideas" button; the Wild card tile lost its rainbow
 stripe; step nudge lost its "!" and its 20 px slide. Kept: ✕ ✓ ⚑ ⚙ ▶ and the other typographic glyphs (monochrome). Game content (demo dialogue) is untouched.
 Verified with Playwright screenshots in the throwaway copy and smoke.py (clean). No server change, so no restart needed.
+
+**Files fix (same day):** Files was broken since the docks (session 6): its view was `view fm`, not `view ws fm`, so `.ws.dk` never applied and the middle column was 0 px; its detail pieces (`pv`, a bare `extra` div) became "Panel" docks. Now `view ws fm`, and every detail piece is its own titled panel (Preview, the file's name, What goes here, Palette, Contents) appended with `more()`. smoke.py fails if a docked area's middle column is under 200 px.

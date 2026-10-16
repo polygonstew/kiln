@@ -27,6 +27,8 @@ with sync_playwright() as p:
     for a in AREAS:
         pg.evaluate(f"import('/js/core.js').then(c => c.emit('tab', '{a}'))"); pg.wait_for_timeout(2200)
         if not pg.locator(f'#v-{a}').count(): problems.append(f'{a}: view did not mount')
+        w = pg.evaluate(f"document.querySelector('#v-{a} > section.stage')?.getBoundingClientRect().width ?? 999")
+        if w < 200: problems.append(f'{a}: the middle column is {w:.0f}px wide (dock layout broken: does the view have class ws?)')
         print(f'  {a:9s} ok')
     pg.locator('#logo').click(); pg.wait_for_timeout(200)
     if pg.locator('.mb-panel').count() < 2: problems.append('logo menu: File menu did not open')
