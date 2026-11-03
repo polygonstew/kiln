@@ -7,6 +7,7 @@ import base64, json, os, shutil, random, re, socket, struct, threading, time, ur
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from pathlib import Path
 import play
+import project
 import release
 import tidy
 import video
@@ -693,6 +694,8 @@ class H(BaseHTTPRequestHandler):
         u = urllib.parse.urlparse(self.path)
         q = dict(urllib.parse.parse_qsl(u.query))
         try:
+            if u.path.startswith('/api/gp/'):   # Project mode (project.py)
+                return self.send(*project.route(u.path[8:], q))
             if u.path == '/api/status':
                 return self.send(200, status())
             if u.path == '/api/job':
@@ -780,6 +783,8 @@ class H(BaseHTTPRequestHandler):
         u = urllib.parse.urlparse(self.path)
         try:
             b = self.body()
+            if u.path.startswith('/api/gp/'):   # Project mode (project.py)
+                return self.send(*project.route(u.path[8:], b, post=True))
             if u.path == '/api/gen':
                 pid, seed = submit(b)
                 return self.send(200, {'id': pid, 'seed': seed})

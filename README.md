@@ -17,6 +17,8 @@ level background). Everything it writes is plain Godot (`.tscn`, `.tres`, `.gd`)
 
 ## Areas
 
+**Project** opens a hand-made Godot project as it is: live tuning sliders, its checks, baked clips with rebake, voice lines to mouth shapes (project.py, static/js/project*.js).
+
 | Key | Area | What it does |
 |---|---|---|
 | – | **Game doc** | The design document: pitch, story, world and lore, characters, mechanics, levels, look, plan; questions, themes, names and ideas when stuck; a one-page pitch to send |

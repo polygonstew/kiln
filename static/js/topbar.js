@@ -22,7 +22,7 @@ export function markTab(id) {
   if (more) more.classList.toggle('on', !main().some(([m]) => m === id));
 }
 
-const main = () => (P().tabs || mods.map(m => [m.id, m.title])).filter(([id]) => mods.some(m => m.id === id));
+const main = () => [...(P().tabs || mods.map(m => [m.id, m.title])).filter(([id]) => id !== 'project'), ['project', 'Project']].filter(([id]) => mods.some(m => m.id === id));   // Project is on every path
 function drawChip() {
   const c = document.querySelector('#gamechip'); if (!c) return;
   const p = P();

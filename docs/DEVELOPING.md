@@ -28,6 +28,7 @@ Anything that saves, deletes, renames or generates: run it on an **isolated copy
 `python3 tools/map.py` prints every module with its size and purpose (from its header comment) and fails if one
 passes 1000 lines or has no header. It is the code map: run it instead of keeping a hand-written list here.
 Rules for keeping Kiln readable are in CLAUDE.md ("Stay understandable"). Rough shape:
+- **Project mode (2026-11-03):** project.py (server, `/api/gp/*`), project.js (shell, Tuning, Checks), project_clips.js (baked clips, rebake), project_talk.js (voice line → mouth cues). A hand-made Godot project opened as it is; Kiln runs what the project offers and writes only `data/tuning.json` (one number at a time), `data/lines/`, `art/voice/` and, during a rebake, `artdir/hollow_job.env`. Test on an isolated copy: `KILN_PROJECT=<scratch copy> tools/iso.sh <tmp>` so sliders never touch the real game.
 - **Looks, kits, physics, new paths (2026-10-12, later):** gametype.js LOOKS/SHARP (Modern / Pixel), cutout.js (full-colour cut-outs), templates.js + adventure_kits.js (point & click kits, art slots), guide_actor.js, guide_physics.js, helper.js (Gloop), physics_godot.js (bodies, buttons, gates), ragdoll_godot.js, match3_godot.js, cards_godot.js + cards.js (Cards area), brains_more.js runner; tools/template_art.py (static/templates art).
 - **Game paths, Flow, Rooms (2026-10-12):** gametype.js (paths), topbar.js (game chip, path tabs, More), flow.js + flow_view.js + flow_godot.js + story_godot.js + video.py, rooms.js + rooms_canvas.js + rooms_inspect.js + rooms_items.js + rooms_flow.js + rooms_script.js + pictures.js, adventure_gd.js + adventure_godot.js, brains_more.js, crates.js, stacker_godot.js, demo_paths.js (templates per path). Templates = "demos" in code.
 - **Session 6 additions:** camera.js (Camera area → camera/camera.json), audio.py + sound_tools.js (Sound tools: ffmpeg trim/fade/loudnorm, Open in Audacity/Cutroom), setup.py + setup.js (Edit → Services & keys), rig_godot.js RIG_FACE_GD (head views + mouths), static/templates/directions.json (art directions for the Style bible and tools/template_art.py).
@@ -92,6 +93,7 @@ Rules for keeping Kiln readable are in CLAUDE.md ("Stay understandable"). Rough 
 | `POST /api/play/build {root, files, opts}` · `GET /api/play/status` · `GET /play/…` | ▶ Play web build (play.py) |
 | `POST /api/ask {q, prefer?}` → `{answer, sources, mode: key\|local\|search\|none, passages?, can_fetch?}` | Gloop's answers (helpbot.py); `prefer:'local'` tries the local engine first. `GET /api/ask/status` → `{local, fetch}`; `POST /api/ask/fetch` downloads the model |
 | `POST /api/write {part, section, doc, text}` → `{ideas}` or `{err}` | Game doc ✦: ideas from free text engines only (writer.py) |
+| `GET /api/gp/{info,tuning,checks,clips,bake,lines}?root=` · `POST /api/gp/{tuning,checks,run,bake,line}` | Project mode (project.py); root defaults to `KILN_PROJECT` or ~/.jcodes/radkid-godot |
 | `POST /api/release {root, files, opts, targets}` · `GET /api/release/status` · `GET /api/release/file?f=` | Export game (release.py → build/releases/*.zip) |
 
 ## Godot plugin

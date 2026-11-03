@@ -191,3 +191,16 @@ arrays of `{id, name, text, link?: 'level:<n>'|'scene:<n>', done?}`, `story.them
 - `videos/<name>.ogv` title cards can zoom into a picture (`/api/video/card` with `image`).
 - Rule book: `kiln/rules-game.json` `{ rules: { sections: [{ title, text }] } }` → `docs/RULES.md` and `rules/rules.json` (main.gd `_rules()`, menu action `rules`).
 - Camera: `kiln/camera-game.json` → `camera/camera.json` `{ game: { mode, dead_w, dead_h, damping, look, bias, zoom, confine, scroll }, levels: { name: {…} } }`; main.gd `_camera()` (drag margins, smoothing, zoom, offset, look-ahead, scroll mode).
+
+## Project mode (a hand-made Godot project, project.py)
+
+Kiln reads the project's own files and writes as little as it can:
+
+| File in the project | Kiln | Format |
+|---|---|---|
+| `data/tuning.json` | reads; a slider rewrites that one number in place | `{section: {name: number}}`, layout kept. The mtime always moves forward: the game compares whole seconds |
+| `tools/gates.sh` | runs it | `PASS name text` / `FAIL name text` lines, ending `GATES: n pass, n fail (t s)` |
+| `art/hollow/hollow.json` | reads | `{ppm, fps, creatures: {key: {name, size, anchor, clips: {clip: {frames, loop, hit: [drawing]}}}}}`, frames `art/hollow/<key>/<clip>_NN.png` + `_n.png` |
+| `artdir/hollow_job.env` | writes it for a rebake, removes it after | `RK_SAMPLES=48`, `RK_ONLY="key key"` |
+| `art/mouths/mouths.json` | reads | `{rad: {head, at: [x, y], shapes: {name: {anchor: [x, y]}}}}`, sprites `art/mouths/rad/<name>.png` |
+| `data/lines/<name>.json`, `art/voice/<name>.*` | writes (Talk) | `{cues: [[seconds, mouth]], duration, audio}`; mouths are the clay set's names (rest, ai, e, o, u, mbp, fv, l, wq) |

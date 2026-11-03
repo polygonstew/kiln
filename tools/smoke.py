@@ -10,7 +10,7 @@ import sys
 from playwright.sync_api import sync_playwright
 
 URL = (sys.argv[1] if len(sys.argv) > 1 else 'http://127.0.0.1:8510').rstrip('/')
-AREAS = ['gamedoc', 'files', 'forge', 'animate', 'scenes', 'levels', 'hud', 'stage', 'concepts', 'logic', 'dialogue', 'menus', 'rooms', 'flow']
+AREAS = ['gamedoc', 'files', 'forge', 'animate', 'scenes', 'levels', 'hud', 'stage', 'concepts', 'logic', 'dialogue', 'menus', 'rooms', 'flow', 'project']
 problems = []
 
 with sync_playwright() as p:
