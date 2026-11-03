@@ -997,3 +997,4 @@ body.simple .dk-panel[data-adv] { display: none !important; }
 .pj-bake input[type=number] { width: 56px; }
 .pj-log { font: 11px var(--mono); color: var(--dim); background: var(--p1); padding: 8px 10px; margin: 10px 0 0; max-height: 170px; overflow: auto; white-space: pre-wrap; }
 .pj-line { flex: 1 1 280px; min-width: 200px; }
+.pj-open { margin-right: 28px; }

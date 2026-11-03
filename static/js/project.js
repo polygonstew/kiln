@@ -24,7 +24,7 @@ async function load() {
 
 function drawLeft() {
   const i = S.info;
-  const open = h('button', { class: 'btn sm ghost', 'data-file': 'open', 'data-noun': 'project', title: 'Open another Godot project (a folder with project.godot)', onclick: choose }, 'Open…');
+  const open = h('button', { class: 'btn sm ghost pj-open', 'data-file': 'open', 'data-noun': 'project', title: 'Open another Godot project (a folder with project.godot)', onclick: choose }, 'Open…');
   V.head.replaceChildren(h('h3', {}, h('span', { class: 'grow' }, i?.title || 'No project'), open),
     i ? h('div', { class: 'pj-path mono', title: i.root }, i.root.replace(/^\/home\/[^/]+/, '~'), i.branch ? h('small', {}, ' · ' + i.branch) : '') : h('p', { class: 'note' }, S.err || ''),
     i ? h('div', { class: 'row' }, h('button', { class: 'btn go', title: 'Open the game in a window. Tuning changes reach it while it runs', onclick: () => run(false) }, '▶ Run game'),
