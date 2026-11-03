@@ -203,4 +203,4 @@ Kiln reads the project's own files and writes as little as it can:
 | `art/hollow/hollow.json` | reads | `{ppm, fps, creatures: {key: {name, size, anchor, clips: {clip: {frames, loop, hit: [drawing]}}}}}`, frames `art/hollow/<key>/<clip>_NN.png` + `_n.png` |
 | `artdir/hollow_job.env` | writes it for a rebake, removes it after | `RK_SAMPLES=48`, `RK_ONLY="key key"` |
 | `art/mouths/mouths.json` | reads | `{rad: {head, at: [x, y], shapes: {name: {anchor: [x, y]}}}}`, sprites `art/mouths/rad/<name>.png` |
-| `data/lines/<name>.json`, `art/voice/<name>.*` | writes (Talk) | `{cues: [[seconds, mouth]], duration, audio}`; mouths are the clay set's names (rest, ai, e, o, u, mbp, fv, l, wq) |
+| `data/lines/<name>.json`, `art/voice/<name>.*` | writes (Talk; typed lines are spoken by Slate, `KILN_SLATE`, default :8620) | `{cues: [[seconds, mouth]], duration, audio}`; mouths are the clay set's names (rest, ai, e, o, u, mbp, fv, l, wq) |

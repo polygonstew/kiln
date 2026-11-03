@@ -4,9 +4,10 @@ RAD KID rebuild, ~/.jcodes/radkid-godot, and everything here only uses what that
   checks   tools/gates.sh with pass / fail and the numbers each gate printed, against the run before
   run      the game in a window
   clips    art/hollow/hollow.json for the animation viewer; rebake = artdir/hollow_job.sh on Kaggle, then kaggle/collect_hollow.sh
-  lines    voice lines: lip-sync cues (worked out in the browser, lipsync.js) saved to data/lines/
+  lines    voice lines: lip-sync cues (worked out in the browser, lipsync.js) saved to data/lines/; typed lines are spoken by
+           Slate's voices (~/.jcodes/slate, :8620: its local Kokoro by default), so no sound file is needed
 server.py sends /api/gp/<name> here: route(name, args) -> (http code, json). The page is static/js/project.js."""
-import base64, json, os, re, shutil, subprocess, threading, time
+import base64, json, os, re, shutil, subprocess, threading, time, urllib.request
 from pathlib import Path
 
 DEFAULT = os.environ.get('KILN_PROJECT') or str(Path.home() / '.jcodes' / 'radkid-godot')
@@ -15,6 +16,7 @@ LOCK = threading.Lock()
 CHECKS = {'running': False, 'results': [], 'before': [], 'summary': '', 'at': 0, 'log': ''}
 BAKE = {'running': False, 'log': [], 'ok': None, 'at': 0}
 GAME = {'proc': None}
+SLATE = os.environ.get('KILN_SLATE', 'http://127.0.0.1:8620')
 
 
 def root_of(a):
@@ -213,6 +215,42 @@ def bake(a):
 
 
 # ------------------------------------------------- voice lines ---
+def _slate(path, body=None, timeout=15):
+    data = json.dumps(body).encode() if body is not None else None
+    req = urllib.request.Request(SLATE + path, data=data, headers={'Content-Type': 'application/json'})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        return r.read()
+
+
+def voices(a):
+    """Slate's voices, or ok: false when it isn't running (Talk then only offers sound files)."""
+    try:
+        d = json.loads(_slate('/api/voices'))
+    except OSError:
+        return {'ok': False}
+    return {'ok': True, 'kokoro': d.get('kokoro', []), 'pocket': d.get('pocket', []), 'clones': [{'slug': c['slug'], 'name': c['name']} for c in d.get('clones', [])]}
+
+
+def speak(a):
+    """A typed line, spoken by one of Slate's voices (its audition job): returns the sound for the page to lip-sync."""
+    text = str(a.get('text', '')).strip()[:400]
+    if not text:
+        raise ValueError('type the line first')
+    try:
+        job = json.loads(_slate('/api/voices/audition', {'engine': a.get('engine', 'kokoro'), 'voice': a.get('voice', 'am_puck'), 'speed': float(a.get('speed', 1.05)), 'text': text}))
+        end = time.time() + 120
+        while time.time() < end:
+            j = next((x for x in json.loads(_slate('/api/jobs')) if x['id'] == job['id']), None)
+            if j and j['status'] in ('error', 'failed', 'cancelled'):
+                raise ValueError('the voice failed: ' + str(j.get('error') or j.get('log') or j['status'])[:160])
+            if j and j.get('result'):
+                return {'b64': base64.b64encode(_slate(j['result']['url'], timeout=30)).decode(), 'ext': 'wav', 'secs': j['result'].get('secs', 0)}
+            time.sleep(0.4)
+    except OSError as e:
+        raise ValueError(f'Slate is not answering ({e})')
+    raise ValueError('the voice took over two minutes')
+
+
 def lines(a):
     r = root_of(a)
     d = r / 'data/lines'
@@ -247,8 +285,8 @@ def line_save(a):
     return {'ok': True, 'name': name}
 
 
-GET = {'info': info, 'tuning': tuning, 'checks': checks, 'clips': clips, 'bake': bake, 'lines': lines}
-POST = {'tuning': tuning_set, 'checks': checks_start, 'run': run, 'bake': bake_start, 'line': line_save}
+GET = {'info': info, 'tuning': tuning, 'checks': checks, 'clips': clips, 'bake': bake, 'lines': lines, 'voices': voices}
+POST = {'tuning': tuning_set, 'checks': checks_start, 'run': run, 'bake': bake_start, 'line': line_save, 'speak': speak}
 
 
 def route(name, a, post=False):

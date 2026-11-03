@@ -1,7 +1,8 @@
-// Project → Talk: a voice line becomes mouth cues for the game. Pick a sound; lipsync.js works out Kiln's nine shapes in the
-// browser; toBlair() names them after the clay mouths the project baked (art/mouths/mouths.json); Save writes the cues to
-// data/lines/<name>.json and the sound to art/voice/. game/mouth.gd plays them. Used by project.js.
-import { h, api, toast } from './core.js';
+// Project → Talk: a voice line becomes mouth cues for the game. Type the line and one of Slate's voices says it, or open a sound;
+// lipsync.js works out Kiln's nine shapes in the browser; toBlair() names them after the clay mouths the project baked
+// (art/mouths/mouths.json); Save writes the cues to data/lines/<name>.json and the sound to art/voice/. game/mouth.gd plays them.
+// Used by project.js.
+import { h, api, toast, pref } from './core.js';
 import { decode, analyse } from './lipsync.js';
 
 // Kiln's shapes (face.js SHAPES) -> the replacement mouths. OO and W share a pucker: a quick one is W, a held one is U.
@@ -45,17 +46,36 @@ export async function talkView(box, info, body) {
     a.play().catch(e => toast(e.message, 'bad'));
   };
   const name = h('input', { placeholder: 'Line name', value: 'line_1' });
-  const pick = h('input', { type: 'file', accept: 'audio/*', style: { display: 'none' }, onchange: async e => {
-    const f = e.target.files[0]; if (!f) return;
-    const buf = await f.arrayBuffer();
+  const useSound = async (buf, ext, suggested) => {
     const sound = await decode(buf.slice(0)).catch(err => (toast('Could not read that sound: ' + err.message, 'bad'), null));
     if (!sound) return;
     const cues = toBlair(analyse(sound).cues);
-    T.line = { cues, duration: sound.duration, url: URL.createObjectURL(f), ext: f.name.split('.').pop(), buf };
-    name.value = f.name.replace(/\.[^.]+$/, '').replace(/[^\w-]+/g, '_');
+    T.line = { cues, duration: sound.duration, url: URL.createObjectURL(new Blob([buf])), ext, buf };
+    name.value = suggested.replace(/[^\w-]+/g, '_').slice(0, 32);
     say.textContent = `${sound.duration.toFixed(2)} s, ${cues.length} mouth changes`;
     save.disabled = false; play(T.line, T.line.url);
+  };
+  const pick = h('input', { type: 'file', accept: 'audio/*', style: { display: 'none' }, onchange: async e => {
+    const f = e.target.files[0]; if (f) useSound(await f.arrayBuffer(), f.name.split('.').pop(), f.name.replace(/\.[^.]+$/, ''));
   } });
+  // typed lines: Slate speaks them (Kokoro on this machine, nothing to pay for)
+  const v = await api('/api/gp/voices').catch(() => ({ ok: false }));
+  const typed = h('input', { class: 'pj-line', placeholder: 'What does he say?', value: pref.get('gp.line', '') });
+  const voice = h('select', { title: 'Who says it (the voices in Slate)', onchange: () => pref.set('gp.voice', voice.value) },
+    ...(v.kokoro || []).filter(n => /^[ab]m_/.test(n)).map(n => h('option', { value: 'kokoro|' + n }, n.slice(3))),
+    ...(v.clones || []).map(c => h('option', { value: 'pocket|clone:' + c.slug }, c.name)),
+    ...(v.kokoro || []).filter(n => !/^[ab]m_/.test(n)).map(n => h('option', { value: 'kokoro|' + n }, n.slice(3))));
+  voice.value = pref.get('gp.voice', 'kokoro|am_puck');
+  const speak = h('button', { class: 'btn go', title: 'Say it in this voice, and work out the mouths', onclick: async () => {
+    const [engine, id] = voice.value.split('|');
+    pref.set('gp.line', typed.value);
+    speak.disabled = true; say.textContent = 'Speaking…';
+    const r = await api('/api/gp/speak', body({ text: typed.value, engine, voice: id })).catch(e => (toast(e.message, 'bad'), null));
+    speak.disabled = false;
+    if (!r) { say.textContent = ''; return; }
+    const bytes = Uint8Array.from(atob(r.b64), c => c.charCodeAt(0));
+    useSound(bytes.buffer, r.ext, typed.value.split(/\s+/).slice(0, 4).join('_').toLowerCase());
+  } }, 'Say it');
   const save = h('button', { class: 'btn go', disabled: true, 'data-file': 'save', 'data-noun': 'line', onclick: async () => {
     const bytes = new Uint8Array(T.line.buf); let bin = ''; for (let i = 0; i < bytes.length; i += 32768) bin += String.fromCharCode(...bytes.subarray(i, i + 32768));
     const r = await api('/api/gp/line', body({ name: name.value, cues: T.line.cues, duration: T.line.duration, ext: T.line.ext, audio_b64: btoa(bin) })).catch(e => toast(e.message, 'bad'));
@@ -63,7 +83,8 @@ export async function talkView(box, info, body) {
   } }, 'Save for the game');
   list.replaceChildren(...d.lines.map(l => h('div', { class: 'pj-gate ok' }, h('button', { class: 'btn sm', disabled: !l.audio, onclick: () => play(l, raw(`${d.root}/${l.audio}`)) }, '▶'),
     h('span', { class: 'mono' }, l.name), h('div', {}, `${(+l.duration).toFixed(2)} s, ${l.cues.length} mouth changes`))));
-  box.replaceChildren(h('header', { class: 'pj-bar' }, h('b', {}, 'Talk'), h('button', { class: 'btn', title: 'Pick a voice line: mouth shapes are worked out here, nothing is sent anywhere', onclick: () => pick.click() }, 'Open a voice line…'), name, save, say), pick,
+  box.replaceChildren(h('header', { class: 'pj-bar' }, h('b', {}, 'Talk'), v.ok ? [typed, voice, speak] : h('span', { class: 'faint' }, 'Slate is not running: open a sound instead'),
+    h('button', { class: 'btn ghost', title: 'Use a sound you already have', onclick: () => pick.click() }, 'Open a sound…'), name, save, say), pick,
     h('div', { class: 'pj-cv' }, cv), list);
   paint('rest');
 }
