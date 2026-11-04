@@ -4,6 +4,7 @@ RAD KID rebuild, ~/.jcodes/radkid-godot, and everything here only uses what that
   checks   tools/gates.sh with pass / fail and the numbers each gate printed, against the run before
   run      the game in a window
   clips    art/hollow/hollow.json for the animation viewer; rebake = artdir/hollow_job.sh on Kaggle, then kaggle/collect_hollow.sh
+  build    the project's long jobs from one button: bake all the art on Kaggle, or tools/ship.sh
   lines    voice lines: lip-sync cues (worked out in the browser, lipsync.js) saved to data/lines/; typed lines are spoken by
            Slate's voices (~/.jcodes/slate, :8620: its local Kokoro by default), so no sound file is needed
 server.py sends /api/gp/<name> here: route(name, args) -> (http code, json). The page is static/js/project.js."""
@@ -175,13 +176,12 @@ def _say(line):
         BAKE['log'] = (BAKE['log'] + [line.rstrip()])[-200:]
 
 
-def _run_bake(r, keys):
+def _run_bake(r, steps, env):
     ok = False
     try:
-        env = dict(os.environ, RK_JOB='artdir/hollow_job.sh')
-        for cmd in (['bash', 'kaggle/run.sh'], ['bash', 'kaggle/collect_hollow.sh', *keys]):
+        for cmd in steps:
             _say('$ ' + ' '.join(cmd))
-            p = subprocess.Popen(cmd, cwd=r, env=env, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+            p = subprocess.Popen(cmd, cwd=r, env={**os.environ, **env}, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
             for line in p.stdout:
                 _say(line)
             if p.wait() != 0:
@@ -195,17 +195,27 @@ def _run_bake(r, keys):
 
 
 def bake_start(a):
-    """Bakes creatures on the free GPU: writes the job's settings, runs it, unpacks the frames into the project."""
+    """The long jobs, one at a time: kind hollow (creatures on the free GPU, chosen ones or all), art (all the rest of the art, then the rooms
+    are remade from it) or build (the project's tools/ship.sh)."""
     r = root_of(a)
-    keys = [re.sub(r'\W', '', k) for k in a.get('creatures') or []]
-    samples = max(4, min(256, int(a.get('samples', 48))))
+    kind = a.get('kind', 'hollow')
     with LOCK:
         if BAKE['running']:
             return {'ok': True, 'already': True}
-        BAKE.update(running=True, log=[], ok=None)
-    lines = [f'RK_SAMPLES={samples}'] + ([f'RK_ONLY="{" ".join(keys)}"'] if keys else [])
-    (r / 'artdir/hollow_job.env').write_text('\n'.join(lines) + '\n')
-    threading.Thread(target=_run_bake, args=(r, keys), daemon=True).start()
+        BAKE.update(running=True, log=[], ok=None, kind=kind)
+    env, steps = {}, []
+    if kind == 'build':
+        steps = [['bash', 'tools/ship.sh']]
+    elif kind == 'art':
+        steps = [['bash', 'kaggle/run.sh'], ['bash', 'kaggle/collect.sh']] + [['python3', f] for f in map(str, sorted(r.glob('tools/make_*.py'))) if not f.endswith('make_lab.py')]
+    else:
+        keys = [re.sub(r'\W', '', k) for k in a.get('creatures') or []]
+        samples = max(4, min(256, int(a.get('samples', 48))))
+        lines = [f'RK_SAMPLES={samples}'] + ([f'RK_ONLY="{" ".join(keys)}"'] if keys else [])
+        (r / 'artdir/hollow_job.env').write_text('\n'.join(lines) + '\n')
+        env = {'RK_JOB': 'artdir/hollow_job.sh'}
+        steps = [['bash', 'kaggle/run.sh'], ['bash', 'kaggle/collect_hollow.sh', *keys]]
+    threading.Thread(target=_run_bake, args=(r, steps, env), daemon=True).start()
     return {'ok': True}
 
 

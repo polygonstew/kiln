@@ -4,16 +4,18 @@
 //   Checks  tools/gates.sh, pass / fail and each gate's numbers against the run before
 //   Clips   the baked animations, played on twos, with a rebake button (project_clips.js)
 //   Talk    voice lines turned into mouth cues for the game (project_talk.js)
+//   Build   bake all the art, or build the game (project_build.js)
 // The server side is project.py (/api/gp/...). Nothing here touches the asset folder.
 import { h, api, toast, pref, sleep } from './core.js';
 import { registerWheel, registerKeys } from './wheel.js';
 import { clipsView } from './project_clips.js';
 import { talkView } from './project_talk.js';
+import { buildView } from './project_build.js';
 
 const V = {};
 const S = { info: null, view: pref.get('gp.view', 'tuning'), rerun: pref.get('gp.rerun', false), filter: '', timers: {}, polling: false };
 const VIEWS = [['tuning', 'Tuning', 'data/tuning.json as live sliders'], ['checks', 'Checks', 'tools/gates.sh: pass / fail and the numbers'],
-  ['clips', 'Clips', 'Every baked animation, played on twos'], ['talk', 'Talk', 'Voice lines to mouth shapes']];
+  ['clips', 'Clips', 'Every baked animation, played on twos'], ['talk', 'Talk', 'Voice lines to mouth shapes'], ['build', 'Build', 'Bake all the art, or build the game']];
 const q = () => '?root=' + encodeURIComponent(pref.get('gp.root', ''));
 const body = extra => ({ root: pref.get('gp.root', '') || undefined, ...extra });
 
@@ -45,7 +47,7 @@ function go(id) { S.view = id; pref.set('gp.view', id); drawLeft(); drawView(); 
 
 function drawView() {
   if (!S.info) { V.main.replaceChildren(h('p', { class: 'note' }, 'Open a Godot project to begin.')); return; }
-  ({ tuning: tuningView, checks: checksView, clips: () => clipsView(V.main, S.info, body), talk: () => talkView(V.main, S.info, body) })[S.view]();
+  ({ tuning: tuningView, checks: checksView, clips: () => clipsView(V.main, S.info, body), talk: () => talkView(V.main, S.info, body), build: () => buildView(V.main, S.info, body) })[S.view]();
 }
 
 // ------------------------------------------------- tuning ---
